@@ -3,10 +3,11 @@ import Phaser from "phaser";
 import { CampaignScene } from "./CampaignScene";
 import type { GamepadMapping } from "../gamepad-config";
 import type { PlayerStatus } from "./combat-state";
-import type { CampaignMap, GameCallbacks, MatchOutcome, ScoreState } from "./types";
+import type { CampaignMap, GameCallbacks, MatchMode, MatchOutcome, ScoreState } from "./types";
 
 interface GameCanvasProps {
   mapIndex: number;
+  matchMode: MatchMode;
   runId: number;
   paused: boolean;
   gamepadMapping: GamepadMapping;
@@ -18,6 +19,7 @@ interface GameCanvasProps {
 
 export function GameCanvas({
   mapIndex,
+  matchMode,
   runId,
   paused,
   gamepadMapping,
@@ -62,6 +64,7 @@ export function GameCanvas({
 
     game.scene.start("CampaignScene", {
       mapIndex,
+      matchMode,
       mapOverride,
       gamepadMapping,
       callbacks: {
@@ -74,7 +77,7 @@ export function GameCanvas({
     return () => {
       game.destroy(true);
     };
-  }, [gamepadMapping, mapIndex, mapOverride, runId]);
+  }, [gamepadMapping, mapIndex, mapOverride, matchMode, runId]);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent(paused ? "thunder-tank-pause" : "thunder-tank-resume"));

@@ -25,6 +25,7 @@ import type {
   CampaignMap,
   EnemyArchetype,
   GameCallbacks,
+  MatchMode,
   ObstacleConfig,
   PickupConfig,
   ScoreState,
@@ -58,13 +59,16 @@ const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
 
 interface SceneData {
   mapIndex: number;
+  matchMode?: MatchMode;
   mapOverride?: CampaignMap;
   gamepadMapping: GamepadMapping;
   callbacks: GameCallbacks;
 }
 
+type BulletOwner = "player" | "playerTwo" | "enemy";
+
 interface BulletData {
-  owner: "player" | "enemy";
+  owner: BulletOwner;
   startX: number;
   startY: number;
   maxRange: number;
@@ -91,11 +95,13 @@ function getPickupTint(type: PickupConfig["type"]): number {
 
 export class CampaignScene extends Phaser.Scene {
   private map!: CampaignMap;
+  private matchMode: MatchMode = "campaign";
   private callbacks!: GameCallbacks;
   private gamepadMapping!: GamepadMapping;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private player!: TankRuntime;
+  private playerTwo?: TankRuntime;
   private enemies: TankRuntime[] = [];
   private score: ScoreState = { player: 0, enemy: 0 };
   private obstacles!: Phaser.Physics.Arcade.StaticGroup;
@@ -116,10 +122,12 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   init(data: SceneData): void {
+    this.matchMode = data.matchMode ?? "campaign";
     this.map = data.mapOverride ?? CAMPAIGN_MAPS[data.mapIndex] ?? CAMPAIGN_MAPS[0];
     this.gamepadMapping = data.gamepadMapping;
     this.callbacks = data.callbacks;
     this.score = { player: 0, enemy: 0 };
+    this.playerTwo = undefined;
     this.enemies = [];
     this.tankByBody.clear();
     this.playerControlLockedUntil = 0;
@@ -165,34 +173,43 @@ export class CampaignScene extends Phaser.Scene {
       this.addPickup(pickup);
     }
 
-    this.player = this.addTank("player", this.getRandomPlayerSpawn(), "standard");
-    this.enemies = this.map.enemySpawns.map((enemy, index) =>
-      this.addTank(`enemy-${index}`, enemy, enemy.archetype),
-    );
+    this.enemies = this.isDeathmatch()
+      ? []
+      : this.map.enemySpawns.map((enemy, index) => this.addTank(`enemy-${index}`, enemy, enemy.archetype));
+    this.player = this.addTank("player", this.isDeathmatch() ? this.map.playerSpawn : this.getRandomPlayerSpawn(), "standard");
+    this.playerTwo = this.isDeathmatch() ? this.addTank("playerTwo", this.getPlayerTwoSpawn(), "standard") : undefined;
 
-    this.physics.add.collider(this.player.hull, this.obstacles);
-    this.physics.add.collider(
-      this.enemies.map((enemy) => enemy.hull),
-      this.obstacles,
-    );
-    this.physics.add.collider(this.player.hull, this.enemies.map((enemy) => enemy.hull));
-    this.physics.add.collider(this.enemies.map((enemy) => enemy.hull), this.enemies.map((enemy) => enemy.hull));
+    const tankHulls = this.getAllTanks().map((tank) => tank.hull);
+    const humanHulls = this.getHumanTanks().map((tank) => tank.hull);
+    const enemyHulls = this.enemies.map((enemy) => enemy.hull);
+
+    this.physics.add.collider(tankHulls, this.obstacles);
+    this.physics.add.collider(humanHulls, enemyHulls);
+    this.physics.add.collider(tankHulls, tankHulls);
     this.physics.add.collider(this.bullets, this.obstacles, (bullet) =>
       this.destroyBullet(bullet as Phaser.GameObjects.GameObject),
     );
-    this.physics.add.overlap(this.bullets, this.player.hull, (bullet, hull) =>
+    this.physics.add.overlap(this.bullets, humanHulls, (bullet, hull) =>
       this.handleBulletHit(bullet as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
     );
-    this.physics.add.overlap(this.bullets, this.enemies.map((enemy) => enemy.hull), (bullet, hull) =>
+    this.physics.add.overlap(this.bullets, enemyHulls, (bullet, hull) =>
       this.handleBulletHit(bullet as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
     );
-    this.physics.add.overlap(this.pickups, this.player.hull, (pickup, hull) =>
+    this.physics.add.overlap(this.pickups, humanHulls, (pickup, hull) =>
       this.handlePickup(pickup as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
     );
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.keys = this.input.keyboard!.addKeys("W,A,S,D,SPACE,ESC") as Record<string, Phaser.Input.Keyboard.Key>;
-    this.cameras.main.startFollow(this.player.hull, true, 0.08, 0.08);
+    this.keys = this.input.keyboard!.addKeys("W,A,S,D,SPACE,ESC,I,J,K,L,F,G,H") as Record<
+      string,
+      Phaser.Input.Keyboard.Key
+    >;
+    if (this.isDeathmatch()) {
+      this.cameras.main.stopFollow();
+      this.updateCamera();
+    } else {
+      this.cameras.main.startFollow(this.player.hull, true, 0.08, 0.08);
+    }
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.setZoom(1);
     this.respawnCountdownText = this.add
@@ -233,12 +250,13 @@ export class CampaignScene extends Phaser.Scene {
     this.updatePickupCollection();
     this.updatePickupVisuals(time);
     this.updateTankVisuals();
+    this.updateCamera();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
     this.cleanupFarBullets();
     this.publishPlayerStatus(time);
 
-    for (const tank of [this.player, ...this.enemies]) {
+    for (const tank of this.getAllTanks()) {
       if (!tank.alive && time >= tank.respawnAt && this.canRespawnTank(tank)) {
         this.respawnTank(tank);
       }
@@ -301,13 +319,23 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private addTank(id: string, spawn: Vec2, archetype: EnemyArchetype): TankRuntime {
-    const side = id === "player" ? "player" : "enemy";
-    const hullKey = side === "player" ? "playerHull" : this.enemyHullKey(archetype);
-    const turretKey = side === "player" ? "playerTurret" : this.enemyTurretKey(archetype);
+    const side = id === "player" ? "player" : id === "playerTwo" ? "playerTwo" : "enemy";
+    const hullKey = side === "player" ? "playerHull" : side === "playerTwo" ? "enemyLightHull" : this.enemyHullKey(archetype);
+    const turretKey =
+      side === "player" ? "playerTurret" : side === "playerTwo" ? "enemyLightTurret" : this.enemyTurretKey(archetype);
     const hull = this.physics.add.image(spawn.x, spawn.y, hullKey);
     const turret = this.add.image(spawn.x, spawn.y, turretKey);
     const frontMarker =
-      side === "player" ? this.add.rectangle(spawn.x, spawn.y - PLAYER_FRONT_MARKER_OFFSET, 18, 6, 0xf6df85, 0.95) : undefined;
+      side === "enemy"
+        ? undefined
+        : this.add.rectangle(
+            spawn.x,
+            spawn.y - PLAYER_FRONT_MARKER_OFFSET,
+            18,
+            6,
+            side === "player" ? 0xf6df85 : 0xff8a62,
+            0.95,
+          );
     const tank: TankRuntime = {
       id,
       side,
@@ -322,7 +350,7 @@ export class CampaignScene extends Phaser.Scene {
       respawnAt: 0,
       lastFiredAt: -10_000,
       nextDecisionAt: 0,
-      aimAngle: side === "player" ? -Math.PI / 2 : 0,
+      aimAngle: side === "player" ? -Math.PI / 2 : side === "playerTwo" ? Math.PI / 2 : 0,
       moveAngle: undefined,
       nextMoveDecisionAt: 0,
       buffs: { ...EMPTY_BUFFS },
@@ -366,41 +394,53 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updatePlayer(time: number): void {
-    if (!this.player.alive) {
-      this.player.hull.setVelocity(0, 0);
+    this.updateHumanTank(this.player, 0, time);
+
+    if (this.playerTwo) {
+      this.updateHumanTank(this.playerTwo, 1, time);
+    }
+  }
+
+  private updateHumanTank(tank: TankRuntime, playerIndex: 0 | 1, time: number): void {
+    if (!tank.alive || (tank.side === "player" && this.isPlayerInRespawnCountdown(time))) {
+      tank.hull.setVelocity(0, 0);
       return;
     }
 
-    if (this.isPlayerInRespawnCountdown(time)) {
-      this.player.hull.setVelocity(0, 0);
-      return;
-    }
-
-    const drive = this.getDriveInput();
-    const aim = this.getAimVector();
-    const stats = getEffectiveStats(PLAYER_BASE_STATS, this.player.buffs, time);
+    const drive = this.getDriveInput(playerIndex);
+    const aim = this.getAimVector(playerIndex);
+    const stats = getEffectiveStats(PLAYER_BASE_STATS, tank.buffs, time);
     const deltaSeconds = this.game.loop.delta / 1_000;
     const effectiveTurn = Math.abs(drive.throttle) > 0 ? drive.turn : 0;
     const hullTurnDelta = effectiveTurn * PLAYER_TURN_RATE * deltaSeconds;
-    const nextRotation = this.player.hull.rotation + hullTurnDelta;
+    const nextRotation = tank.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
-    this.player.hull.setRotation(nextRotation);
-    this.player.hull.setVelocity(
+    tank.hull.setRotation(nextRotation);
+    tank.hull.setVelocity(
       Math.cos(forwardAngle) * drive.throttle * stats.speed,
       Math.sin(forwardAngle) * drive.throttle * stats.speed,
     );
 
-    this.player.aimAngle += hullTurnDelta + aim.x * PLAYER_TURRET_TURN_RATE * deltaSeconds;
+    tank.aimAngle += hullTurnDelta + aim.x * PLAYER_TURRET_TURN_RATE * deltaSeconds;
 
-    if (this.wantsFire() && !isGunFrozen(this.playerGunHeat, time) && time - this.player.lastFiredAt >= stats.fireCooldownMs) {
-      if (this.fireBullet(this.player, stats.bulletSpeed, time)) {
+    const canFire =
+      playerIndex === 0
+        ? !isGunFrozen(this.playerGunHeat, time) && time - tank.lastFiredAt >= stats.fireCooldownMs
+        : time - tank.lastFiredAt >= stats.fireCooldownMs;
+
+    if (this.wantsFire(playerIndex) && canFire) {
+      if (this.fireBullet(tank, stats.bulletSpeed, time) && playerIndex === 0) {
         this.playerGunHeat = recordPlayerShot(this.playerGunHeat, time);
       }
     }
   }
 
   private updateEnemies(time: number): void {
+    if (this.isDeathmatch()) {
+      return;
+    }
+
     if (!this.player.alive || this.isPlayerInRespawnCountdown(time)) {
       for (const enemy of this.enemies) {
         enemy.hull.setVelocity(0, 0);
@@ -467,11 +507,13 @@ export class CampaignScene extends Phaser.Scene {
     });
   }
 
-  private getDriveInput(): { throttle: number; turn: number } {
-    const gamepad = navigator.getGamepads?.()[0];
+  private getDriveInput(playerIndex: 0 | 1 = 0): { throttle: number; turn: number } {
+    const gamepad = navigator.getGamepads?.()[playerIndex];
     const drive = readDrive(gamepad, this.gamepadMapping);
-    const keyboardTurn = Number(this.keys.D.isDown) - Number(this.keys.A.isDown);
-    const keyboardThrottle = Number(this.keys.W.isDown) - Number(this.keys.S.isDown);
+    const keyboardTurn =
+      playerIndex === 0 ? Number(this.keys.D.isDown) - Number(this.keys.A.isDown) : Number(this.keys.L.isDown) - Number(this.keys.J.isDown);
+    const keyboardThrottle =
+      playerIndex === 0 ? Number(this.keys.W.isDown) - Number(this.keys.S.isDown) : Number(this.keys.I.isDown) - Number(this.keys.K.isDown);
 
     return {
       throttle: Phaser.Math.Clamp(drive.throttle || keyboardThrottle, -1, 1),
@@ -479,20 +521,22 @@ export class CampaignScene extends Phaser.Scene {
     };
   }
 
-  private getAimVector(): Vec2 {
-    const gamepad = navigator.getGamepads?.()[0];
+  private getAimVector(playerIndex: 0 | 1 = 0): Vec2 {
+    const gamepad = navigator.getGamepads?.()[playerIndex];
     const aim = readAim(gamepad, this.gamepadMapping);
-    const keyboardX = Number(this.cursors.right.isDown) - Number(this.cursors.left.isDown);
+    const keyboardX =
+      playerIndex === 0 ? Number(this.cursors.right.isDown) - Number(this.cursors.left.isDown) : Number(this.keys.H.isDown) - Number(this.keys.F.isDown);
     return {
       x: aim.x || keyboardX,
       y: 0,
     };
   }
 
-  private wantsFire(): boolean {
-    const gamepad = navigator.getGamepads?.()[0];
+  private wantsFire(playerIndex: 0 | 1 = 0): boolean {
+    const gamepad = navigator.getGamepads?.()[playerIndex];
+    const keyboardFire = playerIndex === 0 ? this.keys.SPACE.isDown : this.keys.G.isDown;
     return Boolean(
-      this.keys.SPACE.isDown ||
+      keyboardFire ||
         isGamepadButtonPressed(gamepad, this.gamepadMapping.fire),
     );
   }
@@ -579,7 +623,7 @@ export class CampaignScene extends Phaser.Scene {
         continue;
       }
 
-      const targets = data.owner === "player" ? this.enemies : [this.player];
+      const targets = this.getBulletTargets(data.owner);
 
       for (const tank of targets) {
         if (!tank.alive) {
@@ -606,40 +650,44 @@ export class CampaignScene extends Phaser.Scene {
     const hull = this.resolveGameObject(hullObject);
     const tank = hull ? this.tankByBody.get(hull) : undefined;
 
-    if (!tank || tank.side !== "player" || !pickup.active || !tank.alive) {
+    if (!tank || !this.isHumanTank(tank) || !pickup.active || !tank.alive) {
       return;
     }
 
-    this.collectPickup(pickup);
+    this.collectPickup(tank, pickup);
   }
 
   private updatePickupCollection(): void {
-    if (!this.player.alive || this.isPlayerInRespawnCountdown(this.time.now)) {
-      return;
-    }
-
-    for (const pickup of this.pickups.getChildren() as PickupSprite[]) {
-      if (!pickup.active || !pickup.visible) {
+    for (const tank of this.getHumanTanks()) {
+      if (!tank.alive || (tank.side === "player" && this.isPlayerInRespawnCountdown(this.time.now))) {
         continue;
       }
 
-      const distance = Phaser.Math.Distance.Between(pickup.x, pickup.y, this.player.hull.x, this.player.hull.y);
+      for (const pickup of this.pickups.getChildren() as PickupSprite[]) {
+        if (!pickup.active || !pickup.visible) {
+          continue;
+        }
 
-      if (distance <= PICKUP_COLLECT_RADIUS) {
-        this.collectPickup(pickup);
+        const distance = Phaser.Math.Distance.Between(pickup.x, pickup.y, tank.hull.x, tank.hull.y);
+
+        if (distance <= PICKUP_COLLECT_RADIUS) {
+          this.collectPickup(tank, pickup);
+        }
       }
     }
   }
 
-  private collectPickup(pickup: PickupSprite): void {
+  private collectPickup(tank: TankRuntime, pickup: PickupSprite): void {
     if (!pickup.active) {
       return;
     }
 
-    this.player.buffs = applyPickupBuff(this.player.buffs, pickup.pickupType, this.time.now);
+    tank.buffs = applyPickupBuff(tank.buffs, pickup.pickupType, this.time.now);
     pickup.disableBody(true, true);
     pickup.respawnAt = this.time.now + PICKUP_RESPAWN_MS;
-    this.publishPlayerStatus(this.time.now);
+    if (tank.side === "player") {
+      this.publishPlayerStatus(this.time.now);
+    }
     this.playSound("pickupSfx", 0.3);
   }
 
@@ -661,7 +709,11 @@ export class CampaignScene extends Phaser.Scene {
     return object as Phaser.GameObjects.GameObject;
   }
 
-  private damageTank(tank: TankRuntime, scorer: "player" | "enemy"): void {
+  private getBulletTargets(owner: BulletOwner): TankRuntime[] {
+    return this.getAllTanks().filter((tank) => tank.side !== owner);
+  }
+
+  private damageTank(tank: TankRuntime, scorer: BulletOwner): void {
     if (hasShield(tank.buffs, this.time.now)) {
       tank.buffs.shieldUntil = 0;
       this.addExplosion(tank.hull.x, tank.hull.y, 0.35);
@@ -678,7 +730,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTank(tank, scorer);
   }
 
-  private destroyTank(tank: TankRuntime, scorer: "player" | "enemy"): void {
+  private destroyTank(tank: TankRuntime, scorer: BulletOwner): void {
     if (hasShield(tank.buffs, this.time.now)) {
       tank.buffs.shieldUntil = 0;
       this.addExplosion(tank.hull.x, tank.hull.y, 0.35);
@@ -694,7 +746,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.frontMarker?.setVisible(false);
     tank.buffs = { ...EMPTY_BUFFS };
 
-    if (tank.side === "player") {
+    if (this.isHumanTank(tank)) {
       this.clearBullets();
     }
 
@@ -711,7 +763,7 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private respawnTank(tank: TankRuntime): void {
-    const spawn = tank.side === "player" ? this.getRandomPlayerSpawn(tank) : tank.spawn;
+    const spawn = tank.side === "player" && !this.isDeathmatch() ? this.getRandomPlayerSpawn(tank) : tank.spawn;
 
     tank.alive = true;
     tank.health = tank.maxHealth;
@@ -722,7 +774,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.lastFiredAt = this.time.now;
     tank.hull.setVelocity(0, 0);
 
-    if (tank.side === "player") {
+    if (tank.side === "player" && !this.isDeathmatch()) {
       this.playerControlLockedUntil = this.time.now + PLAYER_RESPAWN_COUNTDOWN_MS;
 
       for (const enemy of this.enemies) {
@@ -733,7 +785,7 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private canRespawnTank(tank: TankRuntime): boolean {
-    if (tank.side === "player") {
+    if (this.isHumanTank(tank)) {
       return true;
     }
 
@@ -854,6 +906,23 @@ export class CampaignScene extends Phaser.Scene {
     };
   }
 
+  private getPlayerTwoSpawn(): Vec2 {
+    const editorSpawn = (this.map as CampaignMap & { playerTwoSpawn?: Vec2 }).playerTwoSpawn;
+
+    if (editorSpawn) {
+      return editorSpawn;
+    }
+
+    if (this.map.enemySpawns[0]) {
+      return this.map.enemySpawns[0];
+    }
+
+    return {
+      x: Phaser.Math.Clamp(this.map.width - this.map.playerSpawn.x, SPAWN_MARGIN, this.map.width - SPAWN_MARGIN),
+      y: Phaser.Math.Clamp(this.map.height - this.map.playerSpawn.y, SPAWN_MARGIN, this.map.height - SPAWN_MARGIN),
+    };
+  }
+
   private isSpawnClear(point: Vec2, ignoreTank?: TankRuntime): boolean {
     for (const obstacle of this.map.obstacles) {
       const obstacleClearance = obstacle.kind === "barricade" ? SPAWN_CLEARANCE + 60 : SPAWN_CLEARANCE;
@@ -869,7 +938,7 @@ export class CampaignScene extends Phaser.Scene {
       }
     }
 
-    for (const tank of [this.player, ...this.enemies]) {
+    for (const tank of this.getAllTanks()) {
       if (!tank || tank === ignoreTank || !tank.alive) {
         continue;
       }
@@ -963,7 +1032,7 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updateTankVisuals(): void {
-    for (const tank of [this.player, ...this.enemies]) {
+    for (const tank of this.getAllTanks()) {
       tank.turret.setPosition(tank.hull.x, tank.hull.y);
       tank.turret.setRotation(tank.aimAngle + Math.PI / 2);
       tank.turret.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.68 : 1);
@@ -979,6 +1048,24 @@ export class CampaignScene extends Phaser.Scene {
         tank.frontMarker.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.72 : 0.95);
       }
     }
+  }
+
+  private updateCamera(): void {
+    if (!this.isDeathmatch() || !this.playerTwo) {
+      return;
+    }
+
+    const camera = this.cameras.main;
+    const p1 = this.player.hull;
+    const p2 = this.playerTwo.hull;
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    const spanX = Math.abs(p1.x - p2.x) + 560;
+    const spanY = Math.abs(p1.y - p2.y) + 420;
+    const zoom = Phaser.Math.Clamp(Math.min(camera.width / spanX, camera.height / spanY), 0.64, 1);
+
+    camera.setZoom(zoom);
+    camera.centerOn(midX, midY);
   }
 
   private updatePickupRespawns(time: number): void {
@@ -1127,7 +1214,19 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private getAllTanks(): TankRuntime[] {
-    return this.player ? [this.player, ...this.enemies] : [...this.enemies];
+    return this.player ? [this.player, ...(this.playerTwo ? [this.playerTwo] : []), ...this.enemies] : [...this.enemies];
+  }
+
+  private getHumanTanks(): TankRuntime[] {
+    return this.player ? [this.player, ...(this.playerTwo ? [this.playerTwo] : [])] : [];
+  }
+
+  private isHumanTank(tank: TankRuntime): boolean {
+    return tank.side === "player" || tank.side === "playerTwo";
+  }
+
+  private isDeathmatch(): boolean {
+    return this.matchMode === "deathmatch";
   }
 
   private playRandomSound(keys: AssetKey[], volume: number): void {
@@ -1199,13 +1298,9 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private stopMovingBodies(): void {
-    if (this.player?.hull?.active) {
-      this.player.hull.setVelocity(0, 0);
-    }
-
-    for (const enemy of this.enemies) {
-      if (enemy.hull.active) {
-        enemy.hull.setVelocity(0, 0);
+    for (const tank of this.getAllTanks()) {
+      if (tank.hull.active) {
+        tank.hull.setVelocity(0, 0);
       }
     }
 

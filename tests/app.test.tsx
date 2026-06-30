@@ -8,6 +8,9 @@ vi.mock("../src/game/GameCanvas", () => ({
       <button type="button" onClick={() => onMapEnded("won")}>
         Mock Win
       </button>
+      <button type="button" onClick={() => onMapEnded("lost")}>
+        Mock Loss
+      </button>
     </div>
   ),
 }));
@@ -18,11 +21,23 @@ describe("App", () => {
 
     expect(screen.getByRole("heading", { name: "Thunder Tank" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Campaign" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2P Deathmatch" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Controller Setup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Controller Recorder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Explosion Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Motor Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level Editor" })).toBeInTheDocument();
+  });
+
+  it("starts two-player deathmatch from the title screen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "2P Deathmatch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mock Win" }));
+
+    expect(screen.getByRole("heading", { name: "P1 Wins" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rematch" })).toBeInTheDocument();
+    expect(screen.getByText("Player 1 reached the score limit.")).toBeInTheDocument();
   });
 
   it("shows only the advance button on the map-cleared screen", () => {
@@ -38,5 +53,24 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "Explosion Sounds" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Motor Sounds" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Level Editor" })).not.toBeInTheDocument();
+  });
+
+  it("moves restart-screen utilities behind a lower-left settings menu", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start Campaign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mock Loss" }));
+
+    expect(screen.getByRole("heading", { name: "Tank Destroyed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Restart Map" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Controller Setup" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByRole("button", { name: "Controller Setup" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Controller Recorder" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Explosion Sounds" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Motor Sounds" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Level Editor" })).toBeInTheDocument();
   });
 });

@@ -37,11 +37,12 @@ export function App() {
   const [isSoundAuditionOpen, setIsSoundAuditionOpen] = useState(false);
   const [isMotorAuditionOpen, setIsMotorAuditionOpen] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState(false);
   const [customMap, setCustomMap] = useState<CampaignMap | undefined>();
   const activePresetId = useRef("");
-  const { mode, mapIndex, runId } = flow;
+  const { mode, matchMode, mapIndex, runId } = flow;
   const currentMap = customMap ?? CAMPAIGN_MAPS[mapIndex];
-  const cta = useMemo(() => getCta(mode, mapIndex), [mode, mapIndex]);
+  const cta = useMemo(() => getCta(mode, mapIndex, matchMode), [mode, mapIndex, matchMode]);
   const activeBuffLabels = getActiveBuffLabels(playerStatus.buffs, playerStatus.now);
   const gunFreezeSeconds = getGunFreezeSeconds(playerStatus);
 
@@ -111,6 +112,7 @@ export function App() {
         } else if (isSetupOpen) {
           setIsSetupOpen(false);
         } else {
+          setIsUtilityMenuOpen(false);
           handleBack();
         }
       }
@@ -124,11 +126,14 @@ export function App() {
     setCustomMap(undefined);
     setScore(INITIAL_SCORE);
     setPlayerStatus(INITIAL_PLAYER_STATUS);
-    setFlow((current) => startFlowMap(current, index));
+    setFlow((current) => startFlowMap(current, index, "campaign"));
   }
 
-  function restartCurrentMap(): void {
-    startMap(mapIndex);
+  function startDeathmatch(): void {
+    setCustomMap(undefined);
+    setScore(INITIAL_SCORE);
+    setPlayerStatus(INITIAL_PLAYER_STATUS);
+    setFlow((current) => startFlowMap(current, 0, "deathmatch"));
   }
 
   function handlePrimary(): void {
@@ -163,16 +168,19 @@ export function App() {
     setScore(INITIAL_SCORE);
     setPlayerStatus(INITIAL_PLAYER_STATUS);
     setIsEditorOpen(false);
-    setFlow((current) => ({ mode: "playing", mapIndex: 0, runId: current.runId + 1 }));
+    setFlow((current) => ({ mode: "playing", matchMode: "campaign", mapIndex: 0, runId: current.runId + 1 }));
   }
 
   const isGameMounted = mode === "playing" || mode === "paused" || mode === "won" || mode === "lost";
+  const shouldShowInlineUtilities = mode === "title";
+  const shouldShowGearUtilities = !isEditorOpen && !isSoundAuditionOpen && !isMotorAuditionOpen && !isRecorderOpen && !isSetupOpen && mode !== "playing" && mode !== "won" && mode !== "title";
 
   return (
     <main className="app-shell">
       {isGameMounted ? (
         <GameCanvas
           mapIndex={mapIndex}
+          matchMode={matchMode}
           runId={runId}
           paused={mode !== "playing"}
           gamepadMapping={gamepadMapping}
@@ -191,7 +199,7 @@ export function App() {
           <strong>{currentMap.name}</strong>
         </div>
         <div>
-          <span className="hud-label">Score</span>
+          <span className="hud-label">{matchMode === "deathmatch" ? "P1 - P2" : "Score"}</span>
           <strong>
             {score.player} - {score.enemy}
           </strong>
@@ -230,28 +238,23 @@ export function App() {
       ) : mode !== "playing" ? (
         <section className="menu-panel" aria-live="polite">
           <p className="eyebrow">Thunder Tank</p>
-          <h1>{getTitle(mode)}</h1>
-          <p className="menu-copy">{getCopy(mode, currentMap.name)}</p>
+          <h1>{getTitle(mode, matchMode)}</h1>
+          <p className="menu-copy">{getCopy(mode, currentMap.name, matchMode)}</p>
           <button type="button" onClick={handlePrimary} autoFocus>
             {cta}
           </button>
-          {mode !== "won" && (
+          {shouldShowInlineUtilities && (
             <>
-              <button type="button" className="secondary-button" onClick={() => setIsSetupOpen(true)}>
-                Controller Setup
+              <button type="button" className="secondary-button" onClick={startDeathmatch}>
+                2P Deathmatch
               </button>
-              <button type="button" className="secondary-button" onClick={() => setIsRecorderOpen(true)}>
-                Controller Recorder
-              </button>
-              <button type="button" className="secondary-button" onClick={() => setIsSoundAuditionOpen(true)}>
-                Explosion Sounds
-              </button>
-              <button type="button" className="secondary-button" onClick={() => setIsMotorAuditionOpen(true)}>
-                Motor Sounds
-              </button>
-              <button type="button" className="secondary-button" onClick={() => setIsEditorOpen(true)}>
-                Level Editor
-              </button>
+              <UtilityButtons
+                openSetup={() => setIsSetupOpen(true)}
+                openRecorder={() => setIsRecorderOpen(true)}
+                openExplosionSounds={() => setIsSoundAuditionOpen(true)}
+                openMotorSounds={() => setIsMotorAuditionOpen(true)}
+                openEditor={() => setIsEditorOpen(true)}
+              />
             </>
           )}
           <p className="control-hint">
@@ -259,20 +262,102 @@ export function App() {
           </p>
         </section>
       ) : null}
+
+      {shouldShowGearUtilities && (
+        <div className="utility-menu">
+          <button
+            type="button"
+            className="gear-button"
+            aria-label="Settings"
+            aria-expanded={isUtilityMenuOpen}
+            onClick={() => setIsUtilityMenuOpen((open) => !open)}
+          >
+            ⚙
+          </button>
+          {isUtilityMenuOpen && (
+            <div className="utility-menu-popover">
+              <UtilityButtons
+                openSetup={() => {
+                  setIsUtilityMenuOpen(false);
+                  setIsSetupOpen(true);
+                }}
+                openRecorder={() => {
+                  setIsUtilityMenuOpen(false);
+                  setIsRecorderOpen(true);
+                }}
+                openExplosionSounds={() => {
+                  setIsUtilityMenuOpen(false);
+                  setIsSoundAuditionOpen(true);
+                }}
+                openMotorSounds={() => {
+                  setIsUtilityMenuOpen(false);
+                  setIsMotorAuditionOpen(true);
+                }}
+                openEditor={() => {
+                  setIsUtilityMenuOpen(false);
+                  setIsEditorOpen(true);
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }
 
-function getTitle(mode: AppMode): string {
+function UtilityButtons({
+  openSetup,
+  openRecorder,
+  openExplosionSounds,
+  openMotorSounds,
+  openEditor,
+}: {
+  openSetup: () => void;
+  openRecorder: () => void;
+  openExplosionSounds: () => void;
+  openMotorSounds: () => void;
+  openEditor: () => void;
+}) {
+  return (
+    <>
+      <button type="button" className="secondary-button" onClick={openSetup}>
+        Controller Setup
+      </button>
+      <button type="button" className="secondary-button" onClick={openRecorder}>
+        Controller Recorder
+      </button>
+      <button type="button" className="secondary-button" onClick={openExplosionSounds}>
+        Explosion Sounds
+      </button>
+      <button type="button" className="secondary-button" onClick={openMotorSounds}>
+        Motor Sounds
+      </button>
+      <button type="button" className="secondary-button" onClick={openEditor}>
+        Level Editor
+      </button>
+    </>
+  );
+}
+
+function getTitle(mode: AppMode, matchMode = "campaign"): string {
   if (mode === "paused") {
     return "Paused";
   }
 
   if (mode === "won") {
+    if (matchMode === "deathmatch") {
+      return "P1 Wins";
+    }
+
     return "Map Cleared";
   }
 
   if (mode === "lost") {
+    if (matchMode === "deathmatch") {
+      return "P2 Wins";
+    }
+
     return "Tank Destroyed";
   }
 
@@ -283,16 +368,26 @@ function getTitle(mode: AppMode): string {
   return "Thunder Tank";
 }
 
-function getCopy(mode: AppMode, mapName: string): string {
+function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string {
   if (mode === "paused") {
-    return `${mapName} is paused. Resume with Start or Enter to return to battle.`;
+    return matchMode === "deathmatch"
+      ? "Deathmatch is paused. Resume with Start or Enter to return to battle."
+      : `${mapName} is paused. Resume with Start or Enter to return to battle.`;
   }
 
   if (mode === "won") {
+    if (matchMode === "deathmatch") {
+      return "Player 1 reached the score limit.";
+    }
+
     return `${mapName} cleared. Advance to the next combat zone.`;
   }
 
   if (mode === "lost") {
+    if (matchMode === "deathmatch") {
+      return "Player 2 reached the score limit.";
+    }
+
     return `${mapName} was lost. Restart this map and beat the enemy score limit.`;
   }
 
@@ -303,16 +398,24 @@ function getCopy(mode: AppMode, mapName: string): string {
   return "Single-player campaign: left stick drives and turns, right stick left/right rotates turret, trigger/A fires.";
 }
 
-function getCta(mode: AppMode, mapIndex: number): string {
+function getCta(mode: AppMode, mapIndex: number, matchMode = "campaign"): string {
   if (mode === "paused") {
     return "Resume";
   }
 
   if (mode === "won") {
+    if (matchMode === "deathmatch") {
+      return "Rematch";
+    }
+
     return mapIndex >= CAMPAIGN_MAPS.length - 1 ? "Finish" : "Next Map";
   }
 
   if (mode === "lost") {
+    if (matchMode === "deathmatch") {
+      return "Rematch";
+    }
+
     return "Restart Map";
   }
 

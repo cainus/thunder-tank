@@ -1,7 +1,9 @@
 import type Phaser from "phaser";
 import type { PlayerStatus } from "./combat-state";
 
-export type TankSide = "player" | "enemy";
+export type MatchMode = "campaign" | "deathmatch";
+
+export type TankSide = "player" | "playerTwo" | "enemy";
 
 export type EnemyArchetype = "light" | "standard" | "heavy" | "boss";
 

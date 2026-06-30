@@ -4,36 +4,57 @@ import { CAMPAIGN_MAPS } from "../src/game/maps";
 
 describe("single-player campaign flow", () => {
   it("starts on Map 1 from the title screen", () => {
-    const next = applyPrimaryAction({ mode: "title", mapIndex: 0, runId: 0 });
+    const next = applyPrimaryAction({ mode: "title", matchMode: "campaign", mapIndex: 0, runId: 0 });
 
-    expect(next).toEqual({ mode: "playing", mapIndex: 0, runId: 1 });
+    expect(next).toEqual({ mode: "playing", matchMode: "campaign", mapIndex: 0, runId: 1 });
   });
 
   it("advances linearly after wins and completes after the final campaign map", () => {
-    let state = { mode: "playing" as const, mapIndex: 0, runId: 1 };
+    let state = { mode: "playing" as const, matchMode: "campaign" as const, mapIndex: 0, runId: 1 };
 
     for (let index = 1; index < CAMPAIGN_MAPS.length; index += 1) {
       state = applyPrimaryAction(applyMapOutcome(state, "won")) as typeof state;
-      expect(state).toEqual({ mode: "playing", mapIndex: index, runId: index + 1 });
+      expect(state).toEqual({ mode: "playing", matchMode: "campaign", mapIndex: index, runId: index + 1 });
     }
 
     expect(applyPrimaryAction(applyMapOutcome(state, "won"))).toEqual({
       mode: "complete",
+      matchMode: "campaign",
       mapIndex: CAMPAIGN_MAPS.length - 1,
       runId: CAMPAIGN_MAPS.length,
     });
   });
 
   it("restarts the current map after a loss", () => {
-    const lost = applyMapOutcome({ mode: "playing", mapIndex: 1, runId: 4 }, "lost");
+    const lost = applyMapOutcome({ mode: "playing", matchMode: "campaign", mapIndex: 1, runId: 4 }, "lost");
 
-    expect(applyPrimaryAction(lost)).toEqual({ mode: "playing", mapIndex: 1, runId: 5 });
+    expect(applyPrimaryAction(lost)).toEqual({ mode: "playing", matchMode: "campaign", mapIndex: 1, runId: 5 });
   });
 
   it("toggles pause with the back action", () => {
-    const paused = applyBackAction(startMap({ mode: "title", mapIndex: 0, runId: 0 }, 0));
+    const paused = applyBackAction(startMap({ mode: "title", matchMode: "campaign", mapIndex: 0, runId: 0 }, 0));
 
     expect(paused.mode).toBe("paused");
     expect(applyBackAction(paused).mode).toBe("playing");
+  });
+});
+
+describe("two-player deathmatch flow", () => {
+  it("starts and rematches on the same map", () => {
+    const deathmatch = startMap({ mode: "title", matchMode: "campaign", mapIndex: 0, runId: 0 }, 0, "deathmatch");
+
+    expect(deathmatch).toEqual({ mode: "playing", matchMode: "deathmatch", mapIndex: 0, runId: 1 });
+    expect(applyPrimaryAction(applyMapOutcome(deathmatch, "won"))).toEqual({
+      mode: "playing",
+      matchMode: "deathmatch",
+      mapIndex: 0,
+      runId: 2,
+    });
+    expect(applyPrimaryAction(applyMapOutcome(deathmatch, "lost"))).toEqual({
+      mode: "playing",
+      matchMode: "deathmatch",
+      mapIndex: 0,
+      runId: 2,
+    });
   });
 });
