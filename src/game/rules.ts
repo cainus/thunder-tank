@@ -3,7 +3,7 @@ import type { ActiveBuffs, EnemyArchetype, MatchOutcome, PickupType, ScoreState,
 export const PLAYER_BASE_STATS: TankStats = {
   speed: 210,
   fireCooldownMs: 420,
-  bulletSpeed: 560,
+  bulletSpeed: 980,
   aimDelayMs: 0,
 };
 
@@ -11,21 +11,34 @@ export const ENEMY_STATS: Record<EnemyArchetype, TankStats> = {
   light: {
     speed: 175,
     fireCooldownMs: 820,
-    bulletSpeed: 430,
+    bulletSpeed: 800,
     aimDelayMs: 520,
   },
   standard: {
     speed: 145,
     fireCooldownMs: 700,
-    bulletSpeed: 455,
+    bulletSpeed: 820,
     aimDelayMs: 430,
   },
   heavy: {
     speed: 105,
     fireCooldownMs: 960,
-    bulletSpeed: 390,
+    bulletSpeed: 740,
     aimDelayMs: 620,
   },
+  boss: {
+    speed: 82,
+    fireCooldownMs: 760,
+    bulletSpeed: 780,
+    aimDelayMs: 520,
+  },
+};
+
+export const ENEMY_HEALTH: Record<EnemyArchetype, number> = {
+  light: 1,
+  standard: 1,
+  heavy: 1,
+  boss: 4,
 };
 
 export const EMPTY_BUFFS: ActiveBuffs = {

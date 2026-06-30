@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyBackAction, applyMapOutcome, applyPrimaryAction, startMap } from "../src/app-flow";
+import { CAMPAIGN_MAPS } from "../src/game/maps";
 
 describe("single-player campaign flow", () => {
   it("starts on Map 1 from the title screen", () => {
@@ -8,16 +9,19 @@ describe("single-player campaign flow", () => {
     expect(next).toEqual({ mode: "playing", mapIndex: 0, runId: 1 });
   });
 
-  it("advances linearly after wins and completes after Map 3", () => {
-    const map1Won = applyMapOutcome({ mode: "playing", mapIndex: 0, runId: 1 }, "won");
-    const map2 = applyPrimaryAction(map1Won);
-    const map2Won = applyMapOutcome(map2, "won");
-    const map3 = applyPrimaryAction(map2Won);
-    const map3Won = applyMapOutcome(map3, "won");
+  it("advances linearly after wins and completes after the final campaign map", () => {
+    let state = { mode: "playing" as const, mapIndex: 0, runId: 1 };
 
-    expect(map2).toEqual({ mode: "playing", mapIndex: 1, runId: 2 });
-    expect(map3).toEqual({ mode: "playing", mapIndex: 2, runId: 3 });
-    expect(applyPrimaryAction(map3Won)).toEqual({ mode: "complete", mapIndex: 2, runId: 3 });
+    for (let index = 1; index < CAMPAIGN_MAPS.length; index += 1) {
+      state = applyPrimaryAction(applyMapOutcome(state, "won")) as typeof state;
+      expect(state).toEqual({ mode: "playing", mapIndex: index, runId: index + 1 });
+    }
+
+    expect(applyPrimaryAction(applyMapOutcome(state, "won"))).toEqual({
+      mode: "complete",
+      mapIndex: CAMPAIGN_MAPS.length - 1,
+      runId: CAMPAIGN_MAPS.length,
+    });
   });
 
   it("restarts the current map after a loss", () => {

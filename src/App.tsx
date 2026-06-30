@@ -11,26 +11,39 @@ import {
 import { GamepadRecorder } from "./GamepadRecorder";
 import { GamepadSetup } from "./GamepadSetup";
 import { GameCanvas } from "./game/GameCanvas";
+import { EMPTY_GUN_HEAT, getActiveBuffLabels, getGunFreezeSeconds, type PlayerStatus } from "./game/combat-state";
 import { CAMPAIGN_MAPS } from "./game/maps";
-import type { MatchOutcome, ScoreState } from "./game/types";
+import type { CampaignMap, MatchOutcome, ScoreState } from "./game/types";
 import { getGamepadPreset, loadGamepadMapping, type GamepadMapping } from "./gamepad-config";
+import { LevelEditor } from "./LevelEditor";
 import { isMenuBackPressed, isMenuConfirmPressed } from "./menu-input";
 import { SoundAudition } from "./SoundAudition";
 import "./styles.css";
 
 const INITIAL_SCORE: ScoreState = { player: 0, enemy: 0 };
+const INITIAL_PLAYER_STATUS: PlayerStatus = {
+  buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 },
+  gunFrozenUntil: EMPTY_GUN_HEAT.frozenUntil,
+  now: 0,
+};
 
 export function App() {
   const [flow, setFlow] = useState<FlowState>(INITIAL_FLOW_STATE);
   const [score, setScore] = useState<ScoreState>(INITIAL_SCORE);
+  const [playerStatus, setPlayerStatus] = useState<PlayerStatus>(INITIAL_PLAYER_STATUS);
   const [gamepadMapping, setGamepadMapping] = useState<GamepadMapping>(() => loadGamepadMapping());
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [isRecorderOpen, setIsRecorderOpen] = useState(false);
   const [isSoundAuditionOpen, setIsSoundAuditionOpen] = useState(false);
+  const [isMotorAuditionOpen, setIsMotorAuditionOpen] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [customMap, setCustomMap] = useState<CampaignMap | undefined>();
   const activePresetId = useRef("");
   const { mode, mapIndex, runId } = flow;
-  const currentMap = CAMPAIGN_MAPS[mapIndex];
+  const currentMap = customMap ?? CAMPAIGN_MAPS[mapIndex];
   const cta = useMemo(() => getCta(mode, mapIndex), [mode, mapIndex]);
+  const activeBuffLabels = getActiveBuffLabels(playerStatus.buffs, playerStatus.now);
+  const gunFreezeSeconds = getGunFreezeSeconds(playerStatus);
 
   useEffect(() => {
     const onPauseRequested = () => {
@@ -56,7 +69,9 @@ export function App() {
       }
 
       const confirmPressed =
-        isSetupOpen || isRecorderOpen || isSoundAuditionOpen ? false : isMenuConfirmPressed(gamepad, gamepadMapping);
+        isSetupOpen || isRecorderOpen || isSoundAuditionOpen || isMotorAuditionOpen || isEditorOpen
+          ? false
+          : isMenuConfirmPressed(gamepad, gamepadMapping, { includeFire: mode === "won" });
       const backPressed = isMenuBackPressed(gamepad);
 
       if (confirmPressed && !previousPressed) {
@@ -74,7 +89,7 @@ export function App() {
 
     animationFrame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animationFrame);
-  }, [gamepadMapping, isRecorderOpen, isSetupOpen, isSoundAuditionOpen, mode]);
+  }, [gamepadMapping, isEditorOpen, isMotorAuditionOpen, isRecorderOpen, isSetupOpen, isSoundAuditionOpen, mode]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -85,8 +100,12 @@ export function App() {
 
       if (event.key === "Escape") {
         event.preventDefault();
-        if (isSoundAuditionOpen) {
+        if (isEditorOpen) {
+          setIsEditorOpen(false);
+        } else if (isSoundAuditionOpen) {
           setIsSoundAuditionOpen(false);
+        } else if (isMotorAuditionOpen) {
+          setIsMotorAuditionOpen(false);
         } else if (isRecorderOpen) {
           setIsRecorderOpen(false);
         } else if (isSetupOpen) {
@@ -99,10 +118,12 @@ export function App() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isRecorderOpen, isSetupOpen, isSoundAuditionOpen, mode]);
+  }, [isEditorOpen, isMotorAuditionOpen, isRecorderOpen, isSetupOpen, isSoundAuditionOpen, mode]);
 
   function startMap(index: number): void {
+    setCustomMap(undefined);
     setScore(INITIAL_SCORE);
+    setPlayerStatus(INITIAL_PLAYER_STATUS);
     setFlow((current) => startFlowMap(current, index));
   }
 
@@ -120,7 +141,9 @@ export function App() {
       const next = applyPrimaryAction(current);
 
       if (next.runId !== current.runId) {
+        setCustomMap(undefined);
         setScore(INITIAL_SCORE);
+        setPlayerStatus(INITIAL_PLAYER_STATUS);
       }
 
       return next;
@@ -135,6 +158,14 @@ export function App() {
     setFlow((current) => applyMapOutcome(current, outcome));
   }
 
+  function handleEditorTestPlay(map: CampaignMap): void {
+    setCustomMap(map);
+    setScore(INITIAL_SCORE);
+    setPlayerStatus(INITIAL_PLAYER_STATUS);
+    setIsEditorOpen(false);
+    setFlow((current) => ({ mode: "playing", mapIndex: 0, runId: current.runId + 1 }));
+  }
+
   const isGameMounted = mode === "playing" || mode === "paused" || mode === "won" || mode === "lost";
 
   return (
@@ -145,7 +176,9 @@ export function App() {
           runId={runId}
           paused={mode !== "playing"}
           gamepadMapping={gamepadMapping}
+          mapOverride={customMap}
           onScoreChanged={setScore}
+          onPlayerStatusChanged={setPlayerStatus}
           onMapEnded={handleMapEnded}
         />
       ) : (
@@ -167,10 +200,22 @@ export function App() {
           <span className="hud-label">Target</span>
           <strong>{currentMap.playerScoreLimit}</strong>
         </div>
+        <div className="hud-powerups">
+          <span className="hud-label">Powerups</span>
+          <strong>{activeBuffLabels.length > 0 ? activeBuffLabels.join(" + ") : "None"}</strong>
+        </div>
+        <div className={gunFreezeSeconds > 0 ? "hud-warning" : undefined}>
+          <span className="hud-label">Gun</span>
+          <strong>{gunFreezeSeconds > 0 ? `Frozen ${gunFreezeSeconds}s` : "Ready"}</strong>
+        </div>
       </section>
 
-      {isSoundAuditionOpen ? (
+      {isEditorOpen ? (
+        <LevelEditor onClose={() => setIsEditorOpen(false)} onTestPlay={handleEditorTestPlay} />
+      ) : isSoundAuditionOpen ? (
         <SoundAudition onClose={() => setIsSoundAuditionOpen(false)} />
+      ) : isMotorAuditionOpen ? (
+        <SoundAudition variant="motors" onClose={() => setIsMotorAuditionOpen(false)} />
       ) : isRecorderOpen ? (
         <GamepadRecorder onClose={() => setIsRecorderOpen(false)} />
       ) : isSetupOpen ? (
@@ -190,16 +235,28 @@ export function App() {
           <button type="button" onClick={handlePrimary} autoFocus>
             {cta}
           </button>
-          <button type="button" className="secondary-button" onClick={() => setIsSetupOpen(true)}>
-            Controller Setup
-          </button>
-          <button type="button" className="secondary-button" onClick={() => setIsRecorderOpen(true)}>
-            Controller Recorder
-          </button>
-          <button type="button" className="secondary-button" onClick={() => setIsSoundAuditionOpen(true)}>
-            Explosion Sounds
-          </button>
-          <p className="control-hint">Gamepad Start or Enter to select, pause, or resume. Esc also pauses.</p>
+          {mode !== "won" && (
+            <>
+              <button type="button" className="secondary-button" onClick={() => setIsSetupOpen(true)}>
+                Controller Setup
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setIsRecorderOpen(true)}>
+                Controller Recorder
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setIsSoundAuditionOpen(true)}>
+                Explosion Sounds
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setIsMotorAuditionOpen(true)}>
+                Motor Sounds
+              </button>
+              <button type="button" className="secondary-button" onClick={() => setIsEditorOpen(true)}>
+                Level Editor
+              </button>
+            </>
+          )}
+          <p className="control-hint">
+            {mode === "won" ? "Gamepad Fire, Start, or Enter advances." : "Gamepad Start or Enter to select, pause, or resume. Esc also pauses."}
+          </p>
         </section>
       ) : null}
     </main>
@@ -240,7 +297,7 @@ function getCopy(mode: AppMode, mapName: string): string {
   }
 
   if (mode === "complete") {
-    return "You cleared all three single-player maps in the P1 vertical slice.";
+    return `You cleared all ${CAMPAIGN_MAPS.length} single-player maps.`;
   }
 
   return "Single-player campaign: left stick drives and turns, right stick left/right rotates turret, trigger/A fires.";

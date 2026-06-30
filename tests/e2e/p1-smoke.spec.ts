@@ -24,6 +24,16 @@ test("boots and starts the first P1 campaign map", async ({ page }) => {
   await expect(page.getByRole("button", { name: /01 Explosion 1/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /20 bang_05/ })).toBeVisible();
   await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Motor Sounds" }).click();
+  await expect(page.getByRole("heading", { name: "Audition" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /01 Heavy loop/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /05 Heavy loop alt/ })).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Level Editor" }).click();
+  await expect(page.getByRole("heading", { name: "Map Lab" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Map editor canvas" })).toBeVisible();
+  await expect(page.getByText("Map is valid for onePlayer.")).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Start Campaign" }).click();
   await expect(page.getByTestId("game-canvas")).toBeVisible();
   await expect(page.getByText("Dust Yard")).toBeVisible();

@@ -1,6 +1,9 @@
+import type Phaser from "phaser";
+import type { PlayerStatus } from "./combat-state";
+
 export type TankSide = "player" | "enemy";
 
-export type EnemyArchetype = "light" | "standard" | "heavy";
+export type EnemyArchetype = "light" | "standard" | "heavy" | "boss";
 
 export type PickupType = "speed" | "rapidFire" | "shield";
 
@@ -64,14 +67,21 @@ export interface TankRuntime {
   frontMarker?: Phaser.GameObjects.Rectangle;
   spawn: Vec2;
   alive: boolean;
+  maxHealth: number;
+  health: number;
   respawnAt: number;
   lastFiredAt: number;
   nextDecisionAt: number;
   aimAngle: number;
+  moveAngle?: number;
+  nextMoveDecisionAt: number;
+  motorAudio?: HTMLAudioElement;
+  motorKey?: string;
   buffs: ActiveBuffs;
 }
 
 export interface GameCallbacks {
   onScoreChanged: (score: ScoreState) => void;
+  onPlayerStatusChanged: (status: PlayerStatus) => void;
   onMapEnded: (outcome: Exclude<MatchOutcome, "playing">) => void;
 }

@@ -17,6 +17,10 @@ describe("menu gamepad input", () => {
     expect(isMenuConfirmPressed(gamepadWithPressedButtons(0))).toBe(false);
   });
 
+  it("can include fire for map-cleared confirmation", () => {
+    expect(isMenuConfirmPressed(gamepadWithPressedButtons(0), undefined, { includeFire: true })).toBe(true);
+  });
+
   it("does not use gamepad B or Back for menu back/pause", () => {
     expect(isMenuBackPressed(gamepadWithPressedButtons(1))).toBe(false);
     expect(isMenuBackPressed(gamepadWithPressedButtons(8))).toBe(false);

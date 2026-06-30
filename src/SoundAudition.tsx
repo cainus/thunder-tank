@@ -61,24 +61,68 @@ const EXPLOSION_CANDIDATES = [
   { label: "20 bang_05", path: "/assets/opengameart/bang-firework-rubberduck/bang_05.ogg", source: "rubberduck" },
 ];
 
+const MOTOR_CANDIDATES = [
+  {
+    label: "01 Heavy loop",
+    path: "/assets/opengameart/motor-loops/engine_heavy_loop_2.ogg",
+    source: "yd",
+  },
+  {
+    label: "02 Heavy slow",
+    path: "/assets/opengameart/motor-loops/engine_heavy_slow_loop_0.ogg",
+    source: "yd",
+  },
+  {
+    label: "03 Heavy average",
+    path: "/assets/opengameart/motor-loops/engine_heavy_average_loop_0.ogg",
+    source: "yd",
+  },
+  {
+    label: "04 Heavy fast",
+    path: "/assets/opengameart/motor-loops/engine_heavy_fast_loop_0.ogg",
+    source: "yd",
+  },
+  {
+    label: "05 Heavy loop alt",
+    path: "/assets/opengameart/motor-loops/engine_heavy_loop_1.ogg",
+    source: "yd",
+  },
+];
+
 interface SoundAuditionProps {
   onClose: () => void;
+  variant?: "explosions" | "motors";
 }
 
-export function SoundAudition({ onClose }: SoundAuditionProps) {
-  function playCandidate(candidate: (typeof EXPLOSION_CANDIDATES)[number]): void {
+export function SoundAudition({ onClose, variant = "explosions" }: SoundAuditionProps) {
+  const isMotorPage = variant === "motors";
+  const candidates = isMotorPage ? MOTOR_CANDIDATES : EXPLOSION_CANDIDATES;
+
+  function playCandidate(candidate: (typeof candidates)[number]): void {
     const audio = new Audio(candidate.path);
-    audio.volume = 0.85;
+    audio.volume = isMotorPage ? 0.55 : 0.85;
+    audio.loop = isMotorPage;
     void audio.play();
+
+    if (isMotorPage) {
+      window.setTimeout(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }, 3_000);
+    }
   }
 
   return (
     <section className="sound-panel" aria-live="polite">
-      <p className="eyebrow">Explosion Sounds</p>
+      <p className="eyebrow">{isMotorPage ? "Motor Sounds" : "Explosion Sounds"}</p>
       <h1>Audition</h1>
-      <p className="menu-copy">Try these 20 CC0 OpenGameArt explosion, bang, and cannon clips. Tell me the numbers or filenames that feel closest.</p>
+      <p className="menu-copy">
+        {isMotorPage
+          ? "Try these CC0 OpenGameArt heavy vehicle engine loops. Each preview stops after 3 seconds. Tell me the number or filename you want for moving tanks."
+          : "Try these 20 CC0 OpenGameArt explosion, bang, and cannon clips. Tell me the numbers or filenames that feel closest."}
+      </p>
       <div className="sound-grid">
-        {EXPLOSION_CANDIDATES.map((candidate) => (
+        {candidates.map((candidate) => (
           <button
             key={candidate.label}
             type="button"

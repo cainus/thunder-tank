@@ -2,22 +2,34 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import { CampaignScene } from "./CampaignScene";
 import type { GamepadMapping } from "../gamepad-config";
-import type { GameCallbacks, MatchOutcome, ScoreState } from "./types";
+import type { PlayerStatus } from "./combat-state";
+import type { CampaignMap, GameCallbacks, MatchOutcome, ScoreState } from "./types";
 
 interface GameCanvasProps {
   mapIndex: number;
   runId: number;
   paused: boolean;
   gamepadMapping: GamepadMapping;
+  mapOverride?: CampaignMap;
   onScoreChanged: (score: ScoreState) => void;
+  onPlayerStatusChanged: GameCallbacks["onPlayerStatusChanged"];
   onMapEnded: GameCallbacks["onMapEnded"];
 }
 
-export function GameCanvas({ mapIndex, runId, paused, gamepadMapping, onScoreChanged, onMapEnded }: GameCanvasProps) {
+export function GameCanvas({
+  mapIndex,
+  runId,
+  paused,
+  gamepadMapping,
+  mapOverride,
+  onScoreChanged,
+  onPlayerStatusChanged,
+  onMapEnded,
+}: GameCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const callbacksRef = useRef({ onScoreChanged, onMapEnded });
+  const callbacksRef = useRef({ onScoreChanged, onPlayerStatusChanged, onMapEnded });
 
-  callbacksRef.current = { onScoreChanged, onMapEnded };
+  callbacksRef.current = { onScoreChanged, onPlayerStatusChanged, onMapEnded };
 
   useEffect(() => {
     if (!hostRef.current) {
@@ -50,9 +62,11 @@ export function GameCanvas({ mapIndex, runId, paused, gamepadMapping, onScoreCha
 
     game.scene.start("CampaignScene", {
       mapIndex,
+      mapOverride,
       gamepadMapping,
       callbacks: {
         onScoreChanged: (score: ScoreState) => callbacksRef.current.onScoreChanged(score),
+        onPlayerStatusChanged: (status: PlayerStatus) => callbacksRef.current.onPlayerStatusChanged(status),
         onMapEnded: (outcome: Exclude<MatchOutcome, "playing">) => callbacksRef.current.onMapEnded(outcome),
       },
     });
@@ -60,7 +74,7 @@ export function GameCanvas({ mapIndex, runId, paused, gamepadMapping, onScoreCha
     return () => {
       game.destroy(true);
     };
-  }, [gamepadMapping, mapIndex, runId]);
+  }, [gamepadMapping, mapIndex, mapOverride, runId]);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent(paused ? "thunder-tank-pause" : "thunder-tank-resume"));

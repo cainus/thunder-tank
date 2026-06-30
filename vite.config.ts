@@ -6,5 +6,8 @@ export default defineConfig({
   server: {
     host: process.env.HOST ?? "127.0.0.1",
     port: Number(process.env.PORT ?? 5173),
+    proxy: {
+      "/api": process.env.API_TARGET ?? "http://127.0.0.1:3001",
+    },
   },
 });

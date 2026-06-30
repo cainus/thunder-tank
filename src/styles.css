@@ -111,7 +111,8 @@ button:disabled {
 .menu-panel,
 .setup-panel,
 .recorder-panel,
-.sound-panel {
+.sound-panel,
+.editor-panel {
   left: 50%;
   max-width: min(520px, calc(100vw - 32px));
   position: absolute;
@@ -124,14 +125,21 @@ button:disabled {
 
 .setup-panel,
 .recorder-panel,
-.sound-panel {
+.sound-panel,
+.editor-panel {
   max-width: min(680px, calc(100vw - 32px));
 }
 
 .recorder-panel,
-.sound-panel {
+.sound-panel,
+.editor-panel {
   max-height: calc(100vh - 32px);
   overflow-y: auto;
+}
+
+.editor-panel {
+  max-width: min(1280px, calc(100vw - 24px));
+  text-align: left;
 }
 
 .eyebrow {
@@ -381,6 +389,174 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.sound-option em {
+  color: #b9c0a8;
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+.editor-header {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.editor-header h1 {
+  font-size: clamp(2.2rem, 5vw, 4.5rem);
+}
+
+.editor-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-header-actions .secondary-button,
+.editor-draft-list .secondary-button {
+  margin-left: 0;
+  min-width: 0;
+}
+
+.editor-shell {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 230px minmax(420px, 1fr) 260px;
+}
+
+.editor-sidebar {
+  background: rgba(18, 20, 17, 0.84);
+  border: 1px solid rgba(230, 210, 140, 0.22);
+  border-radius: 6px;
+  color: #f4f0df;
+  display: grid;
+  gap: 10px;
+  max-height: 72vh;
+  overflow: auto;
+  padding: 12px;
+}
+
+.editor-sidebar label {
+  color: #b9c0a8;
+  display: grid;
+  font-size: 0.76rem;
+  font-weight: 800;
+  gap: 5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.editor-sidebar input,
+.editor-sidebar select {
+  background: rgba(9, 12, 10, 0.92);
+  border: 1px solid rgba(230, 210, 140, 0.24);
+  border-radius: 4px;
+  color: #f4f0df;
+  font: inherit;
+  min-width: 0;
+  padding: 8px;
+}
+
+.editor-toggle {
+  align-items: center;
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+}
+
+.editor-toggle input {
+  width: 18px;
+}
+
+.editor-two-col {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-tool-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.editor-tool {
+  background: rgba(42, 49, 38, 0.86);
+  color: #f4f0df;
+  font-size: 0.72rem;
+  min-width: 0;
+  padding: 8px 7px;
+  text-transform: none;
+}
+
+.editor-tool.is-selected {
+  background: #d8a33d;
+  color: #15120b;
+}
+
+.editor-canvas {
+  aspect-ratio: 16 / 10;
+  background: rgba(18, 20, 17, 0.84);
+  border: 1px solid rgba(230, 210, 140, 0.22);
+  border-radius: 6px;
+  display: block;
+  max-height: 72vh;
+  min-height: 420px;
+  width: 100%;
+}
+
+.editor-grid line {
+  stroke: rgba(244, 240, 223, 0.08);
+  stroke-width: 2;
+}
+
+.editor-object {
+  cursor: pointer;
+  stroke: rgba(21, 18, 11, 0.45);
+  stroke-width: 5;
+}
+
+.editor-object.is-selected,
+.editor-object.is-selected circle,
+.editor-object.is-selected rect {
+  stroke: #f7e9ae;
+  stroke-width: 10;
+}
+
+.editor-selected-id {
+  color: #f4e2a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.editor-validation {
+  background: rgba(9, 12, 10, 0.72);
+  border: 1px solid rgba(230, 120, 100, 0.28);
+  border-radius: 6px;
+  color: #f0b0a0;
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+}
+
+.editor-validation.is-valid {
+  border-color: rgba(110, 210, 140, 0.28);
+  color: #bde7bd;
+}
+
+.editor-draft-list {
+  display: grid;
+  gap: 8px;
+}
+
+.editor-draft-list div {
+  display: flex;
+  gap: 6px;
+}
+
 .mapping-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -417,5 +593,18 @@ h1 {
 
   .sound-grid {
     grid-template-columns: 1fr;
+  }
+
+  .editor-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .editor-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-sidebar {
+    max-height: none;
   }
 }
