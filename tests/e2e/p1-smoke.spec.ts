@@ -1,0 +1,31 @@
+import { expect, test } from "@playwright/test";
+
+test("boots and starts the first P1 campaign map", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "getGamepads", {
+      configurable: true,
+      value: () => [],
+    });
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Thunder Tank" })).toBeVisible();
+  await page.getByRole("button", { name: "Controller Setup" }).click();
+  await expect(page.getByRole("heading", { name: "Bindings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Fire/ })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Controller Recorder" }).click();
+  await expect(page.getByRole("heading", { name: "Input Recorder" })).toBeVisible();
+  await expect(page.getByText("Step 1 of 9")).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Explosion Sounds" }).click();
+  await expect(page.getByRole("heading", { name: "Audition" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /01 Explosion 1/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /20 bang_05/ })).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Start Campaign" }).click();
+  await expect(page.getByTestId("game-canvas")).toBeVisible();
+  await expect(page.getByText("Dust Yard")).toBeVisible();
+  await expect(page.locator("canvas")).toBeVisible();
+});
