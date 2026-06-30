@@ -1,0 +1,71 @@
+src/game/types.ts
+  s_476c5157b02e52::t_a05723245db88a 4-6
+tests/app-flow.test.ts
+  s_476c5157b02e52::t_4ae0934dcc0e4e 41-60
+  s_476c5157b02e52::t_e93d5fcbf43579 7,9,13,17,22,29,31,35
+src/styles.css
+  s_476c5157b02e52::t_11b8b558d1c314 188-227
+src/game/CampaignScene.ts
+  s_476c5157b02e52::t_a5daaff6d00ce6 713-716,1057,1223,1227
+  s_476c5157b02e52::t_6374f8423dd6d6 322-325,329-338,353,397-400,402,404-406,410-412,416,419-420,425,427-433,440-443,510-511,513-516,524-525,527-528,535-537,539,916,922,1056,1068-1069,1222,1303
+  s_476c5157b02e52::t_6e41ff38b81a46 28,62,98,125
+  s_476c5157b02e52::t_c176794730f673 68-69,71,626,653,657,661-662,666-671,673-675,680,685,688-690,712
+  s_476c5157b02e52::t_1c3ae75abd1b75 104,130,176-180,182-188,192,195,198,203-212,253,259
+  s_403acfdd4338c5::t_152df41856ff76 733,749,766,777,788,909-915,917-921,923-925,941,1035,1053-1055,1058-1067,1070,1217-1221,1224-1226,1228-1229,1301-1302
+src/App.tsx
+  s_476c5157b02e52::t_e93d5fcbf43579 171
+  s_476c5157b02e52::t_7c8dca0fe020a3 40,115,175-176,246,265-304,309-339
+  s_476c5157b02e52::t_f725e7ade7b68c 45,202,241-242,343,349-352,357-360,371,373-375,379-382,387-390,401,407-410,415-418
+  s_476c5157b02e52::t_c176794730f673 43,129,132-136,183,248-249,251-257
+  s_7e5e7e08ea09ad::t_dfed6e11666d5c 340-342
+src/game/GameCanvas.tsx
+  s_476c5157b02e52::t_c176794730f673 6,10,22,67,80
+package.json
+  s_476c5157b02e52::t_87b344fb64b0f3 17-19
+  s_476c5157b02e52::t_bb282e246fcabb 8,45
+  s_476c5157b02e52::t_5ca0ad3e0abb71 7
+  s_403acfdd4338c5::t_57b9e184662a51 20
+tests/app.test.tsx
+  s_476c5157b02e52::t_02c26be02b42db 11-13,57-74
+  s_476c5157b02e52::t_eedfa2a0cfc5a1 24,32-40
+  s_403acfdd4338c5::t_83a18116c834cc 41-42,75
+src/app-flow.ts
+  s_476c5157b02e52::t_a05723245db88a 2,8,15,20,23,31,39,43,47,49-50,57
+  s_476c5157b02e52::t_c184cb9cec42d4 48
+playwright.config.ts
+  s_476c5157b02e52::t_e002ccac437887 7,12-14
+package-lock.json
+  s_476c5157b02e52::t_df0ae38353e7fc 34,3324-3341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "0737360190fb1e26b0502530a1fbd8d32b4038b2",
+  "prompts": {},
+  "sessions": {
+    "s_403acfdd4338c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f07a1-f93f-78c1-87db-20f0c7ab4876",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_476c5157b02e52": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f15b1-0ef8-7d60-8c9d-ffc7cd9a907f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_7e5e7e08ea09ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad17a0ac-b57b-4c25-bf75-8313cf0f23ca",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
