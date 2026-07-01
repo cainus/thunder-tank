@@ -136,6 +136,13 @@ export function App() {
     setFlow((current) => startFlowMap(current, 0, "deathmatch"));
   }
 
+  function startCoOp(): void {
+    setCustomMap(undefined);
+    setScore(INITIAL_SCORE);
+    setPlayerStatus(INITIAL_PLAYER_STATUS);
+    setFlow((current) => startFlowMap(current, 0, "coOp"));
+  }
+
   function handlePrimary(): void {
     if (mode === "playing") {
       setFlow((current) => ({ ...current, mode: "paused" }));
@@ -199,7 +206,7 @@ export function App() {
           <strong>{currentMap.name}</strong>
         </div>
         <div>
-          <span className="hud-label">{matchMode === "deathmatch" ? "P1 - P2" : "Score"}</span>
+          <span className="hud-label">{matchMode === "deathmatch" ? "P1 - P2" : matchMode === "coOp" ? "Team - Enemy" : "Score"}</span>
           <strong>
             {score.player} - {score.enemy}
           </strong>
@@ -247,6 +254,9 @@ export function App() {
             <>
               <button type="button" className="secondary-button" onClick={startDeathmatch}>
                 2P Deathmatch
+              </button>
+              <button type="button" className="secondary-button" onClick={startCoOp}>
+                Co-op Campaign
               </button>
               <UtilityButtons
                 openSetup={() => setIsSetupOpen(true)}
@@ -362,6 +372,10 @@ function getTitle(mode: AppMode, matchMode = "campaign"): string {
   }
 
   if (mode === "complete") {
+    if (matchMode === "coOp") {
+      return "Co-op Campaign Complete";
+    }
+
     return "Campaign Slice Complete";
   }
 
@@ -370,9 +384,15 @@ function getTitle(mode: AppMode, matchMode = "campaign"): string {
 
 function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string {
   if (mode === "paused") {
-    return matchMode === "deathmatch"
-      ? "Deathmatch is paused. Resume with Start or Enter to return to battle."
-      : `${mapName} is paused. Resume with Start or Enter to return to battle.`;
+    if (matchMode === "deathmatch") {
+      return "Deathmatch is paused. Resume with Start or Enter to return to battle.";
+    }
+
+    if (matchMode === "coOp") {
+      return `${mapName} co-op is paused. Resume with Start or Enter to return to battle.`;
+    }
+
+    return `${mapName} is paused. Resume with Start or Enter to return to battle.`;
   }
 
   if (mode === "won") {
@@ -388,10 +408,18 @@ function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string
       return "Player 2 reached the score limit.";
     }
 
+    if (matchMode === "coOp") {
+      return `${mapName} was lost. Restart this map and beat the enemy score limit together.`;
+    }
+
     return `${mapName} was lost. Restart this map and beat the enemy score limit.`;
   }
 
   if (mode === "complete") {
+    if (matchMode === "coOp") {
+      return `You cleared all ${CAMPAIGN_MAPS.length} campaign maps in co-op.`;
+    }
+
     return `You cleared all ${CAMPAIGN_MAPS.length} single-player maps.`;
   }
 

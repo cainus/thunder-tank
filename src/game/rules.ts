@@ -47,6 +47,26 @@ export const EMPTY_BUFFS: ActiveBuffs = {
   shieldUntil: 0,
 };
 
+// Campaign AI skill ramp: enemies get progressively faster, quicker to aim, and
+// snappier shots as the player advances through the 20 authored maps. This is on
+// top of the per-archetype base stats and the map-by-map count/archetype ramp.
+export function getEnemyDifficulty(campaignMapNumber: number): number {
+  const CAMPAIGN_LENGTH = 20;
+  const progress = (campaignMapNumber - 1) / (CAMPAIGN_LENGTH - 1);
+  return Math.max(0, Math.min(1, progress));
+}
+
+export function getRampedEnemyStats(base: TankStats, difficulty: number): TankStats {
+  const clamped = Math.max(0, Math.min(1, difficulty));
+
+  return {
+    speed: base.speed * (1 + clamped * 0.2),
+    fireCooldownMs: base.fireCooldownMs * (1 - clamped * 0.3),
+    bulletSpeed: base.bulletSpeed * (1 + clamped * 0.12),
+    aimDelayMs: Math.round(base.aimDelayMs * (1 - clamped * 0.5)),
+  };
+}
+
 export function getMatchOutcome(score: ScoreState, playerLimit: number, enemyLimit: number): MatchOutcome {
   if (score.player >= playerLimit) {
     return "won";

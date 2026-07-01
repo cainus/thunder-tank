@@ -1,4 +1,4 @@
-import type { CampaignMap, EnemyArchetype, ObstacleConfig, PickupConfig, Vec2 } from "./types";
+import type { CampaignMap } from "./types";
 
 const BASE_CAMPAIGN_MAPS: CampaignMap[] = [
   {
@@ -99,29 +99,629 @@ const BASE_CAMPAIGN_MAPS: CampaignMap[] = [
   },
 ];
 
-const GENERATED_MAP_NAMES = [
-  "Crater Relay",
-  "Switchback Depot",
-  "Ember Flats",
-  "Glassworks",
-  "Cobalt Cut",
-  "Ridge Split",
-  "Ash Causeway",
-  "Copper Maze",
-  "Floodgate",
-  "Signal Yard",
-  "Blacktop Ring",
-  "Turbine Row",
-  "Cinder Locks",
-  "Mirror Quarry",
-  "Redline Basin",
-  "Anchor Field",
-  "Thunder Gate",
+// Hand-authored campaign maps for positions 4-20. Each is a deliberate arena:
+// enemies cluster on the right, the player starts on the left at vertical center,
+// and the obstacle layout echoes the map's name.
+const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
+  {
+    // Crater Relay: a pockmarked field of barrels scattered like impact craters.
+    id: "map-4",
+    name: "Crater Relay",
+    width: 2100,
+    height: 1400,
+    playerSpawn: { x: 320, y: 700 },
+    playerScoreLimit: 4,
+    enemyScoreLimit: 5,
+    enemySpawns: [
+      { x: 1720, y: 520, archetype: "light" },
+      { x: 1780, y: 900, archetype: "standard" },
+    ],
+    pickups: [
+      { x: 820, y: 700, type: "speed" },
+      { x: 1100, y: 540, type: "rapidFire" },
+      { x: 1080, y: 880, type: "shield" },
+    ],
+    obstacles: [
+      { x: 640, y: 420, kind: "barrel" },
+      { x: 820, y: 300, kind: "barrel" },
+      { x: 980, y: 560, kind: "barrel" },
+      { x: 700, y: 880, kind: "barrel" },
+      { x: 900, y: 1020, kind: "barrel" },
+      { x: 1180, y: 700, kind: "crate" },
+      { x: 1160, y: 420, kind: "barrel" },
+      { x: 1040, y: 900, kind: "barrel" },
+      { x: 560, y: 640, kind: "sandbag" },
+      { x: 1320, y: 560, kind: "barrel" },
+      { x: 1300, y: 940, kind: "barrel" },
+      { x: 1420, y: 720, kind: "crate" },
+    ],
+  },
+  {
+    // Switchback Depot: a boss arena laced with staggered barricade switchbacks.
+    id: "map-5",
+    name: "Switchback Depot",
+    width: 2200,
+    height: 1500,
+    playerSpawn: { x: 340, y: 750 },
+    playerScoreLimit: 1,
+    enemyScoreLimit: 4,
+    enemySpawns: [
+      { x: 1780, y: 750, archetype: "boss" },
+    ],
+    pickups: [
+      { x: 700, y: 750, type: "speed" },
+      { x: 1060, y: 520, type: "rapidFire" },
+      { x: 1060, y: 980, type: "shield" },
+    ],
+    obstacles: [
+      { x: 760, y: 540, kind: "barricade", rotation: 90 },
+      { x: 760, y: 960, kind: "barricade", rotation: 90 },
+      { x: 1080, y: 660, kind: "barricade", rotation: 90 },
+      { x: 1080, y: 840, kind: "barricade", rotation: 90 },
+      { x: 1400, y: 540, kind: "barricade", rotation: 90 },
+      { x: 1400, y: 960, kind: "barricade", rotation: 90 },
+      { x: 940, y: 750, kind: "crate" },
+      { x: 1240, y: 750, kind: "crate" },
+    ],
+  },
+  {
+    // Ember Flats: a wide-open flat dotted with smouldering barrels and low sandbag lines.
+    id: "map-6",
+    name: "Ember Flats",
+    width: 2200,
+    height: 1450,
+    playerSpawn: { x: 340, y: 725 },
+    playerScoreLimit: 5,
+    enemyScoreLimit: 6,
+    enemySpawns: [
+      { x: 1780, y: 480, archetype: "light" },
+      { x: 1820, y: 725, archetype: "standard" },
+      { x: 1780, y: 970, archetype: "light" },
+    ],
+    pickups: [
+      { x: 780, y: 725, type: "speed" },
+      { x: 1120, y: 560, type: "rapidFire" },
+      { x: 1120, y: 900, type: "shield" },
+    ],
+    obstacles: [
+      { x: 680, y: 400, kind: "barrel" },
+      { x: 680, y: 1050, kind: "barrel" },
+      { x: 900, y: 560, kind: "sandbag" },
+      { x: 900, y: 890, kind: "sandbag" },
+      { x: 1120, y: 420, kind: "barrel" },
+      { x: 1120, y: 1030, kind: "barrel" },
+      { x: 1000, y: 725, kind: "crate" },
+      { x: 1320, y: 560, kind: "barrel" },
+      { x: 1320, y: 890, kind: "barrel" },
+      { x: 1200, y: 725, kind: "sandbag" },
+    ],
+  },
+  {
+    // Glassworks: rows of thin barricade "panes" like a shattered glass factory.
+    id: "map-7",
+    name: "Glassworks",
+    width: 2300,
+    height: 1500,
+    playerSpawn: { x: 340, y: 750 },
+    playerScoreLimit: 5,
+    enemyScoreLimit: 6,
+    enemySpawns: [
+      { x: 1860, y: 500, archetype: "standard" },
+      { x: 1920, y: 760, archetype: "light" },
+      { x: 1860, y: 1020, archetype: "heavy" },
+    ],
+    pickups: [
+      { x: 820, y: 750, type: "speed" },
+      { x: 1140, y: 540, type: "rapidFire" },
+      { x: 1140, y: 960, type: "shield" },
+    ],
+    obstacles: [
+      { x: 720, y: 450, kind: "barricade" },
+      { x: 720, y: 750, kind: "barricade" },
+      { x: 720, y: 1050, kind: "barricade" },
+      { x: 1000, y: 450, kind: "barricade" },
+      { x: 1000, y: 750, kind: "barricade" },
+      { x: 1000, y: 1050, kind: "barricade" },
+      { x: 1280, y: 600, kind: "barricade" },
+      { x: 1280, y: 900, kind: "barricade" },
+      { x: 1500, y: 750, kind: "crate" },
+      { x: 1500, y: 450, kind: "barrel" },
+      { x: 1500, y: 1050, kind: "barrel" },
+    ],
+  },
+  {
+    // Cobalt Cut: a diagonal trench of barricades slicing across the arena.
+    id: "map-8",
+    name: "Cobalt Cut",
+    width: 2400,
+    height: 1550,
+    playerSpawn: { x: 340, y: 775 },
+    playerScoreLimit: 6,
+    enemyScoreLimit: 6,
+    enemySpawns: [
+      { x: 1960, y: 460, archetype: "light" },
+      { x: 2020, y: 720, archetype: "standard" },
+      { x: 1960, y: 980, archetype: "standard" },
+      { x: 2020, y: 1200, archetype: "heavy" },
+    ],
+    pickups: [
+      { x: 820, y: 775, type: "speed" },
+      { x: 1160, y: 560, type: "rapidFire" },
+      { x: 1160, y: 1000, type: "shield" },
+    ],
+    obstacles: [
+      { x: 700, y: 400, kind: "barricade", rotation: 45 },
+      { x: 860, y: 540, kind: "barricade", rotation: 45 },
+      { x: 1020, y: 680, kind: "barricade", rotation: 45 },
+      { x: 1180, y: 820, kind: "barricade", rotation: 45 },
+      { x: 1340, y: 960, kind: "barricade", rotation: 45 },
+      { x: 1500, y: 1100, kind: "barricade", rotation: 45 },
+      { x: 760, y: 1000, kind: "crate" },
+      { x: 760, y: 1150, kind: "crate" },
+      { x: 1500, y: 460, kind: "barrel" },
+      { x: 1620, y: 600, kind: "barrel" },
+      { x: 620, y: 700, kind: "sandbag" },
+      { x: 1200, y: 400, kind: "sandbag" },
+    ],
+  },
+  {
+    // Ridge Split: a broken central spine of sandbags with a gap in the middle.
+    id: "map-9",
+    name: "Ridge Split",
+    width: 2500,
+    height: 1600,
+    playerSpawn: { x: 350, y: 800 },
+    playerScoreLimit: 6,
+    enemyScoreLimit: 7,
+    enemySpawns: [
+      { x: 2040, y: 500, archetype: "light" },
+      { x: 2100, y: 760, archetype: "light" },
+      { x: 2040, y: 1020, archetype: "standard" },
+      { x: 2100, y: 1280, archetype: "heavy" },
+    ],
+    pickups: [
+      { x: 840, y: 800, type: "speed" },
+      { x: 1250, y: 800, type: "rapidFire" },
+      { x: 1650, y: 800, type: "shield" },
+    ],
+    obstacles: [
+      { x: 1250, y: 360, kind: "sandbag" },
+      { x: 1250, y: 520, kind: "sandbag" },
+      { x: 1250, y: 680, kind: "sandbag" },
+      { x: 1250, y: 920, kind: "sandbag" },
+      { x: 1250, y: 1080, kind: "sandbag" },
+      { x: 1250, y: 1240, kind: "sandbag" },
+      { x: 800, y: 500, kind: "crate" },
+      { x: 800, y: 1100, kind: "crate" },
+      { x: 1650, y: 500, kind: "barrel" },
+      { x: 1650, y: 1100, kind: "barrel" },
+      { x: 1000, y: 800, kind: "barricade", rotation: 90 },
+      { x: 1500, y: 800, kind: "barricade", rotation: 90 },
+    ],
+  },
+  {
+    // Ash Causeway: a boss arena framed by two sandbag lines forming a raised path.
+    id: "map-10",
+    name: "Ash Causeway",
+    width: 2500,
+    height: 1600,
+    playerSpawn: { x: 360, y: 800 },
+    playerScoreLimit: 1,
+    enemyScoreLimit: 4,
+    enemySpawns: [
+      { x: 2040, y: 800, archetype: "boss" },
+    ],
+    pickups: [
+      { x: 820, y: 800, type: "speed" },
+      { x: 1180, y: 660, type: "rapidFire" },
+      { x: 1180, y: 940, type: "shield" },
+    ],
+    obstacles: [
+      { x: 800, y: 620, kind: "sandbag" },
+      { x: 1050, y: 620, kind: "sandbag" },
+      { x: 1300, y: 620, kind: "sandbag" },
+      { x: 1550, y: 620, kind: "sandbag" },
+      { x: 800, y: 980, kind: "sandbag" },
+      { x: 1050, y: 980, kind: "sandbag" },
+      { x: 1300, y: 980, kind: "sandbag" },
+      { x: 1550, y: 980, kind: "sandbag" },
+      { x: 1150, y: 800, kind: "barrel" },
+      { x: 1400, y: 800, kind: "barrel" },
+    ],
+  },
+  {
+    // Copper Maze: a genuine maze of interlocking barricade corridors.
+    id: "map-11",
+    name: "Copper Maze",
+    width: 2600,
+    height: 1650,
+    playerSpawn: { x: 360, y: 825 },
+    playerScoreLimit: 6,
+    enemyScoreLimit: 7,
+    enemySpawns: [
+      { x: 2160, y: 520, archetype: "standard" },
+      { x: 2220, y: 800, archetype: "standard" },
+      { x: 2160, y: 1080, archetype: "heavy" },
+      { x: 2260, y: 1300, archetype: "light" },
+    ],
+    pickups: [
+      { x: 840, y: 825, type: "speed" },
+      { x: 1140, y: 500, type: "rapidFire" },
+      { x: 1300, y: 1080, type: "shield" },
+    ],
+    obstacles: [
+      { x: 760, y: 400, kind: "barricade", rotation: 90 },
+      { x: 760, y: 540, kind: "barricade", rotation: 90 },
+      { x: 760, y: 680, kind: "barricade", rotation: 90 },
+      { x: 1000, y: 680, kind: "barricade" },
+      { x: 1140, y: 680, kind: "barricade" },
+      { x: 1000, y: 900, kind: "barricade", rotation: 90 },
+      { x: 1000, y: 1040, kind: "barricade", rotation: 90 },
+      { x: 1000, y: 1180, kind: "barricade", rotation: 90 },
+      { x: 1240, y: 400, kind: "barricade", rotation: 90 },
+      { x: 1240, y: 540, kind: "barricade", rotation: 90 },
+      { x: 1400, y: 900, kind: "barricade" },
+      { x: 1540, y: 900, kind: "barricade" },
+      { x: 1540, y: 1100, kind: "barricade", rotation: 90 },
+      { x: 1540, y: 1240, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 1300, kind: "crate" },
+      { x: 760, y: 1200, kind: "crate" },
+    ],
+  },
+  {
+    // Floodgate: successive vertical barricade rows like a series of sluice gates.
+    id: "map-12",
+    name: "Floodgate",
+    width: 2700,
+    height: 1700,
+    playerSpawn: { x: 380, y: 850 },
+    playerScoreLimit: 7,
+    enemyScoreLimit: 7,
+    enemySpawns: [
+      { x: 2240, y: 520, archetype: "light" },
+      { x: 2300, y: 780, archetype: "standard" },
+      { x: 2240, y: 1040, archetype: "standard" },
+      { x: 2300, y: 1300, archetype: "heavy" },
+      { x: 2240, y: 900, archetype: "light" },
+    ],
+    pickups: [
+      { x: 840, y: 850, type: "speed" },
+      { x: 1100, y: 520, type: "rapidFire" },
+      { x: 1100, y: 1180, type: "shield" },
+    ],
+    obstacles: [
+      { x: 900, y: 400, kind: "barricade", rotation: 90 },
+      { x: 900, y: 560, kind: "barricade", rotation: 90 },
+      { x: 900, y: 880, kind: "barricade", rotation: 90 },
+      { x: 900, y: 1040, kind: "barricade", rotation: 90 },
+      { x: 900, y: 1200, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 300, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 460, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 620, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 940, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 1100, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 520, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 680, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 1000, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 1160, kind: "barricade", rotation: 90 },
+      { x: 1100, y: 850, kind: "barrel" },
+      { x: 1500, y: 850, kind: "barrel" },
+    ],
+  },
+  {
+    // Signal Yard: a grid of antenna-mast barrels wired together by sandbag rails.
+    id: "map-13",
+    name: "Signal Yard",
+    width: 2800,
+    height: 1750,
+    playerSpawn: { x: 380, y: 875 },
+    playerScoreLimit: 7,
+    enemyScoreLimit: 8,
+    enemySpawns: [
+      { x: 2320, y: 540, archetype: "light" },
+      { x: 2380, y: 820, archetype: "standard" },
+      { x: 2320, y: 1100, archetype: "heavy" },
+      { x: 2380, y: 1380, archetype: "standard" },
+      { x: 2320, y: 900, archetype: "heavy" },
+    ],
+    pickups: [
+      { x: 840, y: 875, type: "speed" },
+      { x: 1150, y: 600, type: "rapidFire" },
+      { x: 1150, y: 1150, type: "shield" },
+    ],
+    obstacles: [
+      { x: 800, y: 450, kind: "barrel" },
+      { x: 800, y: 900, kind: "barrel" },
+      { x: 800, y: 1350, kind: "barrel" },
+      { x: 1150, y: 650, kind: "barrel" },
+      { x: 1150, y: 1100, kind: "barrel" },
+      { x: 1500, y: 450, kind: "barrel" },
+      { x: 1500, y: 900, kind: "barrel" },
+      { x: 1500, y: 1350, kind: "barrel" },
+      { x: 1850, y: 650, kind: "barrel" },
+      { x: 1850, y: 1100, kind: "barrel" },
+      { x: 1000, y: 875, kind: "sandbag" },
+      { x: 1650, y: 875, kind: "sandbag" },
+      { x: 1325, y: 600, kind: "sandbag" },
+      { x: 1325, y: 1150, kind: "sandbag" },
+    ],
+  },
+  {
+    // Blacktop Ring: a circular racetrack of cover ringing an open centre.
+    id: "map-14",
+    name: "Blacktop Ring",
+    width: 2900,
+    height: 1800,
+    playerSpawn: { x: 400, y: 900 },
+    playerScoreLimit: 7,
+    enemyScoreLimit: 8,
+    enemySpawns: [
+      { x: 2400, y: 560, archetype: "standard" },
+      { x: 2460, y: 880, archetype: "heavy" },
+      { x: 2400, y: 1200, archetype: "light" },
+      { x: 2460, y: 720, archetype: "standard" },
+      { x: 2400, y: 1040, archetype: "heavy" },
+    ],
+    pickups: [
+      { x: 860, y: 900, type: "speed" },
+      { x: 1450, y: 900, type: "rapidFire" },
+      { x: 1250, y: 650, type: "shield" },
+    ],
+    obstacles: [
+      { x: 2050, y: 900, kind: "crate" },
+      { x: 1874, y: 1218, kind: "barrel" },
+      { x: 1450, y: 1350, kind: "sandbag" },
+      { x: 1026, y: 1218, kind: "crate" },
+      { x: 850, y: 900, kind: "barrel" },
+      { x: 1026, y: 582, kind: "sandbag" },
+      { x: 1450, y: 450, kind: "crate" },
+      { x: 1874, y: 582, kind: "barrel" },
+      { x: 1250, y: 900, kind: "barricade", rotation: 90 },
+      { x: 1650, y: 900, kind: "barricade", rotation: 90 },
+      { x: 1450, y: 700, kind: "barricade" },
+      { x: 1450, y: 1100, kind: "barricade" },
+    ],
+  },
+  {
+    // Turbine Row: rows of hulking barrel turbines with sandbag housings.
+    id: "map-15",
+    name: "Turbine Row",
+    width: 2900,
+    height: 1800,
+    playerSpawn: { x: 400, y: 900 },
+    playerScoreLimit: 1,
+    enemyScoreLimit: 4,
+    enemySpawns: [
+      { x: 2380, y: 900, archetype: "boss" },
+    ],
+    pickups: [
+      { x: 860, y: 900, type: "speed" },
+      { x: 1300, y: 700, type: "rapidFire" },
+      { x: 1300, y: 1100, type: "shield" },
+    ],
+    obstacles: [
+      { x: 900, y: 500, kind: "barrel" },
+      { x: 900, y: 900, kind: "barrel" },
+      { x: 900, y: 1300, kind: "barrel" },
+      { x: 1300, y: 500, kind: "barrel" },
+      { x: 1300, y: 900, kind: "barrel" },
+      { x: 1300, y: 1300, kind: "barrel" },
+      { x: 1700, y: 500, kind: "barrel" },
+      { x: 1700, y: 900, kind: "barrel" },
+      { x: 1700, y: 1300, kind: "barrel" },
+      { x: 1100, y: 700, kind: "sandbag" },
+      { x: 1100, y: 1100, kind: "sandbag" },
+      { x: 1500, y: 700, kind: "sandbag" },
+      { x: 1500, y: 1100, kind: "sandbag" },
+    ],
+  },
+  {
+    // Cinder Locks: interlocking barricade blocks slotted together like lock plates.
+    id: "map-16",
+    name: "Cinder Locks",
+    width: 3000,
+    height: 1850,
+    playerSpawn: { x: 400, y: 925 },
+    playerScoreLimit: 7,
+    enemyScoreLimit: 8,
+    enemySpawns: [
+      { x: 2500, y: 560, archetype: "light" },
+      { x: 2560, y: 880, archetype: "standard" },
+      { x: 2500, y: 1200, archetype: "standard" },
+      { x: 2560, y: 720, archetype: "heavy" },
+      { x: 2500, y: 1040, archetype: "light" },
+    ],
+    pickups: [
+      { x: 860, y: 925, type: "speed" },
+      { x: 1200, y: 560, type: "rapidFire" },
+      { x: 1200, y: 1290, type: "shield" },
+    ],
+    obstacles: [
+      { x: 800, y: 500, kind: "barricade" },
+      { x: 940, y: 500, kind: "barricade" },
+      { x: 800, y: 700, kind: "barricade", rotation: 90 },
+      { x: 800, y: 860, kind: "barricade", rotation: 90 },
+      { x: 1200, y: 650, kind: "barricade" },
+      { x: 1340, y: 650, kind: "barricade" },
+      { x: 1340, y: 800, kind: "barricade", rotation: 90 },
+      { x: 1340, y: 960, kind: "barricade", rotation: 90 },
+      { x: 1200, y: 1150, kind: "barricade" },
+      { x: 1340, y: 1150, kind: "barricade" },
+      { x: 800, y: 1150, kind: "barricade" },
+      { x: 940, y: 1150, kind: "barricade" },
+      { x: 1700, y: 500, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 660, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 1050, kind: "barricade", rotation: 90 },
+      { x: 1700, y: 1210, kind: "barricade", rotation: 90 },
+      { x: 1500, y: 925, kind: "crate" },
+      { x: 1050, y: 925, kind: "crate" },
+    ],
+  },
+  {
+    // Mirror Quarry: crate blocks arranged in perfect symmetry about the mid-line.
+    id: "map-17",
+    name: "Mirror Quarry",
+    width: 3100,
+    height: 1950,
+    playerSpawn: { x: 420, y: 975 },
+    playerScoreLimit: 8,
+    enemyScoreLimit: 9,
+    enemySpawns: [
+      { x: 2600, y: 520, archetype: "light" },
+      { x: 2660, y: 780, archetype: "standard" },
+      { x: 2600, y: 1040, archetype: "heavy" },
+      { x: 2660, y: 1300, archetype: "standard" },
+      { x: 2600, y: 1560, archetype: "heavy" },
+      { x: 2660, y: 900, archetype: "light" },
+    ],
+    pickups: [
+      { x: 880, y: 975, type: "speed" },
+      { x: 1300, y: 700, type: "rapidFire" },
+      { x: 1300, y: 1250, type: "shield" },
+    ],
+    obstacles: [
+      { x: 850, y: 625, kind: "crate" },
+      { x: 850, y: 1325, kind: "crate" },
+      { x: 1150, y: 525, kind: "crate" },
+      { x: 1150, y: 1425, kind: "crate" },
+      { x: 1450, y: 675, kind: "crate" },
+      { x: 1450, y: 1275, kind: "crate" },
+      { x: 1750, y: 525, kind: "crate" },
+      { x: 1750, y: 1425, kind: "crate" },
+      { x: 1000, y: 825, kind: "crate" },
+      { x: 1000, y: 1125, kind: "crate" },
+      { x: 1600, y: 825, kind: "crate" },
+      { x: 1600, y: 1125, kind: "crate" },
+      { x: 1300, y: 975, kind: "barrel" },
+      { x: 1900, y: 975, kind: "barrel" },
+    ],
+  },
+  {
+    // Redline Basin: sweeping sandbag arcs cupping a sunken crate-lined basin.
+    id: "map-18",
+    name: "Redline Basin",
+    width: 3200,
+    height: 2000,
+    playerSpawn: { x: 420, y: 1000 },
+    playerScoreLimit: 8,
+    enemyScoreLimit: 9,
+    enemySpawns: [
+      { x: 2680, y: 560, archetype: "standard" },
+      { x: 2740, y: 840, archetype: "standard" },
+      { x: 2680, y: 1120, archetype: "heavy" },
+      { x: 2740, y: 1400, archetype: "heavy" },
+      { x: 2680, y: 1600, archetype: "light" },
+      { x: 2740, y: 700, archetype: "standard" },
+    ],
+    pickups: [
+      { x: 880, y: 1000, type: "speed" },
+      { x: 1300, y: 760, type: "rapidFire" },
+      { x: 1300, y: 1240, type: "shield" },
+    ],
+    obstacles: [
+      { x: 900, y: 500, kind: "sandbag" },
+      { x: 1100, y: 420, kind: "sandbag" },
+      { x: 1300, y: 400, kind: "sandbag" },
+      { x: 1500, y: 420, kind: "sandbag" },
+      { x: 1700, y: 500, kind: "sandbag" },
+      { x: 900, y: 1500, kind: "sandbag" },
+      { x: 1100, y: 1580, kind: "sandbag" },
+      { x: 1300, y: 1600, kind: "sandbag" },
+      { x: 1500, y: 1580, kind: "sandbag" },
+      { x: 1700, y: 1500, kind: "sandbag" },
+      { x: 800, y: 1000, kind: "sandbag" },
+      { x: 1900, y: 1000, kind: "barrel" },
+      { x: 1250, y: 850, kind: "crate" },
+      { x: 1250, y: 1150, kind: "crate" },
+      { x: 1550, y: 850, kind: "crate" },
+      { x: 1550, y: 1150, kind: "crate" },
+    ],
+  },
+  {
+    // Anchor Field: crate clusters shaped like anchors staked across the field.
+    id: "map-19",
+    name: "Anchor Field",
+    width: 3400,
+    height: 2100,
+    playerSpawn: { x: 440, y: 1050 },
+    playerScoreLimit: 9,
+    enemyScoreLimit: 9,
+    enemySpawns: [
+      { x: 2860, y: 560, archetype: "light" },
+      { x: 2920, y: 880, archetype: "standard" },
+      { x: 2860, y: 1200, archetype: "standard" },
+      { x: 2920, y: 1520, archetype: "heavy" },
+      { x: 2860, y: 1720, archetype: "heavy" },
+      { x: 2920, y: 720, archetype: "light" },
+    ],
+    pickups: [
+      { x: 900, y: 1050, type: "speed" },
+      { x: 1600, y: 760, type: "rapidFire" },
+      { x: 1600, y: 1340, type: "shield" },
+    ],
+    obstacles: [
+      { x: 1000, y: 560, kind: "crate" },
+      { x: 1000, y: 700, kind: "crate" },
+      { x: 1000, y: 840, kind: "crate" },
+      { x: 860, y: 700, kind: "crate" },
+      { x: 1140, y: 700, kind: "crate" },
+      { x: 1600, y: 910, kind: "crate" },
+      { x: 1600, y: 1050, kind: "crate" },
+      { x: 1600, y: 1190, kind: "crate" },
+      { x: 1460, y: 1050, kind: "crate" },
+      { x: 1740, y: 1050, kind: "crate" },
+      { x: 1000, y: 1310, kind: "crate" },
+      { x: 1000, y: 1450, kind: "crate" },
+      { x: 1000, y: 1590, kind: "crate" },
+      { x: 860, y: 1450, kind: "crate" },
+      { x: 1140, y: 1450, kind: "crate" },
+      { x: 2000, y: 700, kind: "barrel" },
+      { x: 2000, y: 1400, kind: "barrel" },
+    ],
+  },
+  {
+    // Thunder Gate: a colossal barricade gate arch dominating a vast open boss arena.
+    id: "map-20",
+    name: "Thunder Gate",
+    width: 3600,
+    height: 2400,
+    playerSpawn: { x: 460, y: 1200 },
+    playerScoreLimit: 1,
+    enemyScoreLimit: 4,
+    enemySpawns: [
+      { x: 3060, y: 1200, archetype: "boss" },
+    ],
+    pickups: [
+      { x: 920, y: 1200, type: "speed" },
+      { x: 1600, y: 820, type: "rapidFire" },
+      { x: 1600, y: 1580, type: "shield" },
+    ],
+    obstacles: [
+      { x: 1300, y: 700, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 860, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 1020, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 1380, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 1540, kind: "barricade", rotation: 90 },
+      { x: 1300, y: 1700, kind: "barricade", rotation: 90 },
+      { x: 1900, y: 700, kind: "barricade", rotation: 90 },
+      { x: 1900, y: 860, kind: "barricade", rotation: 90 },
+      { x: 1900, y: 1020, kind: "barricade", rotation: 90 },
+      { x: 1900, y: 1380, kind: "barricade", rotation: 90 },
+      { x: 1900, y: 1540, kind: "barricade", rotation: 90 },
+      { x: 1900, y: 1700, kind: "barricade", rotation: 90 },
+      { x: 1450, y: 600, kind: "barricade" },
+      { x: 1600, y: 600, kind: "barricade" },
+      { x: 1750, y: 600, kind: "barricade" },
+      { x: 1000, y: 1200, kind: "barrel" },
+      { x: 2200, y: 1200, kind: "barrel" },
+      { x: 1600, y: 1200, kind: "crate" },
+    ],
+  },
 ];
 
 export const CAMPAIGN_MAPS: CampaignMap[] = [
   ...BASE_CAMPAIGN_MAPS,
-  ...GENERATED_MAP_NAMES.map((name, index) => createGeneratedCampaignMap(index + 4, name)),
+  ...AUTHORED_CAMPAIGN_MAPS,
 ].map(numberCampaignMap);
 
 export function getMapByIndex(index: number): CampaignMap {
@@ -134,128 +734,10 @@ export function getMapByIndex(index: number): CampaignMap {
   return map;
 }
 
-function createGeneratedCampaignMap(mapNumber: number, name: string): CampaignMap {
-  const width = 2600 + Math.min(700, (mapNumber - 4) * 70);
-  const height = 1700 + Math.min(500, (mapNumber - 4) * 45);
-  const enemySpawns = createEnemySpawns(mapNumber, width, height);
-  const playerSpawn = getOppositePoint(averagePoint(enemySpawns), width, height);
-  const isBossMap = mapNumber % 5 === 0;
-
-  return {
-    id: `map-${mapNumber}`,
-    name,
-    width,
-    height,
-    playerSpawn,
-    playerScoreLimit: isBossMap ? 1 : Math.min(14, 7 + Math.floor(mapNumber / 3)),
-    enemyScoreLimit: isBossMap ? 4 : Math.min(10, 5 + Math.floor(mapNumber / 5)),
-    enemySpawns,
-    pickups: createPickups(width, height, mapNumber),
-    obstacles: createObstacles(width, height, mapNumber),
-  };
-}
-
-function createEnemySpawns(
-  mapNumber: number,
-  width: number,
-  height: number,
-): Array<Vec2 & { archetype: EnemyArchetype }> {
-  if (mapNumber % 5 === 0) {
-    return [
-      {
-        x: Math.round(width * 0.78),
-        y: Math.round(height * 0.5),
-        archetype: "boss",
-      },
-    ];
-  }
-
-  const count = Math.min(7, 2 + Math.floor(mapNumber / 4));
-  const archetypes: EnemyArchetype[] = ["light", "standard", "light", "standard", "heavy", "standard", "heavy"];
-  const side = mapNumber % 2 === 0 ? "right" : "bottom";
-  const spawns: Array<Vec2 & { archetype: EnemyArchetype }> = [];
-
-  for (let index = 0; index < count; index += 1) {
-    const spread = (index + 1) / (count + 1);
-    const wave = Math.sin((mapNumber + index) * 1.7);
-    const x = side === "right" ? width - 320 - (index % 2) * 180 : 520 + spread * (width - 1040);
-    const y = side === "right" ? 260 + spread * (height - 520) : height - 300 - Math.abs(wave) * 220;
-
-    spawns.push({
-      x: Math.round(x),
-      y: Math.round(y),
-      archetype: archetypes[Math.min(index, archetypes.length - 1)],
-    });
-  }
-
-  return spawns;
-}
-
 function numberCampaignMap(map: CampaignMap, index: number): CampaignMap {
   const number = String(index + 1).padStart(2, "0");
   return {
     ...map,
     name: `${number}. ${map.name}`,
   };
-}
-
-function createPickups(width: number, height: number, mapNumber: number): PickupConfig[] {
-  const extraRapid = mapNumber % 3 === 0 ? [{ x: width * 0.74, y: height * 0.28, type: "rapidFire" as const }] : [];
-
-  return [
-    { x: Math.round(width * 0.32), y: Math.round(height * 0.28), type: "speed" },
-    { x: Math.round(width * 0.5), y: Math.round(height * 0.5), type: "rapidFire" },
-    { x: Math.round(width * 0.34), y: Math.round(height * 0.75), type: "shield" },
-    { x: Math.round(width * 0.68), y: Math.round(height * 0.68), type: mapNumber % 2 === 0 ? "shield" : "speed" },
-    ...extraRapid.map((pickup) => ({ ...pickup, x: Math.round(pickup.x), y: Math.round(pickup.y) })),
-  ];
-}
-
-function createObstacles(width: number, height: number, mapNumber: number): ObstacleConfig[] {
-  const obstacles: ObstacleConfig[] = [];
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const laneCount = 3 + (mapNumber % 3);
-
-  for (let index = 0; index < laneCount; index += 1) {
-    const y = centerY - 280 + index * 140;
-    obstacles.push({ x: Math.round(centerX - 190), y: Math.round(y), kind: "barricade", rotation: 90 });
-    obstacles.push({ x: Math.round(centerX + 190), y: Math.round(y + 55), kind: "barricade", rotation: 90 });
-  }
-
-  for (let index = 0; index < 6; index += 1) {
-    const angle = (Math.PI * 2 * index) / 6 + mapNumber * 0.18;
-    obstacles.push({
-      x: Math.round(centerX + Math.cos(angle) * 520),
-      y: Math.round(centerY + Math.sin(angle) * 330),
-      kind: index % 2 === 0 ? "crate" : "barrel",
-    });
-  }
-
-  obstacles.push(
-    { x: Math.round(width * 0.22), y: Math.round(height * 0.52), kind: "sandbag" },
-    { x: Math.round(width * 0.78), y: Math.round(height * 0.48), kind: "sandbag" },
-    { x: Math.round(width * 0.5), y: Math.round(height * 0.18), kind: "crate" },
-    { x: Math.round(width * 0.5), y: Math.round(height * 0.82), kind: "crate" },
-  );
-
-  return obstacles;
-}
-
-function averagePoint(points: Vec2[]): Vec2 {
-  return {
-    x: points.reduce((total, point) => total + point.x, 0) / points.length,
-    y: points.reduce((total, point) => total + point.y, 0) / points.length,
-  };
-}
-
-function getOppositePoint(point: Vec2, width: number, height: number): Vec2 {
-  return {
-    x: Math.round(clamp(width - point.x, 220, width - 220)),
-    y: Math.round(clamp(height - point.y, 220, height - 220)),
-  };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }

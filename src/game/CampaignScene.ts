@@ -18,7 +18,9 @@ import {
   PLAYER_BASE_STATS,
   applyPickupBuff,
   getEffectiveStats,
+  getEnemyDifficulty,
   getMatchOutcome,
+  getRampedEnemyStats,
   hasShield,
 } from "./rules";
 import type {
@@ -47,6 +49,10 @@ const PLAYER_RESPAWN_GRACE_MS = 700;
 const PLAYER_RESPAWN_COUNTDOWN_MS = 3_000;
 const PICKUP_BODY_RADIUS = 18;
 const PICKUP_COLLECT_RADIUS = 42;
+const ENEMY_PICKUP_SEEK_RANGE = 300;
+const CAMERA_MIN_ZOOM = 0.64;
+const CAMERA_SPAN_MARGIN_X = 560;
+const CAMERA_SPAN_MARGIN_Y = 420;
 const PICKUP_BARREL_SCALE = 0.95;
 const PICKUP_ICON_SCALE = 0.22;
 const MOTOR_BASE_VOLUME = 0.2;
@@ -95,6 +101,8 @@ function getPickupTint(type: PickupConfig["type"]): number {
 
 export class CampaignScene extends Phaser.Scene {
   private map!: CampaignMap;
+  private mapIndex = 0;
+  private enemyDifficulty = 0;
   private matchMode: MatchMode = "campaign";
   private callbacks!: GameCallbacks;
   private gamepadMapping!: GamepadMapping;
@@ -123,6 +131,8 @@ export class CampaignScene extends Phaser.Scene {
 
   init(data: SceneData): void {
     this.matchMode = data.matchMode ?? "campaign";
+    this.mapIndex = data.mapIndex ?? 0;
+    this.enemyDifficulty = getEnemyDifficulty(this.mapIndex + 1);
     this.map = data.mapOverride ?? CAMPAIGN_MAPS[data.mapIndex] ?? CAMPAIGN_MAPS[0];
     this.gamepadMapping = data.gamepadMapping;
     this.callbacks = data.callbacks;
@@ -394,10 +404,47 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updatePlayer(time: number): void {
+    if (this.isCoOp()) {
+      this.updateCoOpTank(time);
+      return;
+    }
+
     this.updateHumanTank(this.player, 0, time);
 
     if (this.playerTwo) {
       this.updateHumanTank(this.playerTwo, 1, time);
+    }
+  }
+
+  private updateCoOpTank(time: number): void {
+    if (!this.player.alive || this.isPlayerInRespawnCountdown(time)) {
+      this.player.hull.setVelocity(0, 0);
+      return;
+    }
+
+    const drive = this.getDriveInput(0);
+    const aim = this.getAimVector(1);
+    const stats = getEffectiveStats(PLAYER_BASE_STATS, this.player.buffs, time);
+    const deltaSeconds = this.game.loop.delta / 1_000;
+    const effectiveTurn = drive.turn * Math.sign(drive.throttle);
+    const hullTurnDelta = effectiveTurn * PLAYER_TURN_RATE * deltaSeconds;
+    const nextRotation = this.player.hull.rotation + hullTurnDelta;
+    const forwardAngle = nextRotation - Math.PI / 2;
+
+    this.player.hull.setRotation(nextRotation);
+    this.player.hull.setVelocity(
+      Math.cos(forwardAngle) * drive.throttle * stats.speed,
+      Math.sin(forwardAngle) * drive.throttle * stats.speed,
+    );
+    this.player.aimAngle += hullTurnDelta + aim.x * PLAYER_TURRET_TURN_RATE * deltaSeconds;
+
+    if (
+      this.wantsFire(1) &&
+      !isGunFrozen(this.playerGunHeat, time) &&
+      time - this.player.lastFiredAt >= stats.fireCooldownMs &&
+      this.fireBullet(this.player, stats.bulletSpeed, time)
+    ) {
+      this.playerGunHeat = recordPlayerShot(this.playerGunHeat, time);
     }
   }
 
@@ -411,7 +458,7 @@ export class CampaignScene extends Phaser.Scene {
     const aim = this.getAimVector(playerIndex);
     const stats = getEffectiveStats(PLAYER_BASE_STATS, tank.buffs, time);
     const deltaSeconds = this.game.loop.delta / 1_000;
-    const effectiveTurn = Math.abs(drive.throttle) > 0 ? drive.turn : 0;
+    const effectiveTurn = drive.turn * Math.sign(drive.throttle);
     const hullTurnDelta = effectiveTurn * PLAYER_TURN_RATE * deltaSeconds;
     const nextRotation = tank.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
@@ -455,11 +502,16 @@ export class CampaignScene extends Phaser.Scene {
         continue;
       }
 
-      const baseStats = ENEMY_STATS[enemy.archetype ?? "standard"];
+      const baseStats = getRampedEnemyStats(ENEMY_STATS[enemy.archetype ?? "standard"], this.enemyDifficulty);
       const stats = getEffectiveStats(baseStats, enemy.buffs, time);
       const distance = Phaser.Math.Distance.Between(enemy.hull.x, enemy.hull.y, this.player.hull.x, this.player.hull.y);
       const desiredAngle = Phaser.Math.Angle.Between(enemy.hull.x, enemy.hull.y, this.player.hull.x, this.player.hull.y);
-      const moveAngle = this.resolveEnemyMoveAngle(enemy, desiredAngle, distance, time);
+      // Opportunistic pickup grab: only divert toward a power-up that is close and
+      // has a clear path; otherwise keep hunting the player.
+      const pickupTarget = this.findOpportunisticPickup(enemy);
+      const moveAngle = pickupTarget
+        ? Phaser.Math.Angle.Between(enemy.hull.x, enemy.hull.y, pickupTarget.x, pickupTarget.y)
+        : this.resolveEnemyMoveAngle(enemy, desiredAngle, distance, time);
       enemy.moveAngle = moveAngle;
       const hasLineOfSight = !this.isSegmentBlocked(
         { x: enemy.hull.x, y: enemy.hull.y },
@@ -505,6 +557,29 @@ export class CampaignScene extends Phaser.Scene {
       getObstacleClearance: (point) => this.getObstacleClearance(point),
       isPointInsideWorld: (point) => this.isPointInsideWorld(point),
     });
+  }
+
+  private findOpportunisticPickup(enemy: TankRuntime): PickupSprite | undefined {
+    let best: PickupSprite | undefined;
+    let bestDistance = ENEMY_PICKUP_SEEK_RANGE;
+
+    for (const pickup of this.pickups.getChildren() as PickupSprite[]) {
+      if (!pickup.active || !pickup.visible) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(enemy.hull.x, enemy.hull.y, pickup.x, pickup.y);
+
+      if (
+        distance < bestDistance &&
+        !this.isSegmentBlocked({ x: enemy.hull.x, y: enemy.hull.y }, { x: pickup.x, y: pickup.y }, ENEMY_PATH_PADDING)
+      ) {
+        best = pickup;
+        bestDistance = distance;
+      }
+    }
+
+    return best;
   }
 
   private getDriveInput(playerIndex: 0 | 1 = 0): { throttle: number; turn: number } {
@@ -658,7 +733,7 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updatePickupCollection(): void {
-    for (const tank of this.getHumanTanks()) {
+    for (const tank of this.getPickupCollectors()) {
       if (!tank.alive || (tank.side === "player" && this.isPlayerInRespawnCountdown(this.time.now))) {
         continue;
       }
@@ -1058,14 +1133,44 @@ export class CampaignScene extends Phaser.Scene {
     const camera = this.cameras.main;
     const p1 = this.player.hull;
     const p2 = this.playerTwo.hull;
-    const midX = (p1.x + p2.x) / 2;
-    const midY = (p1.y + p2.y) / 2;
-    const spanX = Math.abs(p1.x - p2.x) + 560;
-    const spanY = Math.abs(p1.y - p2.y) + 420;
-    const zoom = Phaser.Math.Clamp(Math.min(camera.width / spanX, camera.height / spanY), 0.64, 1);
+
+    const spanX = Math.abs(p1.x - p2.x) + CAMERA_SPAN_MARGIN_X;
+    const spanY = Math.abs(p1.y - p2.y) + CAMERA_SPAN_MARGIN_Y;
+    const zoom = Phaser.Math.Clamp(
+      Math.min(camera.width / spanX, camera.height / spanY),
+      CAMERA_MIN_ZOOM,
+      1,
+    );
 
     camera.setZoom(zoom);
-    camera.centerOn(midX, midY);
+    // Distance leash: once we hit the zoom-out cap the players still can't be
+    // allowed to separate past what the viewport shows, or one drives off-screen.
+    // Clamp their separation to the widest gap visible at the minimum zoom.
+    this.applyCameraLeash(p1, p2);
+
+    camera.centerOn((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+  }
+
+  private applyCameraLeash(p1: Phaser.Physics.Arcade.Image, p2: Phaser.Physics.Arcade.Image): void {
+    const camera = this.cameras.main;
+    const maxSeparationX = camera.width / CAMERA_MIN_ZOOM - CAMERA_SPAN_MARGIN_X;
+    const maxSeparationY = camera.height / CAMERA_MIN_ZOOM - CAMERA_SPAN_MARGIN_Y;
+
+    const dx = p2.x - p1.x;
+    if (Math.abs(dx) > maxSeparationX) {
+      const pull = (Math.abs(dx) - maxSeparationX) / 2;
+      const direction = Math.sign(dx);
+      p1.x += direction * pull;
+      p2.x -= direction * pull;
+    }
+
+    const dy = p2.y - p1.y;
+    if (Math.abs(dy) > maxSeparationY) {
+      const pull = (Math.abs(dy) - maxSeparationY) / 2;
+      const direction = Math.sign(dy);
+      p1.y += direction * pull;
+      p2.y -= direction * pull;
+    }
   }
 
   private updatePickupRespawns(time: number): void {
@@ -1221,12 +1326,22 @@ export class CampaignScene extends Phaser.Scene {
     return this.player ? [this.player, ...(this.playerTwo ? [this.playerTwo] : [])] : [];
   }
 
+  // All tanks that can collect pickups: humans always, plus AI in campaign/co-op
+  // so enemies opportunistically grab power-ups they drive over.
+  private getPickupCollectors(): TankRuntime[] {
+    return [...this.getHumanTanks(), ...this.enemies];
+  }
+
   private isHumanTank(tank: TankRuntime): boolean {
     return tank.side === "player" || tank.side === "playerTwo";
   }
 
   private isDeathmatch(): boolean {
     return this.matchMode === "deathmatch";
+  }
+
+  private isCoOp(): boolean {
+    return this.matchMode === "coOp";
   }
 
   private playRandomSound(keys: AssetKey[], volume: number): void {

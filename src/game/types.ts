@@ -1,7 +1,7 @@
 import type Phaser from "phaser";
 import type { PlayerStatus } from "./combat-state";
 
-export type MatchMode = "campaign" | "deathmatch";
+export type MatchMode = "campaign" | "deathmatch" | "coOp";
 
 export type TankSide = "player" | "playerTwo" | "enemy";
 

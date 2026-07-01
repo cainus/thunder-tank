@@ -11,6 +11,7 @@ test("boots and starts the first P1 campaign map", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Thunder Tank" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Co-op Campaign" })).toBeVisible();
   await page.getByRole("button", { name: "Controller Setup" }).click();
   await expect(page.getByRole("heading", { name: "Bindings" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Fire/ })).toBeVisible();

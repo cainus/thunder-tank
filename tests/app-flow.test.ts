@@ -58,3 +58,45 @@ describe("two-player deathmatch flow", () => {
     });
   });
 });
+
+describe("co-op campaign flow", () => {
+  it("starts as co-op and advances through campaign maps", () => {
+    const coOp = startMap({ mode: "title", matchMode: "campaign", mapIndex: 0, runId: 0 }, 0, "coOp");
+
+    expect(coOp).toEqual({ mode: "playing", matchMode: "coOp", mapIndex: 0, runId: 1 });
+    expect(applyPrimaryAction(applyMapOutcome(coOp, "won"))).toEqual({
+      mode: "playing",
+      matchMode: "coOp",
+      mapIndex: 1,
+      runId: 2,
+    });
+    expect(applyPrimaryAction(applyMapOutcome({ ...coOp, mode: "playing", mapIndex: 2, runId: 7 }, "lost"))).toEqual({
+      mode: "playing",
+      matchMode: "coOp",
+      mapIndex: 2,
+      runId: 8,
+    });
+  });
+
+  it("restarts as co-op after completing the final map", () => {
+    const complete = applyPrimaryAction(
+      applyMapOutcome(
+        {
+          mode: "playing",
+          matchMode: "coOp",
+          mapIndex: CAMPAIGN_MAPS.length - 1,
+          runId: 20,
+        },
+        "won",
+      ),
+    );
+
+    expect(complete).toEqual({
+      mode: "complete",
+      matchMode: "coOp",
+      mapIndex: CAMPAIGN_MAPS.length - 1,
+      runId: 20,
+    });
+    expect(applyPrimaryAction(complete)).toEqual({ mode: "playing", matchMode: "coOp", mapIndex: 0, runId: 21 });
+  });
+});

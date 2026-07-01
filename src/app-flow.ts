@@ -40,7 +40,7 @@ export function applyPrimaryAction(state: FlowState): FlowState {
   }
 
   if (state.mode === "complete") {
-    return startMap(state, 0, "campaign");
+    return startMap(state, 0, state.matchMode === "coOp" ? "coOp" : "campaign");
   }
 
   if (state.mode === "won") {
@@ -54,7 +54,7 @@ export function applyPrimaryAction(state: FlowState): FlowState {
       return { ...state, mode: "complete" };
     }
 
-    return startMap(state, nextIndex, "campaign");
+    return startMap(state, nextIndex, state.matchMode === "coOp" ? "coOp" : "campaign");
   }
 
   return state;

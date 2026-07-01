@@ -3,8 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
 
 vi.mock("../src/game/GameCanvas", () => ({
-  GameCanvas: ({ onMapEnded }: { onMapEnded: (outcome: "won" | "lost") => void }) => (
+  GameCanvas: ({
+    matchMode,
+    onMapEnded,
+  }: {
+    matchMode: "campaign" | "deathmatch" | "coOp";
+    onMapEnded: (outcome: "won" | "lost") => void;
+  }) => (
     <div data-testid="mock-game-canvas">
+      <span>Mode: {matchMode}</span>
       <button type="button" onClick={() => onMapEnded("won")}>
         Mock Win
       </button>
@@ -22,11 +29,30 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Thunder Tank" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Campaign" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "2P Deathmatch" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Co-op Campaign" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Controller Setup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Controller Recorder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Explosion Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Motor Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level Editor" })).toBeInTheDocument();
+  });
+
+  it("starts co-op campaign from the title screen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Co-op Campaign" }));
+
+    expect(screen.getByTestId("mock-game-canvas")).toBeInTheDocument();
+    expect(screen.getByText("Mode: coOp")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mock Win" }));
+
+    expect(screen.getByRole("heading", { name: "Map Cleared" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next Map" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next Map" }));
+
+    expect(screen.getByText("Mode: coOp")).toBeInTheDocument();
   });
 
   it("starts two-player deathmatch from the title screen", () => {
