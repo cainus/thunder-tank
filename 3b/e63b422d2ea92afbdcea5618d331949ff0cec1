@@ -1,0 +1,81 @@
+src/app-flow.ts
+  s_476c5157b02e52::t_8ab9fd5d44e8aa 43,57
+tests/app.test.tsx
+  s_476c5157b02e52::t_8d71df091bb8ba 6-12,14,32,40-55
+  s_facd46f4596630::t_4a0e2b0044f610 56-57
+src/game/types.ts
+  s_476c5157b02e52::t_f84f4b055ff52f 4
+tests/e2e/p1-smoke.spec.ts
+  s_476c5157b02e52::t_9e600cdd2996be 14
+src/game/maps.ts
+  s_facd46f4596630::t_005a504a89886d 1,102-719,724
+src/game/rules.ts
+  s_facd46f4596630::t_13633cffa50670 50-69
+CONTEXT.md
+  s_476c5157b02e52::t_4d75c6aabb95c2 22-25
+  s_476c5157b02e52::t_af49eba95bd00a 14-17
+  s_476c5157b02e52::t_0b13c877adf027 18-21
+  s_476c5157b02e52::t_2a253c8ad4b718 1-9
+  s_476c5157b02e52::t_bfc7aa61d8a58a 26,31-33
+  s_476c5157b02e52::t_a4e6d03e491a08 38-39,41-45
+  s_476c5157b02e52::t_4092bc6843cded 12
+  s_476c5157b02e52::t_ce3f47fe7dd77e 46-57
+  s_476c5157b02e52::t_0717c4daa37079 58-61
+  s_476c5157b02e52::t_748cae21ebb871 10-11,13
+  s_476c5157b02e52::t_3fb7d7b62ecfa7 34-37
+  s_476c5157b02e52::t_12b8d24119a900 27-30
+  s_476c5157b02e52::t_35d6283f73c202 40
+tests/app-flow.test.ts
+  s_476c5157b02e52::t_0bd947c321825d 73
+  s_476c5157b02e52::t_279b77b1a6f7fc 61-72,74-102
+src/game/CampaignScene.ts
+  s_facd46f4596630::t_7babc293a1bbc3 52
+  s_facd46f4596630::t_0e2b56abea0883 448-449,1137-1143,1146-1173,1333,1345
+  s_facd46f4596630::t_af9c9fb6683aeb 1329-1332
+  s_facd46f4596630::t_e056d41b9e387b 21,23
+  s_476c5157b02e52::t_ef1bd90afc8852 407-411,419-428,430-447,1343-1344
+  s_facd46f4596630::t_c2b8589093e98d 505,509-514
+  s_facd46f4596630::t_4201717e257759 562-584
+  s_facd46f4596630::t_bd73f8e4d26bba 736
+  s_facd46f4596630::t_c526c7d7a51475 429,461
+  s_facd46f4596630::t_356ca9e51f97cd 134-135
+  s_facd46f4596630::t_f4e889835cc10d 53-55,104-105,450,1136,1334,1346
+.gitignore
+  s_facd46f4596630::t_656fbf3927718e 8-10
+src/App.tsx
+  s_476c5157b02e52::t_706b6bac5218d2 139-145,209,258-260,375-378,387-395,411-414,419-422
+tests/setup.ts
+  s_4ea81993191f92::t_9c31f181b2e7b6 2-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "3be63b422d2ea92afbdcea5618d331949ff0cec1",
+  "prompts": {},
+  "sessions": {
+    "s_476c5157b02e52": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f15b1-0ef8-7d60-8c9d-ffc7cd9a907f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_4ea81993191f92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c52a31f-66d5-45c1-b282-8faff658be76",
+        "model": "unknown"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_facd46f4596630": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58dd9125-82b2-445a-a89a-a17f1ca5d165",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
