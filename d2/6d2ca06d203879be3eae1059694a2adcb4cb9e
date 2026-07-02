@@ -1,0 +1,21 @@
+src/game/CampaignScene.ts
+  s_d3ced1c2523749::t_ff33599c514da4 1411,1980,1983-1984,1988-1989,1995,1997-1998,2002-2003,2020,2023,2025-2026,2035-2037
+.zenflow/tasks/add-bullet-impact-effects-9147/plan.md
+  s_d3ced1c2523749::t_78ec8f0f4f4227 43-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "d26d2ca06d203879be3eae1059694a2adcb4cb9e",
+  "prompts": {},
+  "sessions": {
+    "s_d3ced1c2523749": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f248a-781e-7e30-915d-19a77b7f8933",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
