@@ -1,9 +1,12 @@
-node_modules
-dist
+node_modules/
+dist/
+build/
+.cache/
 coverage
 playwright-report
 test-results
 .DS_Store
+*.log
 *.tsbuildinfo
 
 # Local environment config
