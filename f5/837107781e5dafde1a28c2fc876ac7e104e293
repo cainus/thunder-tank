@@ -1,0 +1,21 @@
+.zenflow/tasks/add-bullet-impact-effects-9147/plan.md
+  s_9fff203dbfbb96::t_84d7f1784c222e 55-62
+src/game/CampaignScene.ts
+  s_9fff203dbfbb96::t_e222554756f200 79-80,132-136,191,216,344,1948-1971,2002-2013,2025-2028,2094-2107,2714
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "f5837107781e5dafde1a28c2fc876ac7e104e293",
+  "prompts": {},
+  "sessions": {
+    "s_9fff203dbfbb96": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f248f-5c5d-77e2-89f7-9a11a3d75219",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
