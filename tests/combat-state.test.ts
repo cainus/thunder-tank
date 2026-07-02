@@ -4,6 +4,7 @@ import {
   PLAYER_GUN_FREEZE_MS,
   PLAYER_GUN_HEAT_LIMIT,
   PLAYER_GUN_HEAT_WINDOW_MS,
+  getActiveBuffDisplays,
   getActiveBuffLabels,
   getGunFreezeSeconds,
   getRemainingHits,
@@ -40,6 +41,13 @@ describe("gun heat", () => {
 describe("player status", () => {
   it("lists active pickup buffs and omits expired ones", () => {
     expect(getActiveBuffLabels({ speedUntil: 500, rapidFireUntil: 50, shieldUntil: 700 }, 100)).toEqual(["Speed", "Shield"]);
+  });
+
+  it("returns active pickup metadata for icon-backed HUD rendering", () => {
+    expect(getActiveBuffDisplays({ speedUntil: 500, rapidFireUntil: 600, shieldUntil: 50 }, 100)).toEqual([
+      { key: "speed", label: "Speed" },
+      { key: "rapidFire", label: "Rapid Fire" },
+    ]);
   });
 
   it("rounds gun freeze time up for the HUD", () => {

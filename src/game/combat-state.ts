@@ -25,6 +25,11 @@ export interface PlayerStatus {
   now: number;
 }
 
+export interface ActiveBuffDisplay {
+  key: "speed" | "rapidFire" | "shield";
+  label: string;
+}
+
 export function isGunFrozen(state: GunHeatState, now: number): boolean {
   return state.frozenUntil > now;
 }
@@ -52,11 +57,15 @@ export function recordPlayerShot(state: GunHeatState, now: number): GunHeatState
 }
 
 export function getActiveBuffLabels(buffs: ActiveBuffs, now: number): string[] {
+  return getActiveBuffDisplays(buffs, now).map((buff) => buff.label);
+}
+
+export function getActiveBuffDisplays(buffs: ActiveBuffs, now: number): ActiveBuffDisplay[] {
   return [
-    buffs.speedUntil > now ? "Speed" : undefined,
-    buffs.rapidFireUntil > now ? "Rapid Fire" : undefined,
-    buffs.shieldUntil > now ? "Shield" : undefined,
-  ].filter((label): label is string => label !== undefined);
+    buffs.speedUntil > now ? { key: "speed", label: "Speed" } : undefined,
+    buffs.rapidFireUntil > now ? { key: "rapidFire", label: "Rapid Fire" } : undefined,
+    buffs.shieldUntil > now ? { key: "shield", label: "Shield" } : undefined,
+  ].filter((buff): buff is ActiveBuffDisplay => buff !== undefined);
 }
 
 export function getGunFreezeSeconds(status: PlayerStatus): number {

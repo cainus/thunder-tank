@@ -73,6 +73,7 @@ const CAMERA_SPAN_MARGIN_X = 560;
 const CAMERA_SPAN_MARGIN_Y = 420;
 const PICKUP_BARREL_SCALE = 0.95;
 const PICKUP_ICON_SCALE = 0.22;
+const PICKUP_GLOW_ALPHA = 0.22;
 const MOTOR_BASE_VOLUME = 0.2;
 const MOTOR_MIN_VOLUME = 0.015;
 const MOTOR_AUDIBLE_RANGE = 950;
@@ -114,6 +115,7 @@ interface PickupSprite extends Phaser.Physics.Arcade.Image {
   respawnAt: number;
   baseY: number;
   floatPhase: number;
+  glow?: Phaser.GameObjects.Arc;
 }
 
 interface TreadMark {
@@ -432,6 +434,15 @@ export class CampaignScene extends Phaser.Scene {
     pickup.respawnAt = 0;
     pickup.baseY = config.y;
     pickup.floatPhase = Math.random() * Math.PI * 2;
+    pickup.glow = this.add.circle(
+      config.x,
+      config.y,
+      config.type === "rapidFire" ? 28 : 24,
+      getPickupTint(config.type),
+      PICKUP_GLOW_ALPHA,
+    );
+    pickup.glow.setDepth(TANK_DEPTH + 2);
+    pickup.glow.setBlendMode(Phaser.BlendModes.ADD);
     pickup.setDepth(TANK_DEPTH + 3);
     pickup.setScale(this.getPickupScale(config.type));
     pickup.setAlpha(0.92);
@@ -1367,6 +1378,7 @@ export class CampaignScene extends Phaser.Scene {
 
     tank.buffs = applyPickupBuff(tank.buffs, pickup.pickupType, this.time.now);
     pickup.disableBody(true, true);
+    pickup.glow?.setVisible(false);
     pickup.respawnAt = this.time.now + PICKUP_RESPAWN_MS;
     if (tank.side === "player") {
       this.publishPlayerStatus(this.time.now);
@@ -2140,6 +2152,7 @@ export class CampaignScene extends Phaser.Scene {
       if (!pickup.active && pickup.respawnAt > 0 && time >= pickup.respawnAt) {
         pickup.enableBody(false, pickup.x, pickup.baseY, true, true);
         pickup.respawnAt = 0;
+        pickup.glow?.setVisible(true);
       }
     }
   }
@@ -2155,6 +2168,9 @@ export class CampaignScene extends Phaser.Scene {
       pickup.y = pickup.baseY + pulse * 7;
       pickup.setAlpha(0.82 + (pulse + 1) * 0.08);
       pickup.setScale(baseScale + (pulse + 1) * baseScale * 0.08);
+      pickup.glow?.setPosition(pickup.x, pickup.y);
+      pickup.glow?.setAlpha(PICKUP_GLOW_ALPHA + (pulse + 1) * 0.09);
+      pickup.glow?.setScale(1 + (pulse + 1) * 0.08);
     }
   }
 

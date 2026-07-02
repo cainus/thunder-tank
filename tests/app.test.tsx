@@ -49,6 +49,21 @@ vi.mock("../src/game/GameCanvas", () => ({
         >
           Mock Shielded Status
         </button>
+        <button
+          type="button"
+          onClick={() =>
+            onPlayerStatusChanged({
+              alive: true,
+              buffs: { speedUntil: 1_000, rapidFireUntil: 0, shieldUntil: 2_000 },
+              health: 1,
+              maxHealth: 1,
+              gunFrozenUntil: 0,
+              now: 100,
+            })
+          }
+        >
+          Mock Powerups
+        </button>
         <button type="button" onClick={() => onMapEnded("won")}>
           Mock Win
         </button>
@@ -176,5 +191,17 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Explosion Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Motor Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level Editor" })).toBeInTheDocument();
+  });
+
+  it("shows active power-up names in the HUD as labeled chips", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start Campaign" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mock Powerups" }));
+
+    expect(screen.getByLabelText("Active power-ups")).toBeInTheDocument();
+    expect(screen.getByText("Speed")).toBeInTheDocument();
+    expect(screen.getByText("Shield")).toBeInTheDocument();
+    expect(screen.queryByText("Rapid Fire")).not.toBeInTheDocument();
   });
 });

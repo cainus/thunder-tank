@@ -11,7 +11,8 @@ import {
 } from "./app-flow";
 import { GamepadRecorder } from "./GamepadRecorder";
 import { GamepadSetup } from "./GamepadSetup";
-import { EMPTY_GUN_HEAT, getActiveBuffLabels, getGunFreezeSeconds, getRemainingHits, type PlayerStatus } from "./game/combat-state";
+import { EMPTY_GUN_HEAT, getActiveBuffDisplays, getGunFreezeSeconds, getRemainingHits, type PlayerStatus } from "./game/combat-state";
+import { ASSETS } from "./game/assets";
 import { GameCanvas } from "./game/GameCanvas";
 import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./game/maps";
 import type { CampaignMap, MatchMode, MatchOutcome, ScoreState } from "./game/types";
@@ -31,6 +32,12 @@ const INITIAL_PLAYER_STATUS: PlayerStatus = {
   now: 0,
 };
 
+const POWERUP_ICON_BY_KEY = {
+  speed: ASSETS.pickupSpeed,
+  rapidFire: ASSETS.pickupRapidFire,
+  shield: ASSETS.pickupShield,
+} as const;
+
 export function App() {
   const [flow, setFlow] = useState<FlowState>(INITIAL_FLOW_STATE);
   const [score, setScore] = useState<ScoreState>(INITIAL_SCORE);
@@ -48,7 +55,7 @@ export function App() {
   const activeMaps = isCaptureTheFlagMode(matchMode) ? CAPTURE_THE_FLAG_MAPS : CAMPAIGN_MAPS;
   const currentMap = customMap ?? activeMaps[mapIndex] ?? activeMaps[0];
   const cta = useMemo(() => getCta(mode, mapIndex, matchMode), [mode, mapIndex, matchMode]);
-  const activeBuffLabels = getActiveBuffLabels(playerStatus.buffs, playerStatus.now);
+  const activeBuffs = getActiveBuffDisplays(playerStatus.buffs, playerStatus.now);
   const gunFreezeSeconds = getGunFreezeSeconds(playerStatus);
   const remainingHits = getRemainingHits(playerStatus);
 
@@ -241,7 +248,18 @@ export function App() {
         </div>
         <div className="hud-powerups">
           <span className="hud-label">Powerups</span>
-          <strong>{activeBuffLabels.length > 0 ? activeBuffLabels.join(" + ") : "None"}</strong>
+          {activeBuffs.length > 0 ? (
+            <div className="hud-powerup-list" aria-label="Active power-ups">
+              {activeBuffs.map((buff) => (
+                <span key={buff.key} className="hud-powerup-chip">
+                  <img className="hud-powerup-icon" src={POWERUP_ICON_BY_KEY[buff.key]} alt="" aria-hidden="true" />
+                  <strong>{buff.label}</strong>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <strong>None</strong>
+          )}
         </div>
         <div className={gunFreezeSeconds > 0 ? "hud-warning" : undefined}>
           <span className="hud-label">Gun</span>

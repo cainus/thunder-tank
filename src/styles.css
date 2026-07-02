@@ -108,6 +108,42 @@ button:disabled {
   margin-top: 2px;
 }
 
+.hud-powerups {
+  min-width: 180px;
+}
+
+.hud-powerup-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.hud-powerup-chip {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px 8px 4px 6px;
+}
+
+.hud-powerup-chip strong {
+  font-size: 0.9rem;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.hud-powerup-icon {
+  display: block;
+  filter: drop-shadow(0 0 8px rgba(244, 226, 163, 0.45));
+  flex: 0 0 auto;
+  height: 18px;
+  object-fit: contain;
+  width: 18px;
+}
+
 .menu-panel,
 .setup-panel,
 .recorder-panel,
