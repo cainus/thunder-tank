@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { CAMPAIGN_MAPS } from "../src/game/maps";
 import { ENEMY_HEALTH, ENEMY_STATS, PLAYER_BASE_STATS, applyPickupBuff, getEffectiveStats, getMatchOutcome, hasShield } from "../src/game/rules";
 
+const PICKUP_OBSTACLE_CLEARANCE = 24;
+
+function getObstacleRadius(kind: "crate" | "barrel" | "barricade" | "sandbag"): number {
+  if (kind === "barricade") {
+    return 110;
+  }
+
+  if (kind === "sandbag") {
+    return 82;
+  }
+
+  return 74;
+}
+
 describe("campaign maps", () => {
   it("ships a twenty-map 1P campaign", () => {
     expect(CAMPAIGN_MAPS).toHaveLength(20);
@@ -61,6 +75,20 @@ describe("campaign maps", () => {
 
       expect(pickups).toEqual(new Set(["speed", "rapidFire", "shield"]));
       expect(playerDx * enemyDx + playerDy * enemyDy).toBeLessThanOrEqual(0);
+    }
+  });
+
+  it("keeps every pickup clear of obstacle footprints", () => {
+    for (const map of CAMPAIGN_MAPS) {
+      for (const pickup of map.pickups) {
+        for (const obstacle of map.obstacles) {
+          const clearance = Math.hypot(pickup.x - obstacle.x, pickup.y - obstacle.y) - getObstacleRadius(obstacle.kind);
+          expect(
+            clearance,
+            `${map.name} ${pickup.type} pickup overlaps the ${obstacle.kind} at (${obstacle.x}, ${obstacle.y})`,
+          ).toBeGreaterThanOrEqual(PICKUP_OBSTACLE_CLEARANCE);
+        }
+      }
     }
   });
 });

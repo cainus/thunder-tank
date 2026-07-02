@@ -14,7 +14,7 @@ const BASE_CAMPAIGN_MAPS: CampaignMap[] = [
     ],
     pickups: [
       { x: 880, y: 330, type: "speed" },
-      { x: 880, y: 600, type: "rapidFire" },
+      { x: 880, y: 500, type: "rapidFire" },
       { x: 910, y: 860, type: "shield" },
     ],
     obstacles: [
@@ -42,9 +42,9 @@ const BASE_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 1840, y: 1180, archetype: "light" },
     ],
     pickups: [
-      { x: 900, y: 260, type: "rapidFire" },
-      { x: 1180, y: 760, type: "shield" },
-      { x: 900, y: 1240, type: "speed" },
+      { x: 880, y: 200, type: "rapidFire" },
+      { x: 1200, y: 760, type: "shield" },
+      { x: 880, y: 1300, type: "speed" },
     ],
     obstacles: [
       { x: 660, y: 330, kind: "barricade" },
@@ -75,7 +75,7 @@ const BASE_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 1840, y: 1020, archetype: "standard" },
     ],
     pickups: [
-      { x: 960, y: 360, type: "rapidFire" },
+      { x: 960, y: 320, type: "rapidFire" },
       { x: 1220, y: 1360, type: "speed" },
       { x: 1550, y: 850, type: "shield" },
       { x: 1980, y: 520, type: "rapidFire" },
@@ -119,7 +119,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
     pickups: [
       { x: 820, y: 700, type: "speed" },
       { x: 1100, y: 540, type: "rapidFire" },
-      { x: 1080, y: 880, type: "shield" },
+      { x: 1120, y: 840, type: "shield" },
     ],
     obstacles: [
       { x: 640, y: 420, kind: "barrel" },
@@ -211,7 +211,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 1860, y: 1020, archetype: "heavy" },
     ],
     pickups: [
-      { x: 820, y: 750, type: "speed" },
+      { x: 860, y: 750, type: "speed" },
       { x: 1140, y: 540, type: "rapidFire" },
       { x: 1140, y: 960, type: "shield" },
     ],
@@ -346,7 +346,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
     ],
     pickups: [
       { x: 840, y: 825, type: "speed" },
-      { x: 1140, y: 500, type: "rapidFire" },
+      { x: 1120, y: 480, type: "rapidFire" },
       { x: 1300, y: 1080, type: "shield" },
     ],
     obstacles: [
@@ -385,7 +385,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 2240, y: 900, archetype: "light" },
     ],
     pickups: [
-      { x: 840, y: 850, type: "speed" },
+      { x: 780, y: 810, type: "speed" },
       { x: 1100, y: 520, type: "rapidFire" },
       { x: 1100, y: 1180, type: "shield" },
     ],
@@ -425,9 +425,9 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 2320, y: 900, archetype: "heavy" },
     ],
     pickups: [
-      { x: 840, y: 875, type: "speed" },
-      { x: 1150, y: 600, type: "rapidFire" },
-      { x: 1150, y: 1150, type: "shield" },
+      { x: 880, y: 835, type: "speed" },
+      { x: 1110, y: 560, type: "rapidFire" },
+      { x: 1110, y: 1190, type: "shield" },
     ],
     obstacles: [
       { x: 800, y: 450, kind: "barrel" },
@@ -463,7 +463,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 2400, y: 1040, archetype: "heavy" },
     ],
     pickups: [
-      { x: 860, y: 900, type: "speed" },
+      { x: 940, y: 860, type: "speed" },
       { x: 1450, y: 900, type: "rapidFire" },
       { x: 1250, y: 650, type: "shield" },
     ],
@@ -495,7 +495,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 2380, y: 900, archetype: "boss" },
     ],
     pickups: [
-      { x: 860, y: 900, type: "speed" },
+      { x: 800, y: 900, type: "speed" },
       { x: 1300, y: 700, type: "rapidFire" },
       { x: 1300, y: 1100, type: "shield" },
     ],
@@ -532,8 +532,8 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 2500, y: 1040, archetype: "light" },
     ],
     pickups: [
-      { x: 860, y: 925, type: "speed" },
-      { x: 1200, y: 560, type: "rapidFire" },
+      { x: 900, y: 965, type: "speed" },
+      { x: 1160, y: 520, type: "rapidFire" },
       { x: 1200, y: 1290, type: "shield" },
     ],
     obstacles: [
@@ -614,7 +614,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 2740, y: 700, archetype: "standard" },
     ],
     pickups: [
-      { x: 880, y: 1000, type: "speed" },
+      { x: 920, y: 1000, type: "speed" },
       { x: 1300, y: 760, type: "rapidFire" },
       { x: 1300, y: 1240, type: "shield" },
     ],
@@ -692,7 +692,7 @@ const AUTHORED_CAMPAIGN_MAPS: CampaignMap[] = [
       { x: 3060, y: 1200, archetype: "boss" },
     ],
     pickups: [
-      { x: 920, y: 1200, type: "speed" },
+      { x: 900, y: 1200, type: "speed" },
       { x: 1600, y: 820, type: "rapidFire" },
       { x: 1600, y: 1580, type: "shield" },
     ],
