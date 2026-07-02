@@ -1,6 +1,9 @@
 node_modules
 dist
 coverage
+*.log
+.cache
+build
 playwright-report
 test-results
 .DS_Store

@@ -660,7 +660,7 @@ export class CampaignScene extends Phaser.Scene {
       maxRange: this.getBulletMaxRange(),
     } satisfies BulletData);
     bullet.setScale(1.2);
-    bullet.setRotation(tank.aimAngle);
+    bullet.setRotation(tank.aimAngle + Math.PI / 2);
     bullet.body!.enable = true;
     bullet.body!.setCircle(10);
     bullet.setVelocity(Math.cos(tank.aimAngle) * speed, Math.sin(tank.aimAngle) * speed);
