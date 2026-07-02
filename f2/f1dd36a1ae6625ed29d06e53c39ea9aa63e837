@@ -1,0 +1,37 @@
+.gitignore
+  s_1a1201067980ba::t_1f04617abe7d08 6,8
+src/game/combat-state.ts
+  s_1a1201067980ba::t_1f04617abe7d08 20,22-23,65-71
+  s_1a1201067980ba::t_5f9aff2fd8731d 72
+.zenflow/tasks/show-how-many-hits-i-have-remain-5c2b/plan.md
+  s_1a1201067980ba::t_1f04617abe7d08 1-5,7-8,10-36
+  s_1a1201067980ba::t_fcb9b1818fe615 6,9
+tests/combat-state.test.ts
+  s_1a1201067980ba::t_1f04617abe7d08 9,46-81
+tests/app.test.tsx
+  s_1a1201067980ba::t_1f04617abe7d08 2,9,13-20,22-60,107-110,114-116
+  s_1a1201067980ba::t_b2ec01012a37fa 111-113,117-118
+  s_1a1201067980ba::t_2fc6a20a3a6a53 119-120
+src/App.tsx
+  s_1a1201067980ba::t_1f04617abe7d08 14,25,27-28,51,222-224
+  s_1a1201067980ba::t_6447f3286b564b 225
+src/game/CampaignScene.ts
+  s_1a1201067980ba::t_b2ec01012a37fa 1201-1203
+  s_1a1201067980ba::t_1f04617abe7d08 1216,1218-1219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "f2f1dd36a1ae6625ed29d06e53c39ea9aa63e837",
+  "prompts": {},
+  "sessions": {
+    "s_1a1201067980ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2462-4275-7b01-857c-5918928cb988",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
