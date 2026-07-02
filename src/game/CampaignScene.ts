@@ -76,6 +76,12 @@ const MOTOR_AUDIBLE_RANGE = 950;
 const MOTOR_MOVING_SPEED = 8;
 const TREAD_MARK_DEPTH = 1;
 const TREAD_MARK_REAR_OFFSET = 22;
+const DUST_PUFF_DEPTH = 19;
+const DUST_SPAWN_INTERVAL_MS = 85;
+const DUST_REAR_OFFSET = 26;
+const DUST_LATERAL_OFFSET = 13;
+const DUST_MIN_SCALE = 0.34;
+const DUST_MAX_SCALE = 0.72;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
 const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
@@ -331,6 +337,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updateBulletHits();
     this.updatePickupCollection();
     this.updatePickupVisuals(time);
+    this.updateDustTrails(time);
     this.updateTreadMarks(time);
     this.updateTankVisuals();
     this.updateCaptureTheFlag(time);
@@ -505,6 +512,7 @@ export class CampaignScene extends Phaser.Scene {
       aimAngle: side === "player" ? -Math.PI / 2 : side === "playerTwo" ? Math.PI / 2 : 0,
       moveAngle: undefined,
       nextMoveDecisionAt: 0,
+      lastDustAt: undefined,
       lastTreadMarkPosition: undefined,
       buffs: { ...EMPTY_BUFFS },
     };
@@ -1479,6 +1487,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.hull.disableBody(true, true);
     tank.turret.setVisible(false);
     tank.frontMarker?.setVisible(false);
+    tank.lastDustAt = undefined;
     tank.lastTreadMarkPosition = undefined;
     tank.buffs = { ...EMPTY_BUFFS };
 
@@ -1516,6 +1525,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.hull.enableBody(true, spawn.x, spawn.y, true, true);
     tank.turret.setVisible(true);
     tank.frontMarker?.setVisible(true);
+    tank.lastDustAt = undefined;
     tank.lastFiredAt = this.time.now;
     tank.lastTreadMarkPosition = undefined;
     tank.hull.setVelocity(0, 0);
@@ -1875,6 +1885,75 @@ export class CampaignScene extends Phaser.Scene {
     }
   }
 
+  private updateDustTrails(time: number): void {
+    for (const tank of this.getAllTanks()) {
+      if (!tank.alive || !this.isTankMoving(tank)) {
+        tank.lastDustAt = undefined;
+        continue;
+      }
+
+      if (tank.lastDustAt !== undefined && time - tank.lastDustAt < DUST_SPAWN_INTERVAL_MS) {
+        continue;
+      }
+
+      this.addDustTrail(tank);
+      tank.lastDustAt = time;
+    }
+  }
+
+  private addDustTrail(tank: TankRuntime): void {
+    const body = tank.hull.body as Phaser.Physics.Arcade.Body | undefined;
+
+    if (!body) {
+      return;
+    }
+
+    const velocity = body.velocity.clone();
+
+    if (velocity.lengthSq() <= MOTOR_MOVING_SPEED * MOTOR_MOVING_SPEED) {
+      return;
+    }
+
+    velocity.normalize();
+    const scaleMultiplier = this.getTankScaleMultiplier(tank);
+    const rearOffset = DUST_REAR_OFFSET * scaleMultiplier;
+    const lateralOffset = DUST_LATERAL_OFFSET * scaleMultiplier;
+    const baseX = tank.hull.x - velocity.x * rearOffset;
+    const baseY = tank.hull.y - velocity.y * rearOffset;
+    const sideX = -velocity.y * lateralOffset;
+    const sideY = velocity.x * lateralOffset;
+
+    this.addDustPuff(baseX + sideX, baseY + sideY, scaleMultiplier, velocity);
+    this.addDustPuff(baseX - sideX, baseY - sideY, scaleMultiplier, velocity);
+  }
+
+  private addDustPuff(x: number, y: number, scaleMultiplier: number, velocity: Phaser.Math.Vector2): void {
+    const dust = this.add.image(
+      x + Phaser.Math.FloatBetween(-4, 4) * scaleMultiplier,
+      y + Phaser.Math.FloatBetween(-4, 4) * scaleMultiplier,
+      "dustPuff",
+    );
+    const driftDistance = Phaser.Math.FloatBetween(16, 28) * scaleMultiplier;
+    const driftX = -velocity.x * driftDistance + Phaser.Math.FloatBetween(-6, 6) * scaleMultiplier;
+    const driftY = -velocity.y * driftDistance + Phaser.Math.FloatBetween(-6, 6) * scaleMultiplier;
+    const startScale = Phaser.Math.FloatBetween(DUST_MIN_SCALE, DUST_MAX_SCALE) * scaleMultiplier;
+
+    dust.setDepth(DUST_PUFF_DEPTH);
+    dust.setTint(0xcfbf92);
+    dust.setAlpha(Phaser.Math.FloatBetween(0.18, 0.28));
+    dust.setScale(startScale);
+    this.tweens.add({
+      targets: dust,
+      x: dust.x + driftX,
+      y: dust.y + driftY,
+      alpha: 0,
+      scale: startScale * Phaser.Math.FloatBetween(1.7, 2.3),
+      duration: Phaser.Math.Between(240, 360),
+      ease: "Quad.Out",
+      onComplete: () => dust.destroy(),
+    });
+  }
+
   private getTreadMarkPosition(tank: TankRuntime): Vec2 {
     const forwardAngle = tank.hull.rotation - Math.PI / 2;
     const rearOffset = TREAD_MARK_REAR_OFFSET * this.getTankScaleMultiplier(tank);
@@ -1936,6 +2015,16 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private createImpactTextures(): void {
+    if (!this.textures.exists("dustPuff")) {
+      const dust = this.add.graphics();
+      dust.setVisible(false);
+      dust.fillStyle(0xffffff, 1);
+      dust.fillCircle(18, 18, 14);
+      dust.generateTexture("dustPuff", 36, 36);
+      dust.destroy();
+      this.textures.get("dustPuff").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
     if (!this.textures.exists("impactFlash")) {
       const flash = this.add.graphics();
       flash.setVisible(false);
