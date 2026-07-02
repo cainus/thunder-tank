@@ -38,3 +38,6 @@ Added a repo-local skill at `./.codex/skills/shipit/SKILL.md` that performs a re
 ### [x] Step: Ship current changes to main
 Pushed the current task branch head to `origin/main` as a fast-forward, updating `main` from `3be63b4` to `83fe892`.
 
+### [x] Step: Extend shipit cleanup
+Updated `./.codex/skills/shipit/SKILL.md` so `/shipit` also cleans up the task worktree and branch after a successful push when it is safe to do so.
+

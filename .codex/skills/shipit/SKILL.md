@@ -24,9 +24,11 @@ Use this skill to actually ship the current local work to `main`.
    - Stage the intended files.
    - Create the commit with the confirmed message.
    - Push to the `main` branch.
+   - After a successful push, remove the current task worktree and delete its branch if they are safe to remove.
 
 4. Report the result clearly.
    - Share the commit hash and branch pushed.
+   - Mention whether the worktree and branch were deleted.
    - Mention any files intentionally left out.
    - If push fails, explain the error and the next corrective step.
 
@@ -36,4 +38,7 @@ Use this skill to actually ship the current local work to `main`.
 - Do not assume every changed file should be included; summarize the scope first.
 - If the current branch is not `main`, tell the user and ask whether they want to merge/cherry-pick or push directly to `main`.
 - If there are no changes, say so and stop.
+- Only delete the worktree and branch after a successful push to `main`.
+- Only delete the branch if it is not `main` and is not needed by another checked-out worktree.
+- If deleting the current worktree from inside itself is awkward, explain that cleanup must be run from another worktree or shell and provide the exact commands.
 - If there are conflicts, failed hooks, or rejected pushes, do not hide them; report them and ask how to proceed.
