@@ -80,6 +80,14 @@ interface BulletData {
   maxRange: number;
 }
 
+type ImpactKind = "obstacle" | "tank" | "shield";
+
+interface ImpactEffectOptions {
+  angle?: number;
+  kind?: ImpactKind;
+  scale?: number;
+}
+
 interface PickupSprite extends Phaser.Physics.Arcade.Image {
   pickupType: PickupConfig["type"];
   respawnAt: number;
@@ -166,6 +174,7 @@ export class CampaignScene extends Phaser.Scene {
 
   create(): void {
     this.setTextureFilters();
+    this.createImpactTextures();
     this.physics.world.setBounds(0, 0, this.map.width, this.map.height);
     this.cameras.main.setBounds(0, 0, this.map.width, this.map.height);
     this.cameras.main.setBackgroundColor("#293529");
@@ -197,7 +206,10 @@ export class CampaignScene extends Phaser.Scene {
     this.physics.add.collider(humanHulls, enemyHulls);
     this.physics.add.collider(tankHulls, tankHulls);
     this.physics.add.collider(this.bullets, this.obstacles, (bullet) =>
-      this.destroyBullet(bullet as Phaser.GameObjects.GameObject),
+      this.destroyBullet(bullet as Phaser.GameObjects.GameObject, {
+        angle: this.getBulletTravelAngleFromObject(bullet as Phaser.GameObjects.GameObject),
+        kind: "obstacle",
+      }),
     );
     this.physics.add.overlap(this.bullets, humanHulls, (bullet, hull) =>
       this.handleBulletHit(bullet as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
@@ -682,7 +694,11 @@ export class CampaignScene extends Phaser.Scene {
       return;
     }
 
-    this.destroyBullet(bullet);
+    this.destroyBullet(bullet, {
+      angle: this.getBulletTravelAngle(bullet),
+      kind: hasShield(tank.buffs, this.time.now) ? "shield" : "tank",
+      scale: tank.archetype === "boss" ? 1.18 : tank.archetype === "heavy" ? 1.02 : 0.92,
+    });
     this.damageTank(tank, data.owner);
   }
 
@@ -709,7 +725,11 @@ export class CampaignScene extends Phaser.Scene {
         const distance = Phaser.Math.Distance.Between(bullet.x, bullet.y, tank.hull.x, tank.hull.y);
 
         if (distance <= hitRadius) {
-          this.destroyBullet(bullet);
+          this.destroyBullet(bullet, {
+            angle: this.getBulletTravelAngle(bullet),
+            kind: hasShield(tank.buffs, this.time.now) ? "shield" : "tank",
+            scale: tank.archetype === "boss" ? 1.18 : tank.archetype === "heavy" ? 1.02 : 0.92,
+          });
           this.damageTank(tank, data.owner);
           break;
         }
@@ -768,10 +788,28 @@ export class CampaignScene extends Phaser.Scene {
 
   private destroyBullet(
     bulletObject: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.GameObjects.GameObject,
+    impact: ImpactEffectOptions = {},
   ): void {
     const bullet = this.resolveGameObject(bulletObject) as Phaser.Physics.Arcade.Image;
+    this.addBulletImpact(bullet.x, bullet.y, impact);
     this.addExplosion(bullet.x, bullet.y, 0.45);
     bullet.disableBody(true, true);
+  }
+
+  private getBulletTravelAngle(bullet: Phaser.Physics.Arcade.Image): number {
+    const body = bullet.body as Phaser.Physics.Arcade.Body | undefined;
+
+    if (body && (body.velocity.x !== 0 || body.velocity.y !== 0)) {
+      return Math.atan2(body.velocity.y, body.velocity.x);
+    }
+
+    return bullet.rotation - Math.PI / 2;
+  }
+
+  private getBulletTravelAngleFromObject(
+    bulletObject: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.GameObjects.GameObject,
+  ): number {
+    return this.getBulletTravelAngle(this.resolveGameObject(bulletObject) as Phaser.Physics.Arcade.Image);
   }
 
   private resolveGameObject(
@@ -1104,6 +1142,110 @@ export class CampaignScene extends Phaser.Scene {
       duration: 260,
       onComplete: () => boom.destroy(),
     });
+  }
+
+  private createImpactTextures(): void {
+    if (!this.textures.exists("impactFlash")) {
+      const flash = this.add.graphics();
+      flash.setVisible(false);
+      flash.fillStyle(0xffffff, 1);
+      flash.fillCircle(18, 18, 14);
+      flash.generateTexture("impactFlash", 36, 36);
+      flash.destroy();
+      this.textures.get("impactFlash").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
+    if (!this.textures.exists("impactSpark")) {
+      const spark = this.add.graphics();
+      spark.setVisible(false);
+      spark.fillStyle(0xffffff, 1);
+      spark.fillRoundedRect(0, 0, 28, 6, 3);
+      spark.generateTexture("impactSpark", 28, 6);
+      spark.destroy();
+      this.textures.get("impactSpark").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
+    if (!this.textures.exists("impactRing")) {
+      const ring = this.add.graphics();
+      ring.setVisible(false);
+      ring.lineStyle(4, 0xffffff, 1);
+      ring.strokeCircle(18, 18, 14);
+      ring.generateTexture("impactRing", 36, 36);
+      ring.destroy();
+      this.textures.get("impactRing").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+  }
+
+  private addBulletImpact(x: number, y: number, options: ImpactEffectOptions): void {
+    const angle = options.angle ?? 0;
+    const kind = options.kind ?? "obstacle";
+    const scale = options.scale ?? 1;
+    const flashTint = kind === "shield" ? 0x8df7ff : kind === "tank" ? 0xffd37a : 0xfff1bd;
+    const sparkTint = kind === "shield" ? 0x8fe6ff : kind === "tank" ? 0xff9f6e : 0xf7efd4;
+    const ringTint = kind === "shield" ? 0x8df7ff : kind === "tank" ? 0xffc36b : 0xd9cfaa;
+    const direction = Phaser.Math.Angle.Wrap(angle + Math.PI);
+
+    const flash = this.add.image(x, y, "impactFlash");
+    flash.setDepth(39);
+    flash.setTint(flashTint);
+    flash.setBlendMode(Phaser.BlendModes.ADD);
+    flash.setScale(0.18 * scale);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 0.85 * scale,
+      duration: 100,
+      ease: "Cubic.Out",
+      onComplete: () => flash.destroy(),
+    });
+
+    const ring = this.add.image(x, y, "impactRing");
+    ring.setDepth(38);
+    ring.setTint(ringTint);
+    ring.setAlpha(kind === "shield" ? 0.9 : 0.65);
+    ring.setScale(0.22 * scale);
+    this.tweens.add({
+      targets: ring,
+      alpha: 0,
+      scale: 1.1 * scale,
+      duration: kind === "shield" ? 170 : 140,
+      ease: "Quad.Out",
+      onComplete: () => ring.destroy(),
+    });
+
+    const sparkCount = kind === "shield" ? 8 : 6;
+    for (let index = 0; index < sparkCount; index += 1) {
+      const spread = kind === "shield" ? Math.PI * 0.9 : Math.PI * 0.72;
+      const baseAngle =
+        kind === "shield"
+          ? angle + Phaser.Math.FloatBetween(-Math.PI, Math.PI)
+          : direction + Phaser.Math.FloatBetween(-spread / 2, spread / 2);
+      const distance = Phaser.Math.Between(
+        Math.round(16 * scale),
+        Math.round((kind === "shield" ? 42 : 34) * scale),
+      );
+      const spark = this.add.image(x, y, "impactSpark");
+      spark.setDepth(39);
+      spark.setTint(sparkTint);
+      spark.setRotation(baseAngle);
+      spark.setScale(
+        Phaser.Math.FloatBetween(0.45, 0.82) * scale,
+        Phaser.Math.FloatBetween(0.5, 0.95) * scale,
+      );
+      spark.setBlendMode(kind === "shield" ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
+
+      this.tweens.add({
+        targets: spark,
+        x: x + Math.cos(baseAngle) * distance,
+        y: y + Math.sin(baseAngle) * distance,
+        alpha: 0,
+        scaleX: 0.2 * scale,
+        scaleY: 0.14 * scale,
+        duration: Phaser.Math.Between(80, 150),
+        ease: "Cubic.Out",
+        onComplete: () => spark.destroy(),
+      });
+    }
   }
 
   private updateTankVisuals(): void {
