@@ -357,10 +357,57 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private addArena(): void {
-    const tile = this.add.tileSprite(0, 0, this.map.width, this.map.height, "crate");
-    tile.setOrigin(0);
-    tile.setAlpha(0.06);
-    tile.setDepth(-10);
+    const graphics = this.add.graphics();
+    graphics.setDepth(-12);
+
+    graphics.fillStyle(0x596166, 1);
+    graphics.fillRect(0, 0, this.map.width, this.map.height);
+
+    const roadInsetX = Math.max(180, Math.round(this.map.width * 0.2));
+    const roadInsetY = Math.max(180, Math.round(this.map.height * 0.2));
+    const roadWidth = this.map.width - roadInsetX * 2;
+    const roadHeight = this.map.height - roadInsetY * 2;
+
+    graphics.fillStyle(0x2d3136, 1);
+    graphics.fillRect(roadInsetX, roadInsetY, roadWidth, roadHeight);
+
+    graphics.fillStyle(0x72787d, 1);
+    graphics.fillRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, 34);
+    graphics.fillRect(roadInsetX - 34, roadInsetY + roadHeight, roadWidth + 68, 34);
+    graphics.fillRect(roadInsetX - 34, roadInsetY, 34, roadHeight);
+    graphics.fillRect(roadInsetX + roadWidth, roadInsetY, 34, roadHeight);
+
+    graphics.lineStyle(6, 0xc7cbd0, 0.9);
+    graphics.strokeRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, roadHeight + 68);
+
+    graphics.lineStyle(8, 0xf0df85, 0.85);
+    const laneDash = 90;
+    const laneGap = 62;
+    const horizontalLaneY = this.map.height / 2;
+    for (let x = roadInsetX + 40; x < roadInsetX + roadWidth - 40; x += laneDash + laneGap) {
+      graphics.lineBetween(x, horizontalLaneY, Math.min(x + laneDash, roadInsetX + roadWidth - 40), horizontalLaneY);
+    }
+
+    const verticalLaneX = this.map.width / 2;
+    for (let y = roadInsetY + 40; y < roadInsetY + roadHeight - 40; y += laneDash + laneGap) {
+      graphics.lineBetween(verticalLaneX, y, verticalLaneX, Math.min(y + laneDash, roadInsetY + roadHeight - 40));
+    }
+
+    const crosswalkWidth = 96;
+    const crosswalkBar = 18;
+    const crosswalkGap = 14;
+    graphics.fillStyle(0xe7e8ea, 0.9);
+    for (let offset = -4; offset <= 4; offset += 1) {
+      const shift = offset * (crosswalkBar + crosswalkGap);
+      graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY - 30 + shift, crosswalkWidth, crosswalkBar);
+      graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY + roadHeight + 12 + shift, crosswalkWidth, crosswalkBar);
+      graphics.fillRect(roadInsetX - 30 + shift, this.map.height / 2 - crosswalkWidth / 2, crosswalkBar, crosswalkWidth);
+      graphics.fillRect(roadInsetX + roadWidth + 12 + shift, this.map.height / 2 - crosswalkWidth / 2, crosswalkBar, crosswalkWidth);
+    }
+
+    this.addUrbanBuildings(roadInsetX, roadInsetY, roadWidth, roadHeight);
+    this.addUrbanTrees(roadInsetX, roadInsetY, roadWidth, roadHeight);
+    this.addParkedCars(roadInsetX, roadInsetY, roadWidth, roadHeight);
 
     const border = this.add.rectangle(
       this.map.width / 2,
@@ -370,8 +417,98 @@ export class CampaignScene extends Phaser.Scene {
       0x000000,
       0,
     );
-    border.setStrokeStyle(8, 0x84946f, 0.85);
+    border.setStrokeStyle(8, 0x9ba2a8, 0.9);
     border.setDepth(-5);
+  }
+
+  private addUrbanBuildings(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
+    const buildingConfigs = [
+      { x: 110, y: 120, width: roadInsetX - 180, height: roadInsetY - 170, color: 0x8b775f },
+      { x: this.map.width - roadInsetX + 60, y: 120, width: roadInsetX - 180, height: roadInsetY - 170, color: 0x6e7b86 },
+      { x: 110, y: this.map.height - roadInsetY + 60, width: roadInsetX - 180, height: roadInsetY - 170, color: 0x7b6f82 },
+      {
+        x: this.map.width - roadInsetX + 60,
+        y: this.map.height - roadInsetY + 60,
+        width: roadInsetX - 180,
+        height: roadInsetY - 170,
+        color: 0x7f6958,
+      },
+    ].filter((building) => building.width > 40 && building.height > 40);
+
+    for (const building of buildingConfigs) {
+      const block = this.add.rectangle(
+        building.x + building.width / 2,
+        building.y + building.height / 2,
+        building.width,
+        building.height,
+        building.color,
+        0.98,
+      );
+      block.setStrokeStyle(4, 0x2b2f33, 0.55).setDepth(-11);
+
+      const windowColumns = Math.max(2, Math.floor(building.width / 70));
+      const windowRows = Math.max(2, Math.floor(building.height / 60));
+      const spacingX = building.width / (windowColumns + 1);
+      const spacingY = building.height / (windowRows + 1);
+
+      for (let column = 1; column <= windowColumns; column += 1) {
+        for (let row = 1; row <= windowRows; row += 1) {
+          this.add
+            .rectangle(
+              building.x + spacingX * column,
+              building.y + spacingY * row,
+              16,
+              22,
+              0xcdd6db,
+              0.68,
+            )
+            .setDepth(-10);
+        }
+      }
+    }
+
+    const plaza = this.add.rectangle(this.map.width / 2, this.map.height / 2, roadWidth * 0.18, roadHeight * 0.18, 0x666d72, 0.65);
+    plaza.setStrokeStyle(4, 0x8d959b, 0.5).setDepth(-11);
+  }
+
+  private addUrbanTrees(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
+    const treeSpots = [
+      { x: roadInsetX * 0.55, y: roadInsetY * 0.58 },
+      { x: this.map.width - roadInsetX * 0.55, y: roadInsetY * 0.58 },
+      { x: roadInsetX * 0.55, y: this.map.height - roadInsetY * 0.58 },
+      { x: this.map.width - roadInsetX * 0.55, y: this.map.height - roadInsetY * 0.58 },
+      { x: this.map.width / 2, y: roadInsetY * 0.46 },
+      { x: this.map.width / 2, y: this.map.height - roadInsetY * 0.46 },
+      { x: roadInsetX * 0.42, y: this.map.height / 2 },
+      { x: this.map.width - roadInsetX * 0.42, y: this.map.height / 2 },
+    ];
+
+    for (const spot of treeSpots) {
+      this.add.rectangle(spot.x, spot.y + 12, 12, 26, 0x6b4e34, 0.95).setDepth(-10);
+      this.add.circle(spot.x, spot.y - 8, 24, 0x3d7b45, 0.95).setDepth(-9);
+      this.add.circle(spot.x - 12, spot.y - 2, 16, 0x4d9455, 0.9).setDepth(-9);
+      this.add.circle(spot.x + 12, spot.y - 2, 16, 0x4d9455, 0.9).setDepth(-9);
+    }
+  }
+
+  private addParkedCars(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
+    const carConfigs = [
+      { x: this.map.width / 2 - 180, y: roadInsetY - 74, color: 0xc94a3f, rotation: 0 },
+      { x: this.map.width / 2 + 180, y: roadInsetY - 74, color: 0x4e89d8, rotation: 0 },
+      { x: this.map.width / 2 - 180, y: roadInsetY + roadHeight + 74, color: 0xd7a53d, rotation: 0 },
+      { x: this.map.width / 2 + 180, y: roadInsetY + roadHeight + 74, color: 0x8f5fd1, rotation: 0 },
+      { x: roadInsetX - 74, y: this.map.height / 2 - 180, color: 0x3ca7a2, rotation: 90 },
+      { x: roadInsetX - 74, y: this.map.height / 2 + 180, color: 0xbb5252, rotation: 90 },
+      { x: roadInsetX + roadWidth + 74, y: this.map.height / 2 - 180, color: 0x9babb7, rotation: 90 },
+      { x: roadInsetX + roadWidth + 74, y: this.map.height / 2 + 180, color: 0x50565d, rotation: 90 },
+    ];
+
+    for (const car of carConfigs) {
+      const body = this.add.rectangle(car.x, car.y, 64, 30, car.color, 0.96).setDepth(-9);
+      body.setStrokeStyle(3, 0x1c1f22, 0.5);
+      body.setAngle(car.rotation);
+      this.add.rectangle(car.x, car.y, 26, 18, 0xcfe3f7, 0.85).setDepth(-8).setAngle(car.rotation);
+    }
   }
 
   private addCaptureTheFlagArena(): void {

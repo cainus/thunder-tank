@@ -433,7 +433,7 @@ export function LevelEditor({ onClose, onTestPlay }: LevelEditorProps) {
           viewBox={`0 0 ${map.width} ${map.height}`}
           onPointerDown={handleCanvasPointer}
         >
-          <rect x="0" y="0" width={map.width} height={map.height} fill="#263326" />
+          <UrbanPreview width={map.width} height={map.height} />
           <Grid width={map.width} height={map.height} />
           {map.obstacles.map((obstacle) => (
             <rect
@@ -573,6 +573,101 @@ function Grid({ width, height }: { width: number; height: number }) {
   }
 
   return <g className="editor-grid">{lines}</g>;
+}
+
+function UrbanPreview({ width, height }: { width: number; height: number }) {
+  const roadInsetX = Math.max(180, Math.round(width * 0.2));
+  const roadInsetY = Math.max(180, Math.round(height * 0.2));
+  const roadWidth = width - roadInsetX * 2;
+  const roadHeight = height - roadInsetY * 2;
+  const crosswalkBars = Array.from({ length: 9 }, (_, index) => (index - 4) * 32);
+  const buildings = [
+    { x: 110, y: 120, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#8b775f" },
+    { x: width - roadInsetX + 60, y: 120, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#6e7b86" },
+    { x: 110, y: height - roadInsetY + 60, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#7b6f82" },
+    { x: width - roadInsetX + 60, y: height - roadInsetY + 60, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#7f6958" },
+  ].filter((building) => building.width > 40 && building.height > 40);
+  const trees = [
+    { x: roadInsetX * 0.55, y: roadInsetY * 0.58 },
+    { x: width - roadInsetX * 0.55, y: roadInsetY * 0.58 },
+    { x: roadInsetX * 0.55, y: height - roadInsetY * 0.58 },
+    { x: width - roadInsetX * 0.55, y: height - roadInsetY * 0.58 },
+    { x: width / 2, y: roadInsetY * 0.46 },
+    { x: width / 2, y: height - roadInsetY * 0.46 },
+    { x: roadInsetX * 0.42, y: height / 2 },
+    { x: width - roadInsetX * 0.42, y: height / 2 },
+  ];
+  const parkedCars = [
+    { x: width / 2 - 180, y: roadInsetY - 74, fill: "#c94a3f", rotation: 0 },
+    { x: width / 2 + 180, y: roadInsetY - 74, fill: "#4e89d8", rotation: 0 },
+    { x: width / 2 - 180, y: roadInsetY + roadHeight + 74, fill: "#d7a53d", rotation: 0 },
+    { x: width / 2 + 180, y: roadInsetY + roadHeight + 74, fill: "#8f5fd1", rotation: 0 },
+    { x: roadInsetX - 74, y: height / 2 - 180, fill: "#3ca7a2", rotation: 90 },
+    { x: roadInsetX - 74, y: height / 2 + 180, fill: "#bb5252", rotation: 90 },
+    { x: roadInsetX + roadWidth + 74, y: height / 2 - 180, fill: "#9babb7", rotation: 90 },
+    { x: roadInsetX + roadWidth + 74, y: height / 2 + 180, fill: "#50565d", rotation: 90 },
+  ];
+
+  return (
+    <g aria-hidden="true">
+      <rect x="0" y="0" width={width} height={height} fill="#596166" />
+      <rect x={roadInsetX} y={roadInsetY} width={roadWidth} height={roadHeight} fill="#2d3136" />
+      <rect x={roadInsetX - 34} y={roadInsetY - 34} width={roadWidth + 68} height="34" fill="#72787d" />
+      <rect x={roadInsetX - 34} y={roadInsetY + roadHeight} width={roadWidth + 68} height="34" fill="#72787d" />
+      <rect x={roadInsetX - 34} y={roadInsetY} width="34" height={roadHeight} fill="#72787d" />
+      <rect x={roadInsetX + roadWidth} y={roadInsetY} width="34" height={roadHeight} fill="#72787d" />
+      <rect x={roadInsetX - 34} y={roadInsetY - 34} width={roadWidth + 68} height={roadHeight + 68} fill="none" stroke="#c7cbd0" strokeWidth="6" opacity="0.9" />
+
+      <line x1={roadInsetX + 40} y1={height / 2} x2={roadInsetX + roadWidth - 40} y2={height / 2} stroke="#f0df85" strokeWidth="8" strokeDasharray="90 62" opacity="0.85" />
+      <line x1={width / 2} y1={roadInsetY + 40} x2={width / 2} y2={roadInsetY + roadHeight - 40} stroke="#f0df85" strokeWidth="8" strokeDasharray="90 62" opacity="0.85" />
+
+      {crosswalkBars.map((offset) => (
+        <g key={`cross-${offset}`}>
+          <rect x={width / 2 - 48} y={roadInsetY - 30 + offset} width="96" height="18" fill="#e7e8ea" opacity="0.9" />
+          <rect x={width / 2 - 48} y={roadInsetY + roadHeight + 12 + offset} width="96" height="18" fill="#e7e8ea" opacity="0.9" />
+          <rect x={roadInsetX - 30 + offset} y={height / 2 - 48} width="18" height="96" fill="#e7e8ea" opacity="0.9" />
+          <rect x={roadInsetX + roadWidth + 12 + offset} y={height / 2 - 48} width="18" height="96" fill="#e7e8ea" opacity="0.9" />
+        </g>
+      ))}
+
+      {buildings.map((building, index) => (
+        <g key={`building-${index}`}>
+          <rect x={building.x} y={building.y} width={building.width} height={building.height} fill={building.fill} stroke="#2b2f33" strokeWidth="4" opacity="0.98" />
+          {Array.from({ length: Math.max(2, Math.floor(building.width / 70)) }, (_, column) =>
+            Array.from({ length: Math.max(2, Math.floor(building.height / 60)) }, (_, row) => (
+              <rect
+                key={`${index}-${column}-${row}`}
+                x={building.x + (building.width / (Math.max(2, Math.floor(building.width / 70)) + 1)) * (column + 1) - 8}
+                y={building.y + (building.height / (Math.max(2, Math.floor(building.height / 60)) + 1)) * (row + 1) - 11}
+                width="16"
+                height="22"
+                fill="#cdd6db"
+                opacity="0.68"
+              />
+            )),
+          )}
+        </g>
+      ))}
+
+      <rect x={width / 2 - (roadWidth * 0.18) / 2} y={height / 2 - (roadHeight * 0.18) / 2} width={roadWidth * 0.18} height={roadHeight * 0.18} fill="#666d72" opacity="0.65" stroke="#8d959b" strokeWidth="4" />
+
+      {trees.map((tree, index) => (
+        <g key={`tree-${index}`}>
+          <rect x={tree.x - 6} y={tree.y - 1} width="12" height="26" fill="#6b4e34" opacity="0.95" />
+          <circle cx={tree.x} cy={tree.y - 8} r="24" fill="#3d7b45" opacity="0.95" />
+          <circle cx={tree.x - 12} cy={tree.y - 2} r="16" fill="#4d9455" opacity="0.9" />
+          <circle cx={tree.x + 12} cy={tree.y - 2} r="16" fill="#4d9455" opacity="0.9" />
+        </g>
+      ))}
+
+      {parkedCars.map((car, index) => (
+        <g key={`car-${index}`} transform={`rotate(${car.rotation} ${car.x} ${car.y})`}>
+          <rect x={car.x - 32} y={car.y - 15} width="64" height="30" rx="10" fill={car.fill} opacity="0.96" stroke="#1c1f22" strokeWidth="3" />
+          <rect x={car.x - 13} y={car.y - 9} width="26" height="18" rx="5" fill="#cfe3f7" opacity="0.85" />
+        </g>
+      ))}
+    </g>
+  );
 }
 
 function SpawnMarker({
