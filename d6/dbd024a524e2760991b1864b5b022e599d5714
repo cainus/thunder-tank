@@ -1,0 +1,19 @@
+.codex/skills/shipit/SKILL.md
+  s_4428988870cb36::t_12fbe92cf9eb27 17,21-22,27,38,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "d6dbd024a524e2760991b1864b5b022e599d5714",
+  "prompts": {},
+  "sessions": {
+    "s_4428988870cb36": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2487-6ff9-7bb3-9a07-f9033df2c163",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
