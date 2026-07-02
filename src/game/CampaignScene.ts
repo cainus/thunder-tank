@@ -84,6 +84,11 @@ const DUST_MIN_SCALE = 0.34;
 const DUST_MAX_SCALE = 0.72;
 const IMPACT_MARK_DEPTH = 6;
 const IMPACT_MARK_LIFETIME_MS = 1_350;
+const NIGHT_HEADLAMP_DEPTH = 18;
+const NIGHT_HEADLAMP_CONE_ALPHA = 0.18;
+const NIGHT_HEADLAMP_GLOW_ALPHA = 0.54;
+const NIGHT_HEADLAMP_OFFSET = 28;
+const LIGHT_POST_BASE_SCALE = 1.08;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
 const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
@@ -138,6 +143,11 @@ interface TreadMark {
 interface ImpactMark {
   sprite: Phaser.GameObjects.Image;
   createdAt: number;
+}
+
+interface LightPostRuntime {
+  glow: Phaser.GameObjects.Arc;
+  halo: Phaser.GameObjects.Arc;
 }
 
 interface CtfFlagRuntime {
@@ -195,6 +205,7 @@ export class CampaignScene extends Phaser.Scene {
   private lastPlayerStatusKey = "";
   private treadMarks: TreadMark[] = [];
   private impactMarks: ImpactMark[] = [];
+  private lightPosts: LightPostRuntime[] = [];
 
   constructor() {
     super("CampaignScene");
@@ -220,6 +231,7 @@ export class CampaignScene extends Phaser.Scene {
     this.lastPlayerStatusKey = "";
     this.destroyAllTreadMarks();
     this.destroyAllImpactMarks();
+    this.lightPosts = [];
   }
 
   preload(): void {
@@ -241,9 +253,10 @@ export class CampaignScene extends Phaser.Scene {
   create(): void {
     this.setTextureFilters();
     this.createImpactTextures();
+    this.createLightingTextures();
     this.physics.world.setBounds(0, 0, this.map.width, this.map.height);
     this.cameras.main.setBounds(0, 0, this.map.width, this.map.height);
-    this.cameras.main.setBackgroundColor("#293529");
+    this.cameras.main.setBackgroundColor(this.isNightMap() ? "#071018" : "#293529");
 
     this.addArena();
     this.obstacles = this.physics.add.staticGroup();
@@ -367,57 +380,70 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private addArena(): void {
-    const graphics = this.add.graphics();
-    graphics.setDepth(-12);
+    if (this.isNightMap()) {
+      const tile = this.add.tileSprite(0, 0, this.map.width, this.map.height, "crate");
+      tile.setOrigin(0);
+      tile.setAlpha(0.038);
+      tile.setTint(0x607080);
+      tile.setDepth(-10);
+    } else {
+      const graphics = this.add.graphics();
+      graphics.setDepth(-12);
 
-    graphics.fillStyle(0x596166, 1);
-    graphics.fillRect(0, 0, this.map.width, this.map.height);
+      graphics.fillStyle(0x596166, 1);
+      graphics.fillRect(0, 0, this.map.width, this.map.height);
 
-    const roadInsetX = Math.max(180, Math.round(this.map.width * 0.2));
-    const roadInsetY = Math.max(180, Math.round(this.map.height * 0.2));
-    const roadWidth = this.map.width - roadInsetX * 2;
-    const roadHeight = this.map.height - roadInsetY * 2;
+      const roadInsetX = Math.max(180, Math.round(this.map.width * 0.2));
+      const roadInsetY = Math.max(180, Math.round(this.map.height * 0.2));
+      const roadWidth = this.map.width - roadInsetX * 2;
+      const roadHeight = this.map.height - roadInsetY * 2;
 
-    graphics.fillStyle(0x2d3136, 1);
-    graphics.fillRect(roadInsetX, roadInsetY, roadWidth, roadHeight);
+      graphics.fillStyle(0x2d3136, 1);
+      graphics.fillRect(roadInsetX, roadInsetY, roadWidth, roadHeight);
 
-    graphics.fillStyle(0x72787d, 1);
-    graphics.fillRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, 34);
-    graphics.fillRect(roadInsetX - 34, roadInsetY + roadHeight, roadWidth + 68, 34);
-    graphics.fillRect(roadInsetX - 34, roadInsetY, 34, roadHeight);
-    graphics.fillRect(roadInsetX + roadWidth, roadInsetY, 34, roadHeight);
+      graphics.fillStyle(0x72787d, 1);
+      graphics.fillRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, 34);
+      graphics.fillRect(roadInsetX - 34, roadInsetY + roadHeight, roadWidth + 68, 34);
+      graphics.fillRect(roadInsetX - 34, roadInsetY, 34, roadHeight);
+      graphics.fillRect(roadInsetX + roadWidth, roadInsetY, 34, roadHeight);
 
-    graphics.lineStyle(6, 0xc7cbd0, 0.9);
-    graphics.strokeRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, roadHeight + 68);
+      graphics.lineStyle(6, 0xc7cbd0, 0.9);
+      graphics.strokeRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, roadHeight + 68);
 
-    graphics.lineStyle(8, 0xf0df85, 0.85);
-    const laneDash = 90;
-    const laneGap = 62;
-    const horizontalLaneY = this.map.height / 2;
-    for (let x = roadInsetX + 40; x < roadInsetX + roadWidth - 40; x += laneDash + laneGap) {
-      graphics.lineBetween(x, horizontalLaneY, Math.min(x + laneDash, roadInsetX + roadWidth - 40), horizontalLaneY);
+      graphics.lineStyle(8, 0xf0df85, 0.85);
+      const laneDash = 90;
+      const laneGap = 62;
+      const horizontalLaneY = this.map.height / 2;
+      for (let x = roadInsetX + 40; x < roadInsetX + roadWidth - 40; x += laneDash + laneGap) {
+        graphics.lineBetween(x, horizontalLaneY, Math.min(x + laneDash, roadInsetX + roadWidth - 40), horizontalLaneY);
+      }
+
+      const verticalLaneX = this.map.width / 2;
+      for (let y = roadInsetY + 40; y < roadInsetY + roadHeight - 40; y += laneDash + laneGap) {
+        graphics.lineBetween(verticalLaneX, y, verticalLaneX, Math.min(y + laneDash, roadInsetY + roadHeight - 40));
+      }
+
+      const crosswalkWidth = 96;
+      const crosswalkBar = 18;
+      const crosswalkGap = 14;
+      graphics.fillStyle(0xe7e8ea, 0.9);
+      for (let offset = -4; offset <= 4; offset += 1) {
+        const shift = offset * (crosswalkBar + crosswalkGap);
+        graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY - 30 + shift, crosswalkWidth, crosswalkBar);
+        graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY + roadHeight + 12 + shift, crosswalkWidth, crosswalkBar);
+        graphics.fillRect(roadInsetX - 30 + shift, this.map.height / 2 - crosswalkWidth / 2, crosswalkBar, crosswalkWidth);
+        graphics.fillRect(roadInsetX + roadWidth + 12 + shift, this.map.height / 2 - crosswalkWidth / 2, crosswalkBar, crosswalkWidth);
+      }
+
+      this.addUrbanBuildings(roadInsetX, roadInsetY, roadWidth, roadHeight);
+      this.addUrbanTrees(roadInsetX, roadInsetY, roadWidth, roadHeight);
+      this.addParkedCars(roadInsetX, roadInsetY, roadWidth, roadHeight);
     }
 
-    const verticalLaneX = this.map.width / 2;
-    for (let y = roadInsetY + 40; y < roadInsetY + roadHeight - 40; y += laneDash + laneGap) {
-      graphics.lineBetween(verticalLaneX, y, verticalLaneX, Math.min(y + laneDash, roadInsetY + roadHeight - 40));
+    if (this.isNightMap()) {
+      const haze = this.add.rectangle(this.map.width / 2, this.map.height / 2, this.map.width, this.map.height, 0x071018, 0.34);
+      haze.setDepth(-9);
     }
-
-    const crosswalkWidth = 96;
-    const crosswalkBar = 18;
-    const crosswalkGap = 14;
-    graphics.fillStyle(0xe7e8ea, 0.9);
-    for (let offset = -4; offset <= 4; offset += 1) {
-      const shift = offset * (crosswalkBar + crosswalkGap);
-      graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY - 30 + shift, crosswalkWidth, crosswalkBar);
-      graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY + roadHeight + 12 + shift, crosswalkWidth, crosswalkBar);
-      graphics.fillRect(roadInsetX - 30 + shift, this.map.height / 2 - crosswalkWidth / 2, crosswalkBar, crosswalkWidth);
-      graphics.fillRect(roadInsetX + roadWidth + 12 + shift, this.map.height / 2 - crosswalkWidth / 2, crosswalkBar, crosswalkWidth);
-    }
-
-    this.addUrbanBuildings(roadInsetX, roadInsetY, roadWidth, roadHeight);
-    this.addUrbanTrees(roadInsetX, roadInsetY, roadWidth, roadHeight);
-    this.addParkedCars(roadInsetX, roadInsetY, roadWidth, roadHeight);
 
     const border = this.add.rectangle(
       this.map.width / 2,
@@ -427,7 +453,7 @@ export class CampaignScene extends Phaser.Scene {
       0x000000,
       0,
     );
-    border.setStrokeStyle(8, 0x9ba2a8, 0.9);
+    border.setStrokeStyle(8, this.isNightMap() ? 0x6f8294 : 0x84946f, this.isNightMap() ? 0.78 : 0.85);
     border.setDepth(-5);
   }
 
@@ -584,7 +610,24 @@ export class CampaignScene extends Phaser.Scene {
     const sprite = this.obstacles.create(obstacle.x, obstacle.y, key) as Phaser.Physics.Arcade.Image;
     sprite.setDepth(8);
     sprite.setAngle(obstacle.rotation ?? 0);
-    sprite.setScale(obstacle.kind === "barricade" ? 1.35 : 1.25);
+    sprite.setScale(
+      obstacle.kind === "barricade" ? 1.35 : obstacle.kind === "lightPost" ? LIGHT_POST_BASE_SCALE : 1.25,
+    );
+    if (this.isNightMap() && obstacle.kind !== "lightPost") {
+      sprite.setTint(0x7b8694);
+      sprite.setAlpha(0.92);
+    }
+    if (obstacle.kind === "lightPost") {
+      const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
+      body.setSize(28, 28, true);
+      const halo = this.add.circle(obstacle.x, obstacle.y - 36, 86, 0xffde91, 0.09);
+      halo.setBlendMode(Phaser.BlendModes.ADD);
+      halo.setDepth(9);
+      const glow = this.add.circle(obstacle.x, obstacle.y - 40, 40, 0xffe09c, 0.26);
+      glow.setBlendMode(Phaser.BlendModes.ADD);
+      glow.setDepth(10);
+      this.lightPosts.push({ glow, halo });
+    }
     sprite.refreshBody();
   }
 
@@ -642,6 +685,12 @@ export class CampaignScene extends Phaser.Scene {
             side === "player" ? 0xf6df85 : 0xff8a62,
             0.95,
           );
+    const headlampCone = this.isNightMap()
+      ? this.add.image(spawn.x, spawn.y, "headlampCone").setDepth(NIGHT_HEADLAMP_DEPTH).setBlendMode(Phaser.BlendModes.ADD)
+      : undefined;
+    const headlampGlow = this.isNightMap()
+      ? this.add.circle(spawn.x, spawn.y, 16, side === "enemy" ? 0xffc978 : 0xeaf3ff, NIGHT_HEADLAMP_GLOW_ALPHA)
+      : undefined;
     const tank: TankRuntime = {
       id,
       side,
@@ -649,6 +698,8 @@ export class CampaignScene extends Phaser.Scene {
       hull,
       turret,
       frontMarker,
+      headlampCone,
+      headlampGlow,
       spawn,
       alive: true,
       maxHealth: this.isCaptureTheFlag() ? CTF_TANK_HEALTH : side === "enemy" ? ENEMY_HEALTH[archetype] : 1,
@@ -678,6 +729,15 @@ export class CampaignScene extends Phaser.Scene {
       turret.setTint(0x75d7ff);
     }
     frontMarker?.setDepth(TANK_DEPTH + 2);
+    if (headlampCone) {
+      headlampCone.setOrigin(0.08, 0.5);
+      headlampCone.setAlpha(side === "enemy" ? NIGHT_HEADLAMP_CONE_ALPHA * 0.82 : NIGHT_HEADLAMP_CONE_ALPHA);
+      headlampCone.setTint(side === "enemy" ? 0xffcf88 : 0xd9ebff);
+    }
+    if (headlampGlow) {
+      headlampGlow.setDepth(TANK_DEPTH - 1);
+      headlampGlow.setBlendMode(Phaser.BlendModes.ADD);
+    }
     this.tankByBody.set(hull, tank);
 
     return tank;
@@ -1635,6 +1695,8 @@ export class CampaignScene extends Phaser.Scene {
     tank.turret.setVisible(false);
     tank.frontMarker?.setVisible(false);
     tank.lastDustAt = undefined;
+    tank.headlampCone?.setVisible(false);
+    tank.headlampGlow?.setVisible(false);
     tank.lastTreadMarkPosition = undefined;
     tank.buffs = { ...EMPTY_BUFFS };
 
@@ -1673,6 +1735,8 @@ export class CampaignScene extends Phaser.Scene {
     tank.turret.setVisible(true);
     tank.frontMarker?.setVisible(true);
     tank.lastDustAt = undefined;
+    tank.headlampCone?.setVisible(true);
+    tank.headlampGlow?.setVisible(true);
     tank.lastFiredAt = this.time.now;
     tank.lastTreadMarkPosition = undefined;
     tank.hull.setVelocity(0, 0);
@@ -2239,6 +2303,34 @@ export class CampaignScene extends Phaser.Scene {
     }
   }
 
+  private createLightingTextures(): void {
+    if (!this.textures.exists("headlampCone")) {
+      const cone = this.add.graphics();
+      cone.setVisible(false);
+      cone.fillStyle(0xffffff, 1);
+      cone.fillTriangle(10, 70, 230, 38, 230, 102);
+      cone.generateTexture("headlampCone", 240, 140);
+      cone.destroy();
+      this.textures.get("headlampCone").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
+    if (!this.textures.exists("lightPost")) {
+      const post = this.add.graphics();
+      post.setVisible(false);
+      post.fillStyle(0x434d58, 1);
+      post.fillRoundedRect(26, 22, 12, 66, 5);
+      post.fillStyle(0x596675, 1);
+      post.fillRoundedRect(18, 8, 28, 18, 6);
+      post.fillStyle(0x2a3138, 1);
+      post.fillRoundedRect(20, 84, 24, 10, 4);
+      post.fillStyle(0xffdc8c, 0.96);
+      post.fillRoundedRect(22, 11, 20, 12, 4);
+      post.generateTexture("lightPost", 64, 96);
+      post.destroy();
+      this.textures.get("lightPost").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+  }
+
   private addBulletImpact(x: number, y: number, options: ImpactEffectOptions): void {
     const angle = options.angle ?? 0;
     const kind = options.kind ?? "obstacle";
@@ -2346,6 +2438,19 @@ export class CampaignScene extends Phaser.Scene {
         );
         tank.frontMarker.setRotation(tank.hull.rotation);
         tank.frontMarker.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.72 : 0.95);
+      }
+
+      if (tank.headlampCone && tank.headlampGlow) {
+        const forwardAngle = tank.hull.rotation - Math.PI / 2;
+        const lampX = tank.hull.x + Math.cos(forwardAngle) * NIGHT_HEADLAMP_OFFSET;
+        const lampY = tank.hull.y + Math.sin(forwardAngle) * NIGHT_HEADLAMP_OFFSET;
+        tank.headlampCone.setPosition(lampX, lampY);
+        tank.headlampCone.setRotation(forwardAngle);
+        tank.headlampCone.setAlpha(
+          tank.alive ? (tank.side === "enemy" ? NIGHT_HEADLAMP_CONE_ALPHA * 0.82 : NIGHT_HEADLAMP_CONE_ALPHA) : 0,
+        );
+        tank.headlampGlow.setPosition(lampX, lampY);
+        tank.headlampGlow.setAlpha(tank.alive ? (tank.side === "enemy" ? 0.42 : NIGHT_HEADLAMP_GLOW_ALPHA) : 0);
       }
 
       if (tank.aiRoleLabel) {
@@ -2928,6 +3033,10 @@ export class CampaignScene extends Phaser.Scene {
         this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
       }
     }
+  }
+
+  private isNightMap(): boolean {
+    return this.map.theme === "night";
   }
 
   shutdown(): void {

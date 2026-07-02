@@ -4,13 +4,17 @@ import { ENEMY_HEALTH, ENEMY_STATS, PLAYER_BASE_STATS, applyPickupBuff, getEffec
 
 const PICKUP_OBSTACLE_CLEARANCE = 24;
 
-function getObstacleRadius(kind: "crate" | "barrel" | "barricade" | "sandbag"): number {
+function getObstacleRadius(kind: "crate" | "barrel" | "barricade" | "sandbag" | "lightPost"): number {
   if (kind === "barricade") {
     return 110;
   }
 
   if (kind === "sandbag") {
     return 82;
+  }
+
+  if (kind === "lightPost") {
+    return 54;
   }
 
   return 74;

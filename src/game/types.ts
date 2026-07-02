@@ -18,8 +18,10 @@ export interface Vec2 {
   y: number;
 }
 
+export type ObstacleKind = "crate" | "barrel" | "barricade" | "sandbag" | "lightPost";
+
 export interface ObstacleConfig extends Vec2 {
-  kind: "crate" | "barrel" | "barricade" | "sandbag";
+  kind: ObstacleKind;
   rotation?: number;
 }
 
@@ -34,6 +36,7 @@ export interface EnemyConfig extends Vec2 {
 export interface CampaignMap {
   id: string;
   name: string;
+  theme?: "night";
   width: number;
   height: number;
   playerSpawn: Vec2;
@@ -85,6 +88,8 @@ export interface TankRuntime {
   hull: Phaser.Physics.Arcade.Image;
   turret: Phaser.GameObjects.Image;
   frontMarker?: Phaser.GameObjects.Rectangle;
+  headlampCone?: Phaser.GameObjects.Image;
+  headlampGlow?: Phaser.GameObjects.Arc;
   aiRoleLabel?: Phaser.GameObjects.Text;
   spawn: Vec2;
   alive: boolean;
