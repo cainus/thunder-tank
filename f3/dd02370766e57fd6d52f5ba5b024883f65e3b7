@@ -1,0 +1,24 @@
+.zenflow/tasks/the-countdown-timer-should-be-fo-2f85/plan.md
+  s_17b9e5c8a86d65::t_a7dea6cf08ef49 3
+  s_17b9e5c8a86d65::t_49abcb9c471023 1-2
+src/game/CampaignScene.ts
+  s_17b9e5c8a86d65::t_45332bbf9f0505 49
+.gitignore
+  s_17b9e5c8a86d65::t_45332bbf9f0505 11-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "f3dd02370766e57fd6d52f5ba5b024883f65e3b7",
+  "prompts": {},
+  "sessions": {
+    "s_17b9e5c8a86d65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2469-5990-7031-a122-a809867dab3a",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
