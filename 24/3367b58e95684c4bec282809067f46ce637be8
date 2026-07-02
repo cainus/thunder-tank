@@ -1,0 +1,21 @@
+.codex/skills/shipit/SKILL.md
+  s_622c96d8992af3::t_789650b26a403d 1-10
+.zenflow/tasks/bullets-seem-to-be-coming-out-si-2752/plan.md
+  s_622c96d8992af3::t_2c17784ce83456 34-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "243367b58e95684c4bec282809067f46ce637be8",
+  "prompts": {},
+  "sessions": {
+    "s_622c96d8992af3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2466-3ec7-7683-abba-f708594e546b",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
