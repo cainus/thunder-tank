@@ -16,6 +16,7 @@ export const ASSETS = {
   barrel: `${ASSET_BASE}/top-down-tanks/PNG/Retina/barrelRed_side.png`,
   barricade: `${ASSET_BASE}/top-down-tanks/PNG/Retina/barricadeMetal.png`,
   sandbag: `${ASSET_BASE}/top-down-tanks/PNG/Retina/sandbagBeige.png`,
+  treeGreenLarge: `${ASSET_BASE}/top-down-tanks/PNG/Retina/treeGreen_large.png`,
   pickupSpeed: "/assets/game-icons/power-lightning.svg",
   pickupRapidFire: `${ASSET_BASE}/top-down-tanks/PNG/Retina/specialBarrel5_outline.png`,
   pickupShield: "/assets/game-icons/shield.svg",
