@@ -39,7 +39,7 @@ import type {
 } from "./types";
 
 const TANK_DEPTH = 20;
-const RESPAWN_DELAY_MS = 1_400;
+const NON_CTF_RESPAWN_DELAY_MS = 3_000;
 const PICKUP_RESPAWN_MS = 9_000;
 const WORLD_PADDING = 120;
 const PLAYER_TURN_RATE = 3.2;
@@ -1689,7 +1689,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.alive = false;
     this.stopTankMotorAudio(tank);
     tank.health = tank.maxHealth;
-    tank.respawnAt = this.time.now + (this.isCaptureTheFlag() ? CTF_RESPAWN_DELAY_MS : RESPAWN_DELAY_MS);
+    tank.respawnAt = this.time.now + (this.isCaptureTheFlag() ? CTF_RESPAWN_DELAY_MS : NON_CTF_RESPAWN_DELAY_MS);
     this.clearAiNavigationState(tank);
     tank.hull.disableBody(true, true);
     tank.turret.setVisible(false);
