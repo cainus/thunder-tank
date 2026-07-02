@@ -102,6 +102,7 @@ export interface TankRuntime {
   unstuckUntil?: number;
   motorAudio?: HTMLAudioElement;
   motorKey?: string;
+  lastTreadMarkPosition?: Vec2;
   buffs: ActiveBuffs;
 }
 
