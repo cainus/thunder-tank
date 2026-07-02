@@ -11,3 +11,8 @@ test-results
 
 # Local environment config
 .env
+node_modules/
+dist/
+build/
+.cache/
+*.log
