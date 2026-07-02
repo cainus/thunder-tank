@@ -23,6 +23,7 @@ import {
   getRampedEnemyStats,
   hasShield,
 } from "./rules";
+import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
 import type {
   CampaignMap,
   EnemyArchetype,
@@ -59,6 +60,8 @@ const MOTOR_BASE_VOLUME = 0.2;
 const MOTOR_MIN_VOLUME = 0.015;
 const MOTOR_AUDIBLE_RANGE = 950;
 const MOTOR_MOVING_SPEED = 8;
+const TREAD_MARK_DEPTH = 1;
+const TREAD_MARK_REAR_OFFSET = 22;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
 const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
@@ -85,6 +88,11 @@ interface PickupSprite extends Phaser.Physics.Arcade.Image {
   respawnAt: number;
   baseY: number;
   floatPhase: number;
+}
+
+interface TreadMark {
+  container: Phaser.GameObjects.Container;
+  createdAt: number;
 }
 
 function getPickupTint(type: PickupConfig["type"]): number {
@@ -124,6 +132,7 @@ export class CampaignScene extends Phaser.Scene {
   private pausedBulletVelocities = new Map<Phaser.Physics.Arcade.Image, Vec2>();
   private playerGunHeat: GunHeatState = { ...EMPTY_GUN_HEAT };
   private lastPlayerStatusKey = "";
+  private treadMarks: TreadMark[] = [];
 
   constructor() {
     super("CampaignScene");
@@ -146,6 +155,7 @@ export class CampaignScene extends Phaser.Scene {
     this.pausedBulletVelocities.clear();
     this.playerGunHeat = { ...EMPTY_GUN_HEAT };
     this.lastPlayerStatusKey = "";
+    this.destroyAllTreadMarks();
   }
 
   preload(): void {
@@ -259,6 +269,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updateBulletHits();
     this.updatePickupCollection();
     this.updatePickupVisuals(time);
+    this.updateTreadMarks(time);
     this.updateTankVisuals();
     this.updateCamera();
     this.updatePickupRespawns(time);
@@ -363,6 +374,7 @@ export class CampaignScene extends Phaser.Scene {
       aimAngle: side === "player" ? -Math.PI / 2 : side === "playerTwo" ? Math.PI / 2 : 0,
       moveAngle: undefined,
       nextMoveDecisionAt: 0,
+      lastTreadMarkPosition: undefined,
       buffs: { ...EMPTY_BUFFS },
     };
 
@@ -819,6 +831,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.hull.disableBody(true, true);
     tank.turret.setVisible(false);
     tank.frontMarker?.setVisible(false);
+    tank.lastTreadMarkPosition = undefined;
     tank.buffs = { ...EMPTY_BUFFS };
 
     if (this.isHumanTank(tank)) {
@@ -847,6 +860,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.turret.setVisible(true);
     tank.frontMarker?.setVisible(true);
     tank.lastFiredAt = this.time.now;
+    tank.lastTreadMarkPosition = undefined;
     tank.hull.setVelocity(0, 0);
 
     if (tank.side === "player" && !this.isDeathmatch()) {
@@ -1104,6 +1118,86 @@ export class CampaignScene extends Phaser.Scene {
       duration: 260,
       onComplete: () => boom.destroy(),
     });
+  }
+
+  private updateTreadMarks(time: number): void {
+    this.cleanupExpiredTreadMarks(time);
+
+    for (const tank of this.getAllTanks()) {
+      if (!tank.alive || !this.isTankMoving(tank)) {
+        tank.lastTreadMarkPosition = undefined;
+        continue;
+      }
+
+      const position = this.getTreadMarkPosition(tank);
+
+      if (!shouldSpawnTreadMark(tank.lastTreadMarkPosition, position)) {
+        continue;
+      }
+
+      this.addTreadMark(position, tank, time);
+      tank.lastTreadMarkPosition = position;
+    }
+  }
+
+  private getTreadMarkPosition(tank: TankRuntime): Vec2 {
+    const forwardAngle = tank.hull.rotation - Math.PI / 2;
+    const rearOffset = TREAD_MARK_REAR_OFFSET * this.getTankScaleMultiplier(tank);
+
+    return {
+      x: tank.hull.x - Math.cos(forwardAngle) * rearOffset,
+      y: tank.hull.y - Math.sin(forwardAngle) * rearOffset,
+    };
+  }
+
+  private getTankScaleMultiplier(tank: TankRuntime): number {
+    if (tank.archetype === "boss") {
+      return 1.45;
+    }
+
+    if (tank.archetype === "heavy") {
+      return 1.1;
+    }
+
+    return 1;
+  }
+
+  private addTreadMark(position: Vec2, tank: TankRuntime, createdAt: number): void {
+    const scale = this.getTankScaleMultiplier(tank);
+    const trackWidth = 9 * scale;
+    const trackLength = 24 * scale;
+    const trackGap = 17 * scale;
+    const container = this.add.container(position.x, position.y);
+    const leftTrack = this.add.rectangle(-trackGap, 0, trackWidth, trackLength, 0x13150f, 1);
+    const rightTrack = this.add.rectangle(trackGap, 0, trackWidth, trackLength, 0x13150f, 1);
+
+    leftTrack.setStrokeStyle(1, 0x2b2e22, 0.55);
+    rightTrack.setStrokeStyle(1, 0x2b2e22, 0.55);
+    container.add([leftTrack, rightTrack]);
+    container.setRotation(tank.hull.rotation);
+    container.setDepth(TREAD_MARK_DEPTH);
+    container.setAlpha(getTreadMarkAlpha(createdAt, createdAt));
+    this.treadMarks.push({ container, createdAt });
+  }
+
+  private cleanupExpiredTreadMarks(time: number): void {
+    this.treadMarks = this.treadMarks.filter((mark) => {
+      if (isTreadMarkExpired(mark.createdAt, time)) {
+        mark.container.destroy();
+        return false;
+      }
+
+      mark.container.setAlpha(getTreadMarkAlpha(mark.createdAt, time));
+      return true;
+    });
+  }
+
+  private destroyAllTreadMarks(): void {
+    for (const mark of this.treadMarks) {
+      mark.container.destroy();
+    }
+
+    this.treadMarks = [];
   }
 
   private updateTankVisuals(): void {
@@ -1467,6 +1561,7 @@ export class CampaignScene extends Phaser.Scene {
     }
 
     this.stopAllMotorAudio();
+    this.destroyAllTreadMarks();
     this.cleanupListeners = [];
   }
 }

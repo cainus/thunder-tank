@@ -79,6 +79,7 @@ export interface TankRuntime {
   nextMoveDecisionAt: number;
   motorAudio?: HTMLAudioElement;
   motorKey?: string;
+  lastTreadMarkPosition?: Vec2;
   buffs: ActiveBuffs;
 }
 
