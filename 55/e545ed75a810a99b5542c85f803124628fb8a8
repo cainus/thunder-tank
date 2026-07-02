@@ -1,0 +1,34 @@
+src/App.tsx
+  s_5fa7e32d0aa3a9::t_fbf8b2f575897c 14-15,35-40,58,251-262
+tests/app.test.tsx
+  s_5fa7e32d0aa3a9::t_8285da3370a2d2 52-66,195-205
+  s_5fa7e32d0aa3a9::t_570ede8a98fba6 206
+.gitignore
+  s_5fa7e32d0aa3a9::t_f218f394d79f1d 1-4
+.zenflow/tasks/put-labels-on-the-power-ups-show-4ee5/plan.md
+  s_5fa7e32d0aa3a9::t_aa76db554de55c 1-10
+src/game/CampaignScene.ts
+  s_5fa7e32d0aa3a9::t_6c9724dff8559a 76,118,437-445,1381,2155,2171-2173
+src/game/combat-state.ts
+  s_5fa7e32d0aa3a9::t_e566ab9cff5c89 28-32,60-63,65-68
+src/styles.css
+  s_5fa7e32d0aa3a9::t_649ea52c17b521 111-146
+tests/combat-state.test.ts
+  s_5fa7e32d0aa3a9::t_2402ed48e462f7 7,46-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "55e545ed75a810a99b5542c85f803124628fb8a8",
+  "prompts": {},
+  "sessions": {
+    "s_5fa7e32d0aa3a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f247e-36e2-7330-acdf-4925aa98e4d8",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
