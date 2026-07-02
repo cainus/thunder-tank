@@ -1,0 +1,33 @@
+src/game/tread-marks.ts
+  s_308a846947eb9c::t_679776243126df 1-12,14-34
+  s_308a846947eb9c::t_f3894d84162d5a 13
+src/game/CampaignScene.ts
+  s_308a846947eb9c::t_ee4b55a2937976 158,272,377
+  s_308a846947eb9c::t_c6f8839f616e3a 26,63-64,93-97,135
+  s_308a846947eb9c::t_e64988b46ed893 1123-1202
+  s_308a846947eb9c::t_ffa48a7768a85e 834,863
+  s_308a846947eb9c::t_fb1e75d5aaf70c 1564
+tests/tread-marks.test.ts
+  s_308a846947eb9c::t_679776243126df 1-29
+.zenflow/tasks/add-tread-marks-to-the-ground-be-903e/plan.md
+  s_308a846947eb9c::t_8db945dba349ec 2-3,5
+  s_308a846947eb9c::t_650ded0f83bc93 1,4
+src/game/types.ts
+  s_308a846947eb9c::t_679776243126df 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "05462e5ba17ea86f9e55970c123c43afb1d5baa0",
+  "prompts": {},
+  "sessions": {
+    "s_308a846947eb9c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2474-518a-79e2-a6d2-eb8ca367fa22",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
