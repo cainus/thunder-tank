@@ -4,6 +4,7 @@ import {
   applyBackAction,
   applyMapOutcome,
   applyPrimaryAction,
+  isCaptureTheFlagMode,
   startMap as startFlowMap,
   type AppMode,
   type FlowState,
@@ -12,8 +13,8 @@ import { GamepadRecorder } from "./GamepadRecorder";
 import { GamepadSetup } from "./GamepadSetup";
 import { GameCanvas } from "./game/GameCanvas";
 import { EMPTY_GUN_HEAT, getActiveBuffLabels, getGunFreezeSeconds, type PlayerStatus } from "./game/combat-state";
-import { CAMPAIGN_MAPS } from "./game/maps";
-import type { CampaignMap, MatchOutcome, ScoreState } from "./game/types";
+import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./game/maps";
+import type { CampaignMap, MatchMode, MatchOutcome, ScoreState } from "./game/types";
 import { getGamepadPreset, loadGamepadMapping, type GamepadMapping } from "./gamepad-config";
 import { LevelEditor } from "./LevelEditor";
 import { isMenuBackPressed, isMenuConfirmPressed } from "./menu-input";
@@ -41,7 +42,8 @@ export function App() {
   const [customMap, setCustomMap] = useState<CampaignMap | undefined>();
   const activePresetId = useRef("");
   const { mode, matchMode, mapIndex, runId } = flow;
-  const currentMap = customMap ?? CAMPAIGN_MAPS[mapIndex];
+  const activeMaps = isCaptureTheFlagMode(matchMode) ? CAPTURE_THE_FLAG_MAPS : CAMPAIGN_MAPS;
+  const currentMap = customMap ?? activeMaps[mapIndex] ?? activeMaps[0];
   const cta = useMemo(() => getCta(mode, mapIndex, matchMode), [mode, mapIndex, matchMode]);
   const activeBuffLabels = getActiveBuffLabels(playerStatus.buffs, playerStatus.now);
   const gunFreezeSeconds = getGunFreezeSeconds(playerStatus);
@@ -143,6 +145,20 @@ export function App() {
     setFlow((current) => startFlowMap(current, 0, "coOp"));
   }
 
+  function startCaptureTheFlag(): void {
+    setCustomMap(undefined);
+    setScore(INITIAL_SCORE);
+    setPlayerStatus(INITIAL_PLAYER_STATUS);
+    setFlow((current) => startFlowMap(current, 0, "captureTheFlag"));
+  }
+
+  function startCaptureTheFlagCoOp(): void {
+    setCustomMap(undefined);
+    setScore(INITIAL_SCORE);
+    setPlayerStatus(INITIAL_PLAYER_STATUS);
+    setFlow((current) => startFlowMap(current, 0, "captureTheFlagCoOp"));
+  }
+
   function handlePrimary(): void {
     if (mode === "playing") {
       setFlow((current) => ({ ...current, mode: "paused" }));
@@ -206,14 +222,14 @@ export function App() {
           <strong>{currentMap.name}</strong>
         </div>
         <div>
-          <span className="hud-label">{matchMode === "deathmatch" ? "P1 - P2" : matchMode === "coOp" ? "Team - Enemy" : "Score"}</span>
+          <span className="hud-label">{getScoreLabel(matchMode)}</span>
           <strong>
             {score.player} - {score.enemy}
           </strong>
         </div>
         <div>
           <span className="hud-label">Target</span>
-          <strong>{currentMap.playerScoreLimit}</strong>
+          <strong>{currentMap.ctf?.captureLimit ?? currentMap.playerScoreLimit}</strong>
         </div>
         <div className="hud-powerups">
           <span className="hud-label">Powerups</span>
@@ -257,6 +273,12 @@ export function App() {
               </button>
               <button type="button" className="secondary-button" onClick={startCoOp}>
                 Co-op Campaign
+              </button>
+              <button type="button" className="secondary-button" onClick={startCaptureTheFlag}>
+                Capture the Flag
+              </button>
+              <button type="button" className="secondary-button" onClick={startCaptureTheFlagCoOp}>
+                Co-op Capture the Flag
               </button>
               <UtilityButtons
                 openSetup={() => setIsSetupOpen(true)}
@@ -350,7 +372,7 @@ function UtilityButtons({
   );
 }
 
-function getTitle(mode: AppMode, matchMode = "campaign"): string {
+function getTitle(mode: AppMode, matchMode: MatchMode = "campaign"): string {
   if (mode === "paused") {
     return "Paused";
   }
@@ -358,6 +380,10 @@ function getTitle(mode: AppMode, matchMode = "campaign"): string {
   if (mode === "won") {
     if (matchMode === "deathmatch") {
       return "P1 Wins";
+    }
+
+    if (isCaptureTheFlagMode(matchMode)) {
+      return "Blue Wins";
     }
 
     return "Map Cleared";
@@ -368,10 +394,18 @@ function getTitle(mode: AppMode, matchMode = "campaign"): string {
       return "P2 Wins";
     }
 
+    if (isCaptureTheFlagMode(matchMode)) {
+      return "Red Wins";
+    }
+
     return "Tank Destroyed";
   }
 
   if (mode === "complete") {
+    if (isCaptureTheFlagMode(matchMode)) {
+      return "Capture the Flag Complete";
+    }
+
     if (matchMode === "coOp") {
       return "Co-op Campaign Complete";
     }
@@ -382,7 +416,7 @@ function getTitle(mode: AppMode, matchMode = "campaign"): string {
   return "Thunder Tank";
 }
 
-function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string {
+function getCopy(mode: AppMode, mapName: string, matchMode: MatchMode = "campaign"): string {
   if (mode === "paused") {
     if (matchMode === "deathmatch") {
       return "Deathmatch is paused. Resume with Start or Enter to return to battle.";
@@ -392,12 +426,20 @@ function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string
       return `${mapName} co-op is paused. Resume with Start or Enter to return to battle.`;
     }
 
+    if (isCaptureTheFlagMode(matchMode)) {
+      return `${mapName} is paused. Resume with Start or Enter to return to the flag run.`;
+    }
+
     return `${mapName} is paused. Resume with Start or Enter to return to battle.`;
   }
 
   if (mode === "won") {
     if (matchMode === "deathmatch") {
       return "Player 1 reached the score limit.";
+    }
+
+    if (isCaptureTheFlagMode(matchMode)) {
+      return `${mapName} captured. Advance to the next CTF arena.`;
     }
 
     return `${mapName} cleared. Advance to the next combat zone.`;
@@ -412,10 +454,18 @@ function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string
       return `${mapName} was lost. Restart this map and beat the enemy score limit together.`;
     }
 
+    if (isCaptureTheFlagMode(matchMode)) {
+      return `${mapName} was lost. Restart this Capture the Flag arena and protect the Blue flag.`;
+    }
+
     return `${mapName} was lost. Restart this map and beat the enemy score limit.`;
   }
 
   if (mode === "complete") {
+    if (isCaptureTheFlagMode(matchMode)) {
+      return `You cleared all ${CAPTURE_THE_FLAG_MAPS.length} Capture the Flag maps.`;
+    }
+
     if (matchMode === "coOp") {
       return `You cleared all ${CAMPAIGN_MAPS.length} campaign maps in co-op.`;
     }
@@ -423,10 +473,14 @@ function getCopy(mode: AppMode, mapName: string, matchMode = "campaign"): string
     return `You cleared all ${CAMPAIGN_MAPS.length} single-player maps.`;
   }
 
+  if (isCaptureTheFlagMode(matchMode)) {
+    return "Capture the Flag: Blue Team protects the left flag and captures the Red flag three times.";
+  }
+
   return "Single-player campaign: left stick drives and turns, right stick left/right rotates turret, trigger/A fires.";
 }
 
-function getCta(mode: AppMode, mapIndex: number, matchMode = "campaign"): string {
+function getCta(mode: AppMode, mapIndex: number, matchMode: MatchMode = "campaign"): string {
   if (mode === "paused") {
     return "Resume";
   }
@@ -434,6 +488,10 @@ function getCta(mode: AppMode, mapIndex: number, matchMode = "campaign"): string
   if (mode === "won") {
     if (matchMode === "deathmatch") {
       return "Rematch";
+    }
+
+    if (isCaptureTheFlagMode(matchMode)) {
+      return mapIndex >= CAPTURE_THE_FLAG_MAPS.length - 1 ? "Finish" : "Next Map";
     }
 
     return mapIndex >= CAMPAIGN_MAPS.length - 1 ? "Finish" : "Next Map";
@@ -448,8 +506,20 @@ function getCta(mode: AppMode, mapIndex: number, matchMode = "campaign"): string
   }
 
   if (mode === "complete") {
-    return "Restart Campaign";
+    return isCaptureTheFlagMode(matchMode) ? "Restart CTF" : "Restart Campaign";
   }
 
   return mapIndex > 0 ? "Continue" : "Start Campaign";
+}
+
+function getScoreLabel(matchMode: MatchMode): string {
+  if (matchMode === "deathmatch") {
+    return "P1 - P2";
+  }
+
+  if (matchMode === "coOp" || isCaptureTheFlagMode(matchMode)) {
+    return "Blue - Red";
+  }
+
+  return "Score";
 }

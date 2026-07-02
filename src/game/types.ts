@@ -1,9 +1,11 @@
 import type Phaser from "phaser";
 import type { PlayerStatus } from "./combat-state";
 
-export type MatchMode = "campaign" | "deathmatch" | "coOp";
+export type MatchMode = "campaign" | "deathmatch" | "coOp" | "captureTheFlag" | "captureTheFlagCoOp";
 
 export type TankSide = "player" | "playerTwo" | "enemy";
+
+export type TeamId = "blue" | "red";
 
 export type EnemyArchetype = "light" | "standard" | "heavy" | "boss";
 
@@ -35,11 +37,27 @@ export interface CampaignMap {
   width: number;
   height: number;
   playerSpawn: Vec2;
+  playerTwoSpawn?: Vec2;
   enemySpawns: EnemyConfig[];
   obstacles: ObstacleConfig[];
   pickups: PickupConfig[];
   playerScoreLimit: number;
   enemyScoreLimit: number;
+  ctf?: CaptureTheFlagConfig;
+}
+
+export interface BaseConfig extends Vec2 {
+  radius: number;
+}
+
+export interface CaptureTheFlagConfig {
+  blueBase: BaseConfig;
+  redBase: BaseConfig;
+  blueFlag: Vec2;
+  redFlag: Vec2;
+  blueSpawns: Vec2[];
+  redSpawns: Vec2[];
+  captureLimit: number;
 }
 
 export interface ScoreState {
@@ -67,6 +85,7 @@ export interface TankRuntime {
   hull: Phaser.Physics.Arcade.Image;
   turret: Phaser.GameObjects.Image;
   frontMarker?: Phaser.GameObjects.Rectangle;
+  aiRoleLabel?: Phaser.GameObjects.Text;
   spawn: Vec2;
   alive: boolean;
   maxHealth: number;
@@ -77,6 +96,10 @@ export interface TankRuntime {
   aimAngle: number;
   moveAngle?: number;
   nextMoveDecisionAt: number;
+  lastAiProgressAt?: number;
+  lastAiProgressDistance?: number;
+  unstuckMoveAngle?: number;
+  unstuckUntil?: number;
   motorAudio?: HTMLAudioElement;
   motorKey?: string;
   buffs: ActiveBuffs;

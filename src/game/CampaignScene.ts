@@ -10,7 +10,7 @@ import {
   selectEnemyMoveAngle,
   shouldReuseEnemyMoveAngle,
 } from "./enemy-pathing";
-import { CAMPAIGN_MAPS } from "./maps";
+import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./maps";
 import {
   EMPTY_BUFFS,
   ENEMY_STATS,
@@ -31,7 +31,9 @@ import type {
   ObstacleConfig,
   PickupConfig,
   ScoreState,
+  TankStats,
   TankRuntime,
+  TeamId,
   Vec2,
 } from "./types";
 
@@ -47,6 +49,17 @@ const SPAWN_CLEARANCE = 180;
 const SPAWN_ATTEMPTS = 48;
 const PLAYER_RESPAWN_GRACE_MS = 700;
 const PLAYER_RESPAWN_COUNTDOWN_MS = 3_000;
+const CTF_RESPAWN_DELAY_MS = 10_000;
+const CTF_TANK_HEALTH = 3;
+const CTF_FLAG_TOUCH_RADIUS = 82;
+const CTF_BASE_ALPHA = 0.16;
+const CTF_FLAG_THREAT_RANGE = 480;
+const AI_STOP_DISTANCE = 56;
+const AI_FLAG_OBJECTIVE_STOP_DISTANCE = 8;
+const AI_MIN_DRIVE_THROTTLE = 0.34;
+const AI_STUCK_CHECK_MS = 850;
+const AI_STUCK_PROGRESS_EPSILON = 18;
+const AI_UNSTUCK_DURATION_MS = 900;
 const PICKUP_BODY_RADIUS = 18;
 const PICKUP_COLLECT_RADIUS = 42;
 const ENEMY_PICKUP_SEEK_RANGE = 300;
@@ -73,6 +86,15 @@ interface SceneData {
 
 type BulletOwner = "player" | "playerTwo" | "enemy";
 
+type CtfFlagState = "home" | "carried" | "dropped";
+type CtfAiRole =
+  | "Return to Base"
+  | "Stop Carrier"
+  | "Recover Flag"
+  | "Hunt Defender"
+  | "Protect Flag"
+  | "Raid Flag";
+
 interface BulletData {
   owner: BulletOwner;
   startX: number;
@@ -85,6 +107,21 @@ interface PickupSprite extends Phaser.Physics.Arcade.Image {
   respawnAt: number;
   baseY: number;
   floatPhase: number;
+}
+
+interface CtfFlagRuntime {
+  team: TeamId;
+  state: CtfFlagState;
+  home: Vec2;
+  position: Vec2;
+  carrier?: TankRuntime;
+  sprite: Phaser.GameObjects.Rectangle;
+  pole: Phaser.GameObjects.Rectangle;
+}
+
+interface CtfRuntime {
+  flags: Record<TeamId, CtfFlagRuntime>;
+  bases: Record<TeamId, Phaser.GameObjects.Arc>;
 }
 
 function getPickupTint(type: PickupConfig["type"]): number {
@@ -115,6 +152,7 @@ export class CampaignScene extends Phaser.Scene {
   private obstacles!: Phaser.Physics.Arcade.StaticGroup;
   private bullets!: Phaser.Physics.Arcade.Group;
   private pickups!: Phaser.Physics.Arcade.Group;
+  private ctf?: CtfRuntime;
   private tankByBody = new Map<Phaser.GameObjects.GameObject, TankRuntime>();
   private cleanupListeners: Array<() => void> = [];
   private playerControlLockedUntil = 0;
@@ -133,10 +171,11 @@ export class CampaignScene extends Phaser.Scene {
     this.matchMode = data.matchMode ?? "campaign";
     this.mapIndex = data.mapIndex ?? 0;
     this.enemyDifficulty = getEnemyDifficulty(this.mapIndex + 1);
-    this.map = data.mapOverride ?? CAMPAIGN_MAPS[data.mapIndex] ?? CAMPAIGN_MAPS[0];
+    this.map = data.mapOverride ?? this.getPlaylistMap(data.mapIndex);
     this.gamepadMapping = data.gamepadMapping;
     this.callbacks = data.callbacks;
     this.score = { player: 0, enemy: 0 };
+    this.ctf = undefined;
     this.playerTwo = undefined;
     this.enemies = [];
     this.tankByBody.clear();
@@ -183,11 +222,20 @@ export class CampaignScene extends Phaser.Scene {
       this.addPickup(pickup);
     }
 
-    this.enemies = this.isDeathmatch()
-      ? []
-      : this.map.enemySpawns.map((enemy, index) => this.addTank(`enemy-${index}`, enemy, enemy.archetype));
-    this.player = this.addTank("player", this.isDeathmatch() ? this.map.playerSpawn : this.getRandomPlayerSpawn(), "standard");
-    this.playerTwo = this.isDeathmatch() ? this.addTank("playerTwo", this.getPlayerTwoSpawn(), "standard") : undefined;
+    if (this.isCaptureTheFlag()) {
+      this.addCaptureTheFlagArena();
+      this.enemies = this.map.enemySpawns.slice(0, 2).map((enemy, index) =>
+        this.addTank(`enemy-${index}`, this.getCtfSpawn("red", index), enemy.archetype),
+      );
+      this.player = this.addTank("player", this.getCtfSpawn("blue", 0), "standard");
+      this.playerTwo = this.addTank("playerTwo", this.getCtfSpawn("blue", 1), "standard");
+    } else {
+      this.enemies = this.isDeathmatch()
+        ? []
+        : this.map.enemySpawns.map((enemy, index) => this.addTank(`enemy-${index}`, enemy, enemy.archetype));
+      this.player = this.addTank("player", this.isDeathmatch() ? this.map.playerSpawn : this.getRandomPlayerSpawn(), "standard");
+      this.playerTwo = this.isDeathmatch() ? this.addTank("playerTwo", this.getPlayerTwoSpawn(), "standard") : undefined;
+    }
 
     const tankHulls = this.getAllTanks().map((tank) => tank.hull);
     const humanHulls = this.getHumanTanks().map((tank) => tank.hull);
@@ -205,7 +253,7 @@ export class CampaignScene extends Phaser.Scene {
     this.physics.add.overlap(this.bullets, enemyHulls, (bullet, hull) =>
       this.handleBulletHit(bullet as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
     );
-    this.physics.add.overlap(this.pickups, humanHulls, (pickup, hull) =>
+    this.physics.add.overlap(this.pickups, tankHulls, (pickup, hull) =>
       this.handlePickup(pickup as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
     );
 
@@ -214,7 +262,7 @@ export class CampaignScene extends Phaser.Scene {
       string,
       Phaser.Input.Keyboard.Key
     >;
-    if (this.isDeathmatch()) {
+    if (this.usesSharedCamera()) {
       this.cameras.main.stopFollow();
       this.updateCamera();
     } else {
@@ -236,7 +284,7 @@ export class CampaignScene extends Phaser.Scene {
       .setDepth(100)
       .setScrollFactor(0)
       .setVisible(false);
-    this.callbacks.onScoreChanged(this.score);
+    this.publishScore();
     this.registerWindowControls();
   }
 
@@ -260,6 +308,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updatePickupCollection();
     this.updatePickupVisuals(time);
     this.updateTankVisuals();
+    this.updateCaptureTheFlag(time);
     this.updateCamera();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
@@ -291,6 +340,64 @@ export class CampaignScene extends Phaser.Scene {
     );
     border.setStrokeStyle(8, 0x84946f, 0.85);
     border.setDepth(-5);
+  }
+
+  private addCaptureTheFlagArena(): void {
+    const config = this.map.ctf;
+
+    if (!config) {
+      return;
+    }
+
+    const blueBase = this.add
+      .circle(config.blueBase.x, config.blueBase.y, config.blueBase.radius, 0x3aa7ff, CTF_BASE_ALPHA)
+      .setStrokeStyle(5, 0x6ec6ff, 0.72)
+      .setDepth(2);
+    const redBase = this.add
+      .circle(config.redBase.x, config.redBase.y, config.redBase.radius, 0xff4b3a, CTF_BASE_ALPHA)
+      .setStrokeStyle(5, 0xff8375, 0.72)
+      .setDepth(2);
+
+    const blueFlag = this.createFlag("blue", config.blueFlag, 0x46b8ff);
+    const redFlag = this.createFlag("red", config.redFlag, 0xff533f);
+
+    this.ctf = {
+      bases: { blue: blueBase, red: redBase },
+      flags: { blue: blueFlag, red: redFlag },
+    };
+  }
+
+  private createFlag(team: TeamId, home: Vec2, color: number): CtfFlagRuntime {
+    const pole = this.add.rectangle(home.x - 10, home.y, 6, 64, 0xf4e8bb, 0.95).setDepth(TANK_DEPTH + 4);
+    const sprite = this.add.rectangle(home.x + 15, home.y - 18, 44, 28, color, 0.95).setDepth(TANK_DEPTH + 5);
+
+    return {
+      team,
+      state: "home",
+      home: { ...home },
+      position: { ...home },
+      sprite,
+      pole,
+    };
+  }
+
+  private getPlaylistMap(index: number): CampaignMap {
+    if (this.isCaptureTheFlag()) {
+      return CAPTURE_THE_FLAG_MAPS[index] ?? CAPTURE_THE_FLAG_MAPS[0];
+    }
+
+    return CAMPAIGN_MAPS[index] ?? CAMPAIGN_MAPS[0];
+  }
+
+  private getCtfSpawn(team: TeamId, index: number): Vec2 {
+    const config = this.map.ctf;
+
+    if (!config) {
+      return team === "blue" ? this.map.playerSpawn : this.map.enemySpawns[index] ?? this.map.enemySpawns[0];
+    }
+
+    const spawns = team === "blue" ? config.blueSpawns : config.redSpawns;
+    return spawns[index] ?? spawns[0] ?? (team === "blue" ? config.blueBase : config.redBase);
   }
 
   private addObstacle(obstacle: ObstacleConfig): void {
@@ -330,9 +437,10 @@ export class CampaignScene extends Phaser.Scene {
 
   private addTank(id: string, spawn: Vec2, archetype: EnemyArchetype): TankRuntime {
     const side = id === "player" ? "player" : id === "playerTwo" ? "playerTwo" : "enemy";
-    const hullKey = side === "player" ? "playerHull" : side === "playerTwo" ? "enemyLightHull" : this.enemyHullKey(archetype);
+    const isBlueTeammate = side === "playerTwo" && this.isCaptureTheFlag();
+    const hullKey = side === "player" || isBlueTeammate ? "playerHull" : side === "playerTwo" ? "enemyLightHull" : this.enemyHullKey(archetype);
     const turretKey =
-      side === "player" ? "playerTurret" : side === "playerTwo" ? "enemyLightTurret" : this.enemyTurretKey(archetype);
+      side === "player" || isBlueTeammate ? "playerTurret" : side === "playerTwo" ? "enemyLightTurret" : this.enemyTurretKey(archetype);
     const hull = this.physics.add.image(spawn.x, spawn.y, hullKey);
     const turret = this.add.image(spawn.x, spawn.y, turretKey);
     const frontMarker =
@@ -355,8 +463,8 @@ export class CampaignScene extends Phaser.Scene {
       frontMarker,
       spawn,
       alive: true,
-      maxHealth: side === "enemy" ? ENEMY_HEALTH[archetype] : 1,
-      health: side === "enemy" ? ENEMY_HEALTH[archetype] : 1,
+      maxHealth: this.isCaptureTheFlag() ? CTF_TANK_HEALTH : side === "enemy" ? ENEMY_HEALTH[archetype] : 1,
+      health: this.isCaptureTheFlag() ? CTF_TANK_HEALTH : side === "enemy" ? ENEMY_HEALTH[archetype] : 1,
       respawnAt: 0,
       lastFiredAt: -10_000,
       nextDecisionAt: 0,
@@ -368,11 +476,17 @@ export class CampaignScene extends Phaser.Scene {
 
     hull.setDepth(TANK_DEPTH);
     hull.setDrag(0.96);
-    hull.setScale(archetype === "boss" ? 1.45 : archetype === "heavy" ? 1.1 : 1);
+    hull.setScale(isBlueTeammate ? 0.92 : archetype === "boss" ? 1.45 : archetype === "heavy" ? 1.1 : 1);
+    if (isBlueTeammate) {
+      hull.setTint(0x75d7ff);
+    }
     hull.setCollideWorldBounds(true);
     hull.body!.setSize(archetype === "boss" ? 76 : 56, archetype === "boss" ? 76 : 56);
     turret.setDepth(TANK_DEPTH + 1);
-    turret.setScale(archetype === "boss" ? 2 : archetype === "heavy" ? 1.55 : 1.4);
+    turret.setScale(isBlueTeammate ? 1.3 : archetype === "boss" ? 2 : archetype === "heavy" ? 1.55 : 1.4);
+    if (isBlueTeammate) {
+      turret.setTint(0x75d7ff);
+    }
     frontMarker?.setDepth(TANK_DEPTH + 2);
     this.tankByBody.set(hull, tank);
 
@@ -411,7 +525,7 @@ export class CampaignScene extends Phaser.Scene {
 
     this.updateHumanTank(this.player, 0, time);
 
-    if (this.playerTwo) {
+    if (this.playerTwo && this.isHumanControlledTank(this.playerTwo)) {
       this.updateHumanTank(this.playerTwo, 1, time);
     }
   }
@@ -484,6 +598,11 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updateEnemies(time: number): void {
+    if (this.isCaptureTheFlag()) {
+      this.updateCaptureTheFlagAi(time);
+      return;
+    }
+
     if (this.isDeathmatch()) {
       return;
     }
@@ -519,18 +638,491 @@ export class CampaignScene extends Phaser.Scene {
         ENEMY_FIRE_LINE_PADDING,
       );
 
-      enemy.hull.setVelocity(Math.cos(moveAngle) * stats.speed, Math.sin(moveAngle) * stats.speed);
-      enemy.hull.setRotation(moveAngle + Math.PI / 2);
+      const hullTurnDelta = this.applyAiTankDrive(enemy, moveAngle, distance, stats);
 
-      if (time >= enemy.nextDecisionAt) {
-        enemy.aimAngle = desiredAngle;
-        enemy.nextDecisionAt = time + stats.aimDelayMs;
-      }
+      this.updateAiTurret(enemy, desiredAngle, hullTurnDelta);
 
-      if (hasLineOfSight && distance < ENEMY_FIRE_RANGE && time - enemy.lastFiredAt >= stats.fireCooldownMs) {
+      if (
+        hasLineOfSight &&
+        distance < ENEMY_FIRE_RANGE &&
+        this.isTurretAimedAt(enemy, this.player) &&
+        time - enemy.lastFiredAt >= stats.fireCooldownMs
+      ) {
         this.fireBullet(enemy, stats.bulletSpeed, time);
       }
     }
+  }
+
+  private updateCaptureTheFlagAi(time: number): void {
+    for (const tank of this.getCtfAiTanks()) {
+      if (!tank.alive) {
+        tank.hull.setVelocity(0, 0);
+        this.setAiRoleLabel(tank, "");
+        continue;
+      }
+
+      const stats = getEffectiveStats(this.getAiTankStats(tank), tank.buffs, time);
+      const role = this.getCtfAiRole(tank);
+      const target = this.getCtfAiTarget(tank, role);
+      const moveTarget = this.getCtfAiMoveTarget(tank, role, target);
+      this.setAiRoleLabel(tank, role);
+      const desiredAngle = Phaser.Math.Angle.Between(tank.hull.x, tank.hull.y, moveTarget.x, moveTarget.y);
+      const distance = Phaser.Math.Distance.Between(tank.hull.x, tank.hull.y, moveTarget.x, moveTarget.y);
+      const moveAngle = this.resolveCtfMoveAngle(tank, desiredAngle, distance, moveTarget, time);
+      const attackTarget = this.getNearestLivingOpponent(tank);
+
+      tank.moveAngle = moveAngle;
+      const hullTurnDelta = this.applyAiTankDrive(tank, moveAngle, distance, stats, this.getCtfAiStopDistance(role));
+
+      if (attackTarget) {
+        this.updateAiTurret(
+          tank,
+          Phaser.Math.Angle.Between(tank.hull.x, tank.hull.y, attackTarget.hull.x, attackTarget.hull.y),
+          hullTurnDelta,
+        );
+      } else {
+        tank.aimAngle += hullTurnDelta;
+      }
+
+      if (attackTarget && this.canAiFireAt(tank, attackTarget, stats, time)) {
+        this.fireBullet(tank, stats.bulletSpeed, time);
+      }
+
+    }
+  }
+
+  private applyAiTankDrive(
+    tank: TankRuntime,
+    desiredForwardAngle: number,
+    distanceToTarget: number,
+    stats: TankStats,
+    stopDistance = AI_STOP_DISTANCE,
+  ): number {
+    const deltaSeconds = this.game.loop.delta / 1_000;
+
+    if (distanceToTarget <= stopDistance) {
+      tank.hull.setVelocity(0, 0);
+      return 0;
+    }
+
+    const currentForwardAngle = tank.hull.rotation - Math.PI / 2;
+    const forwardAngleDelta = Phaser.Math.Angle.Wrap(desiredForwardAngle - currentForwardAngle);
+    const reverseAngleDelta = Phaser.Math.Angle.Wrap(desiredForwardAngle - (currentForwardAngle + Math.PI));
+    const shouldReverse = Math.abs(reverseAngleDelta) + 0.22 < Math.abs(forwardAngleDelta);
+    const angleDelta = shouldReverse ? reverseAngleDelta : forwardAngleDelta;
+    const maxTurn = PLAYER_TURN_RATE * deltaSeconds;
+    const hullTurnDelta = Phaser.Math.Clamp(angleDelta, -maxTurn, maxTurn);
+    const nextRotation = tank.hull.rotation + hullTurnDelta;
+    const nextForwardAngle = nextRotation - Math.PI / 2;
+    const alignment = Math.cos(angleDelta);
+    const throttleMagnitude = Phaser.Math.Clamp((alignment + 1) / 2, AI_MIN_DRIVE_THROTTLE, 1);
+    const throttle = shouldReverse ? -throttleMagnitude : throttleMagnitude;
+
+    tank.hull.setRotation(nextRotation);
+    tank.hull.setVelocity(Math.cos(nextForwardAngle) * throttle * stats.speed, Math.sin(nextForwardAngle) * throttle * stats.speed);
+
+    return hullTurnDelta;
+  }
+
+  private getCtfAiStopDistance(role: CtfAiRole): number {
+    if (role === "Recover Flag" || role === "Raid Flag") {
+      return AI_FLAG_OBJECTIVE_STOP_DISTANCE;
+    }
+
+    return AI_STOP_DISTANCE;
+  }
+
+  private isCtfFlagObjective(role: CtfAiRole): boolean {
+    return role === "Return to Base" || role === "Recover Flag" || role === "Raid Flag";
+  }
+
+  private updateAiTurret(tank: TankRuntime, desiredAimAngle: number, hullTurnDelta: number): void {
+    const deltaSeconds = this.game.loop.delta / 1_000;
+    const carriedAimAngle = tank.aimAngle + hullTurnDelta;
+    const maxCounterTurn = PLAYER_TURRET_TURN_RATE * deltaSeconds;
+    const aimDelta = Phaser.Math.Angle.Wrap(desiredAimAngle - carriedAimAngle);
+
+    tank.aimAngle = carriedAimAngle + Phaser.Math.Clamp(aimDelta, -maxCounterTurn, maxCounterTurn);
+  }
+
+  private getAiTankStats(tank: TankRuntime) {
+    if (this.getTankTeam(tank) === "blue") {
+      return PLAYER_BASE_STATS;
+    }
+
+    return getRampedEnemyStats(ENEMY_STATS[tank.archetype ?? "standard"], this.enemyDifficulty);
+  }
+
+  private getCtfAiTanks(): TankRuntime[] {
+    return [
+      ...(this.playerTwo && !this.isHumanControlledTank(this.playerTwo) ? [this.playerTwo] : []),
+      ...this.enemies,
+    ];
+  }
+
+  private getCtfAiRole(tank: TankRuntime): CtfAiRole {
+    const team = this.getTankTeam(tank);
+    const ownFlag = this.getTeamFlag(team);
+    const carriedFlag = this.getCarriedFlag(tank);
+    const enemyFlag = this.getTeamFlag(this.getOpposingTeam(team));
+    const friendlyCarrier = enemyFlag?.carrier && this.getTankTeam(enemyFlag.carrier) === team ? enemyFlag.carrier : undefined;
+
+    if (carriedFlag) {
+      return "Return to Base";
+    }
+
+    if (
+      ownFlag?.carrier &&
+      this.getTankTeam(ownFlag.carrier) !== team &&
+      enemyFlag?.state === "home" &&
+      this.isBetweenCarrierAndBase(tank, ownFlag.carrier, this.getTeamBase(this.getOpposingTeam(team)))
+    ) {
+      return "Raid Flag";
+    }
+
+    if (ownFlag?.carrier && this.getTankTeam(ownFlag.carrier) !== team) {
+      return "Stop Carrier";
+    }
+
+    if (ownFlag?.state === "dropped") {
+      return "Recover Flag";
+    }
+
+    if (friendlyCarrier && friendlyCarrier !== tank) {
+      return "Hunt Defender";
+    }
+
+    if (this.isDesignatedFlagRaider(tank, team)) {
+      return "Raid Flag";
+    }
+
+    if (this.getEnemyClosestToTeamFlag(team, CTF_FLAG_THREAT_RANGE) && this.isDesignatedFlagDefender(tank, team)) {
+      return "Protect Flag";
+    }
+
+    return "Raid Flag";
+  }
+
+  private getCtfAiTarget(tank: TankRuntime, role: CtfAiRole): Vec2 {
+    const team = this.getTankTeam(tank);
+    const ownFlag = this.getTeamFlag(team);
+    const enemyFlag = this.getTeamFlag(this.getOpposingTeam(team));
+
+    if (role === "Return to Base") {
+      return this.getTeamBase(team);
+    }
+
+    if (role === "Stop Carrier" && ownFlag?.carrier) {
+      return { x: ownFlag.carrier.hull.x, y: ownFlag.carrier.hull.y };
+    }
+
+    if (role === "Recover Flag" && ownFlag) {
+      return ownFlag.position;
+    }
+
+    if (role === "Hunt Defender") {
+      const defender = this.getEnemyClosestToTeamFlag(team);
+      if (defender) {
+        return { x: defender.hull.x, y: defender.hull.y };
+      }
+    }
+
+    if (role === "Protect Flag") {
+      const threat = this.getEnemyClosestToTeamFlag(team, CTF_FLAG_THREAT_RANGE);
+      if (threat) {
+        return { x: threat.hull.x, y: threat.hull.y };
+      }
+
+      return ownFlag?.position ?? this.getTeamBase(team);
+    }
+
+    return enemyFlag?.position ?? this.getTeamBase(this.getOpposingTeam(team));
+  }
+
+  private getCtfAiMoveTarget(tank: TankRuntime, role: CtfAiRole, target: Vec2): Vec2 {
+    const position = { x: tank.hull.x, y: tank.hull.y };
+    const distance = Phaser.Math.Distance.Between(position.x, position.y, target.x, target.y);
+
+    if (distance < 620 || !this.isSegmentBlocked(position, target, ENEMY_FIRE_LINE_PADDING)) {
+      return target;
+    }
+
+    return this.getBestCtfWaypoint(position, target, role);
+  }
+
+  private getBestCtfWaypoint(position: Vec2, target: Vec2, role: CtfAiRole): Vec2 {
+    const direction = Math.sign(target.x - position.x) || 1;
+    const midX = (position.x + target.x) / 2;
+    const laneOffset = Math.min(340, this.map.height * 0.24);
+    const xCandidates = [
+      position.x + direction * 420,
+      midX,
+      this.map.width / 2,
+      target.x - direction * 280,
+    ];
+    const yCandidates = [
+      target.y,
+      target.y - laneOffset,
+      target.y + laneOffset,
+      this.map.height * 0.24,
+      this.map.height * 0.76,
+      position.y,
+    ];
+    let best = target;
+    let bestScore = -Infinity;
+
+    for (const x of xCandidates) {
+      for (const y of yCandidates) {
+        const candidate = {
+          x: Phaser.Math.Clamp(x, SPAWN_MARGIN, this.map.width - SPAWN_MARGIN),
+          y: Phaser.Math.Clamp(y, SPAWN_MARGIN, this.map.height - SPAWN_MARGIN),
+        };
+
+        if (!this.isPointInsideWorld(candidate)) {
+          continue;
+        }
+
+        const blockedToCandidate = this.isSegmentBlocked(position, candidate, ENEMY_FIRE_LINE_PADDING);
+        const blockedToTarget = this.isSegmentBlocked(candidate, target, ENEMY_FIRE_LINE_PADDING);
+        const distanceFromPosition = Phaser.Math.Distance.Between(position.x, position.y, candidate.x, candidate.y);
+        const distanceToTarget = Phaser.Math.Distance.Between(candidate.x, candidate.y, target.x, target.y);
+        const progress = Phaser.Math.Distance.Between(position.x, position.y, target.x, target.y) - distanceToTarget;
+        const roleUrgency = this.isCtfFlagObjective(role) ? 1.6 : 1.15;
+        const score =
+          progress * roleUrgency -
+          distanceFromPosition * 0.12 -
+          (blockedToCandidate ? 900 : 0) -
+          (blockedToTarget ? 260 : 0) +
+          this.getObstacleClearance(candidate) * 0.25;
+
+        if (score > bestScore) {
+          best = candidate;
+          bestScore = score;
+        }
+      }
+    }
+
+    return best;
+  }
+
+  private getEnemyClosestToTeamFlag(team: TeamId, maxDistance = Infinity): TankRuntime | undefined {
+    const flag = this.getTeamFlag(team);
+    const base = this.getTeamBase(team);
+    const anchor = flag?.state === "home" ? flag.position : base;
+    let best: TankRuntime | undefined;
+    let bestDistance = Infinity;
+
+    for (const candidate of this.getAllTanks()) {
+      if (!candidate.alive || this.getTankTeam(candidate) === team) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(candidate.hull.x, candidate.hull.y, anchor.x, anchor.y);
+      if (distance <= maxDistance && distance < bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    }
+
+    return best;
+  }
+
+  private isBetweenCarrierAndBase(tank: TankRuntime, carrier: TankRuntime, base: Vec2): boolean {
+    const carrierPosition = { x: carrier.hull.x, y: carrier.hull.y };
+    const tankPosition = { x: tank.hull.x, y: tank.hull.y };
+    const segmentX = base.x - carrierPosition.x;
+    const segmentY = base.y - carrierPosition.y;
+    const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+
+    if (segmentLengthSquared === 0) {
+      return false;
+    }
+
+    const projection =
+      ((tankPosition.x - carrierPosition.x) * segmentX + (tankPosition.y - carrierPosition.y) * segmentY) /
+      segmentLengthSquared;
+
+    if (projection <= 0 || projection >= 1) {
+      return false;
+    }
+
+    const closestPoint = {
+      x: carrierPosition.x + segmentX * projection,
+      y: carrierPosition.y + segmentY * projection,
+    };
+    const crossTrackDistance = Phaser.Math.Distance.Between(
+      tankPosition.x,
+      tankPosition.y,
+      closestPoint.x,
+      closestPoint.y,
+    );
+
+    return crossTrackDistance < 300;
+  }
+
+  private isDesignatedFlagDefender(tank: TankRuntime, team: TeamId): boolean {
+    const anchor = this.getTeamFlag(team)?.position ?? this.getTeamBase(team);
+    let defender: TankRuntime | undefined;
+    let bestDistance = Infinity;
+
+    for (const candidate of this.getCtfAiTanks()) {
+      if (!candidate.alive || this.getTankTeam(candidate) !== team || this.getCarriedFlag(candidate)) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(candidate.hull.x, candidate.hull.y, anchor.x, anchor.y);
+      if (distance < bestDistance) {
+        defender = candidate;
+        bestDistance = distance;
+      }
+    }
+
+    return defender === tank;
+  }
+
+  private isDesignatedFlagRaider(tank: TankRuntime, team: TeamId): boolean {
+    const enemyFlag = this.getTeamFlag(this.getOpposingTeam(team));
+    const target = enemyFlag?.position ?? this.getTeamBase(this.getOpposingTeam(team));
+    let raider: TankRuntime | undefined;
+    let bestDistance = Infinity;
+
+    for (const candidate of this.getCtfAiTanks()) {
+      if (!candidate.alive || this.getTankTeam(candidate) !== team || this.getCarriedFlag(candidate)) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(candidate.hull.x, candidate.hull.y, target.x, target.y);
+      if (distance < bestDistance) {
+        raider = candidate;
+        bestDistance = distance;
+      }
+    }
+
+    return raider === tank;
+  }
+
+  private resolveCtfMoveAngle(
+    tank: TankRuntime,
+    desiredAngle: number,
+    distanceToTarget: number,
+    target: Vec2,
+    time: number,
+  ): number {
+    if (tank.unstuckMoveAngle !== undefined && tank.unstuckUntil !== undefined && time < tank.unstuckUntil) {
+      return tank.unstuckMoveAngle;
+    }
+
+    if (shouldReuseEnemyMoveAngle(tank.moveAngle, tank.nextMoveDecisionAt, time)) {
+      return tank.moveAngle;
+    }
+
+    tank.nextMoveDecisionAt = time + ENEMY_MOVE_DECISION_MS;
+    const unstuckAngle = this.getCtfUnstuckAngle(tank, desiredAngle, distanceToTarget, target, time);
+    if (unstuckAngle !== undefined) {
+      tank.unstuckMoveAngle = unstuckAngle;
+      tank.unstuckUntil = time + AI_UNSTUCK_DURATION_MS;
+      return unstuckAngle;
+    }
+
+    return desiredAngle;
+  }
+
+  private getCtfUnstuckAngle(
+    tank: TankRuntime,
+    desiredAngle: number,
+    distanceToTarget: number,
+    target: Vec2,
+    time: number,
+  ): number | undefined {
+    if (distanceToTarget <= AI_STOP_DISTANCE || !this.isSegmentBlocked({ x: tank.hull.x, y: tank.hull.y }, target, ENEMY_FIRE_LINE_PADDING)) {
+      tank.lastAiProgressAt = time;
+      tank.lastAiProgressDistance = distanceToTarget;
+      tank.unstuckMoveAngle = undefined;
+      tank.unstuckUntil = undefined;
+      return undefined;
+    }
+
+    if (tank.lastAiProgressAt === undefined || tank.lastAiProgressDistance === undefined) {
+      tank.lastAiProgressAt = time;
+      tank.lastAiProgressDistance = distanceToTarget;
+      return undefined;
+    }
+
+    if (tank.lastAiProgressDistance - distanceToTarget > AI_STUCK_PROGRESS_EPSILON) {
+      tank.lastAiProgressAt = time;
+      tank.lastAiProgressDistance = distanceToTarget;
+      tank.unstuckMoveAngle = undefined;
+      tank.unstuckUntil = undefined;
+      return undefined;
+    }
+
+    if (time - tank.lastAiProgressAt < AI_STUCK_CHECK_MS) {
+      return undefined;
+    }
+
+    tank.lastAiProgressAt = time;
+    tank.lastAiProgressDistance = distanceToTarget;
+    return this.getBestCtfUnstuckAngle(tank, desiredAngle, target);
+  }
+
+  private getBestCtfUnstuckAngle(tank: TankRuntime, desiredAngle: number, target: Vec2): number {
+    const position = { x: tank.hull.x, y: tank.hull.y };
+    const candidates = [
+      desiredAngle + Math.PI / 2,
+      desiredAngle - Math.PI / 2,
+      desiredAngle + Math.PI / 3,
+      desiredAngle - Math.PI / 3,
+      desiredAngle + (Math.PI * 2) / 3,
+      desiredAngle - (Math.PI * 2) / 3,
+      desiredAngle + Math.PI,
+    ];
+    let bestAngle = desiredAngle;
+    let bestScore = -Infinity;
+
+    for (const angle of candidates) {
+      const probe = {
+        x: position.x + Math.cos(angle) * 260,
+        y: position.y + Math.sin(angle) * 260,
+      };
+
+      if (!this.isPointInsideWorld(probe)) {
+        continue;
+      }
+
+      const blocked = this.isSegmentBlocked(position, probe, ENEMY_FIRE_LINE_PADDING);
+      const distanceToTarget = Phaser.Math.Distance.Between(probe.x, probe.y, target.x, target.y);
+      const clearance = this.getObstacleClearance(probe);
+      const angleCost = Math.abs(Phaser.Math.Angle.Wrap(angle - desiredAngle)) * 70;
+      const score = -distanceToTarget + clearance * 0.9 - angleCost - (blocked ? 900 : 0);
+
+      if (score > bestScore) {
+        bestAngle = angle;
+        bestScore = score;
+      }
+    }
+
+    return bestAngle;
+  }
+
+  private canAiFireAt(tank: TankRuntime, target: TankRuntime, stats: TankStats, time: number): boolean {
+    const distance = Phaser.Math.Distance.Between(tank.hull.x, tank.hull.y, target.hull.x, target.hull.y);
+    const hasLineOfSight = !this.isSegmentBlocked(
+      { x: tank.hull.x, y: tank.hull.y },
+      { x: target.hull.x, y: target.hull.y },
+      ENEMY_FIRE_LINE_PADDING,
+    );
+
+    return (
+      hasLineOfSight &&
+      distance < ENEMY_FIRE_RANGE &&
+      this.isTurretAimedAt(tank, target) &&
+      time - tank.lastFiredAt >= stats.fireCooldownMs
+    );
+  }
+
+  private isTurretAimedAt(tank: TankRuntime, target: TankRuntime): boolean {
+    const desiredAimAngle = Phaser.Math.Angle.Between(tank.hull.x, tank.hull.y, target.hull.x, target.hull.y);
+    return Math.abs(Phaser.Math.Angle.Wrap(desiredAimAngle - tank.aimAngle)) < 0.18;
   }
 
   private resolveEnemyMoveAngle(enemy: TankRuntime, desiredAngle: number, distanceToPlayer: number, time: number): number {
@@ -725,7 +1317,7 @@ export class CampaignScene extends Phaser.Scene {
     const hull = this.resolveGameObject(hullObject);
     const tank = hull ? this.tankByBody.get(hull) : undefined;
 
-    if (!tank || !this.isHumanTank(tank) || !pickup.active || !tank.alive) {
+    if (!tank || !this.canTankCollectPickup(tank) || !pickup.active || !tank.alive) {
       return;
     }
 
@@ -785,6 +1377,11 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private getBulletTargets(owner: BulletOwner): TankRuntime[] {
+    if (this.isCaptureTheFlag()) {
+      const ownerTeam = this.getSideTeam(owner);
+      return this.getAllTanks().filter((tank) => this.getTankTeam(tank) !== ownerTeam);
+    }
+
     return this.getAllTanks().filter((tank) => tank.side !== owner);
   }
 
@@ -815,17 +1412,27 @@ export class CampaignScene extends Phaser.Scene {
     tank.alive = false;
     this.stopTankMotorAudio(tank);
     tank.health = tank.maxHealth;
-    tank.respawnAt = this.time.now + RESPAWN_DELAY_MS;
+    tank.respawnAt = this.time.now + (this.isCaptureTheFlag() ? CTF_RESPAWN_DELAY_MS : RESPAWN_DELAY_MS);
+    this.clearAiNavigationState(tank);
     tank.hull.disableBody(true, true);
     tank.turret.setVisible(false);
     tank.frontMarker?.setVisible(false);
     tank.buffs = { ...EMPTY_BUFFS };
 
-    if (this.isHumanTank(tank)) {
+    if (this.isCaptureTheFlag()) {
+      this.dropCarriedFlag(tank);
+    }
+
+    if (this.isHumanControlledTank(tank)) {
       this.clearBullets();
     }
 
     this.addExplosion(tank.hull.x, tank.hull.y, 0.8);
+
+    if (this.isCaptureTheFlag()) {
+      this.publishScore();
+      return;
+    }
 
     if (scorer === "player") {
       this.score.player += 1;
@@ -833,12 +1440,12 @@ export class CampaignScene extends Phaser.Scene {
       this.score.enemy += 1;
     }
 
-    this.callbacks.onScoreChanged(this.score);
+    this.publishScore();
     this.checkOutcome();
   }
 
   private respawnTank(tank: TankRuntime): void {
-    const spawn = tank.side === "player" && !this.isDeathmatch() ? this.getRandomPlayerSpawn(tank) : tank.spawn;
+    const spawn = this.getRespawnPoint(tank);
 
     tank.alive = true;
     tank.health = tank.maxHealth;
@@ -848,6 +1455,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.frontMarker?.setVisible(true);
     tank.lastFiredAt = this.time.now;
     tank.hull.setVelocity(0, 0);
+    this.clearAiNavigationState(tank);
 
     if (tank.side === "player" && !this.isDeathmatch()) {
       this.playerControlLockedUntil = this.time.now + PLAYER_RESPAWN_COUNTDOWN_MS;
@@ -860,6 +1468,10 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private canRespawnTank(tank: TankRuntime): boolean {
+    if (this.isCaptureTheFlag()) {
+      return true;
+    }
+
     if (this.isHumanTank(tank)) {
       return true;
     }
@@ -872,6 +1484,15 @@ export class CampaignScene extends Phaser.Scene {
 
     const liveEnemies = this.enemies.filter((enemy) => enemy.alive).length;
     return liveEnemies < remainingKills;
+  }
+
+  private clearAiNavigationState(tank: TankRuntime): void {
+    tank.lastAiProgressAt = undefined;
+    tank.lastAiProgressDistance = undefined;
+    tank.unstuckMoveAngle = undefined;
+    tank.unstuckUntil = undefined;
+    tank.moveAngle = undefined;
+    tank.nextMoveDecisionAt = 0;
   }
 
   private isPlayerInRespawnCountdown(time: number): boolean {
@@ -901,6 +1522,68 @@ export class CampaignScene extends Phaser.Scene {
         bullet.disableBody(true, true);
       }
     }
+  }
+
+  private getRespawnPoint(tank: TankRuntime): Vec2 {
+    if (this.isCaptureTheFlag()) {
+      return this.getSafeTeamRespawn(this.getTankTeam(tank), tank);
+    }
+
+    return tank.side === "player" && !this.isDeathmatch() ? this.getRandomPlayerSpawn(tank) : tank.spawn;
+  }
+
+  private getSafeTeamRespawn(team: TeamId, ignoreTank: TankRuntime): Vec2 {
+    const config = this.map.ctf;
+    const base = this.getTeamBase(team);
+    const minX = team === "blue" ? SPAWN_MARGIN : this.map.width / 2 + SPAWN_MARGIN / 2;
+    const maxX = team === "blue" ? this.map.width / 2 - SPAWN_MARGIN / 2 : this.map.width - SPAWN_MARGIN;
+    let bestSpawn: Vec2 | undefined;
+    let bestScore = -Infinity;
+
+    for (let attempt = 0; attempt < SPAWN_ATTEMPTS; attempt += 1) {
+      const candidate = {
+        x: Phaser.Math.Between(minX, maxX),
+        y: Phaser.Math.Between(SPAWN_MARGIN, this.map.height - SPAWN_MARGIN),
+      };
+
+      if (!this.isSpawnClear(candidate, ignoreTank)) {
+        continue;
+      }
+
+      const enemyDistance = this.getClosestOpponentDistance(candidate, team);
+      const baseDistance = Phaser.Math.Distance.Between(candidate.x, candidate.y, base.x, base.y);
+      const carrierPenalty = this.isNearActiveFlagCarrier(candidate) ? this.map.width + this.map.height : 0;
+      const score = enemyDistance * 1.4 - baseDistance * 0.25 - carrierPenalty;
+
+      if (score > bestScore) {
+        bestSpawn = candidate;
+        bestScore = score;
+      }
+    }
+
+    const fallback = team === "blue" ? config?.blueSpawns[0] : config?.redSpawns[0];
+    return bestSpawn ?? fallback ?? base;
+  }
+
+  private getClosestOpponentDistance(point: Vec2, team: TeamId): number {
+    return this.getAllTanks()
+      .filter((tank) => tank.alive && this.getTankTeam(tank) !== team)
+      .reduce(
+        (best, tank) => Math.min(best, Phaser.Math.Distance.Between(point.x, point.y, tank.hull.x, tank.hull.y)),
+        this.map.width + this.map.height,
+      );
+  }
+
+  private isNearActiveFlagCarrier(point: Vec2): boolean {
+    if (!this.ctf) {
+      return false;
+    }
+
+    return Object.values(this.ctf.flags).some(
+      (flag) =>
+        flag.carrier?.alive &&
+        Phaser.Math.Distance.Between(point.x, point.y, flag.carrier.hull.x, flag.carrier.hull.y) < SPAWN_CLEARANCE * 2,
+    );
   }
 
   private getRandomPlayerSpawn(ignoreTank?: TankRuntime): Vec2 {
@@ -1081,7 +1764,9 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private checkOutcome(): void {
-    const outcome = getMatchOutcome(this.score, this.map.playerScoreLimit, this.map.enemyScoreLimit);
+    const outcome = this.isCaptureTheFlag()
+      ? getMatchOutcome(this.score, this.map.ctf?.captureLimit ?? 3, this.map.ctf?.captureLimit ?? 3)
+      : getMatchOutcome(this.score, this.map.playerScoreLimit, this.map.enemyScoreLimit);
 
     if (outcome === "playing") {
       return;
@@ -1122,11 +1807,190 @@ export class CampaignScene extends Phaser.Scene {
         tank.frontMarker.setRotation(tank.hull.rotation);
         tank.frontMarker.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.72 : 0.95);
       }
+
+      if (tank.aiRoleLabel) {
+        tank.aiRoleLabel.setPosition(tank.hull.x, tank.hull.y - 76);
+        tank.aiRoleLabel.setVisible(this.isCaptureTheFlag() && tank.alive && Boolean(tank.aiRoleLabel.text));
+      }
     }
   }
 
+  private setAiRoleLabel(tank: TankRuntime, role: CtfAiRole | ""): void {
+    if (!role) {
+      tank.aiRoleLabel?.setText("");
+      tank.aiRoleLabel?.setVisible(false);
+      return;
+    }
+
+    if (!tank.aiRoleLabel) {
+      const team = this.getTankTeam(tank);
+      tank.aiRoleLabel = this.add
+        .text(tank.hull.x, tank.hull.y - 76, role, {
+          fontFamily: "Arial, sans-serif",
+          fontSize: "13px",
+          fontStyle: "800",
+          color: team === "blue" ? "#bfefff" : "#ffd0c8",
+          backgroundColor: "rgba(12, 17, 13, 0.72)",
+          padding: { x: 6, y: 3 },
+        })
+        .setOrigin(0.5)
+        .setDepth(70);
+    }
+
+    tank.aiRoleLabel.setText(role);
+    tank.aiRoleLabel.setVisible(tank.alive);
+  }
+
+  private updateCaptureTheFlag(_time: number): void {
+    if (!this.ctf) {
+      return;
+    }
+
+    this.updateFlagVisuals();
+    this.handleFlagInteractions();
+  }
+
+  private updateFlagVisuals(): void {
+    if (!this.ctf) {
+      return;
+    }
+
+    for (const flag of Object.values(this.ctf.flags)) {
+      if (flag.carrier?.alive) {
+        flag.position = {
+          x: flag.carrier.hull.x,
+          y: flag.carrier.hull.y - 58,
+        };
+      }
+
+      flag.pole.setPosition(flag.position.x - 10, flag.position.y);
+      flag.sprite.setPosition(flag.position.x + 15, flag.position.y - 18);
+      flag.sprite.setAlpha(flag.state === "dropped" ? 0.78 : 0.95);
+      flag.pole.setAlpha(flag.state === "dropped" ? 0.68 : 0.95);
+    }
+  }
+
+  private handleFlagInteractions(): void {
+    if (!this.ctf) {
+      return;
+    }
+
+    for (const tank of this.getAllTanks()) {
+      if (!tank.alive) {
+        continue;
+      }
+
+      const team = this.getTankTeam(tank);
+      const enemyFlag = this.getTeamFlag(this.getOpposingTeam(team));
+      const ownFlag = this.getTeamFlag(team);
+
+      if (ownFlag?.state === "dropped" && this.isNear(tank.hull, ownFlag.position, CTF_FLAG_TOUCH_RADIUS)) {
+        this.returnFlag(ownFlag);
+      }
+
+      if (
+        enemyFlag &&
+        enemyFlag.state !== "carried" &&
+        !this.getCarriedFlag(tank) &&
+        this.isNear(tank.hull, enemyFlag.position, CTF_FLAG_TOUCH_RADIUS)
+      ) {
+        this.pickupFlag(tank, enemyFlag);
+      }
+
+      const carriedFlag = this.getCarriedFlag(tank);
+      if (carriedFlag && ownFlag?.state === "home" && this.isInsideTeamBase(tank, team)) {
+        this.scoreCapture(team, carriedFlag);
+      }
+    }
+  }
+
+  private pickupFlag(tank: TankRuntime, flag: CtfFlagRuntime): void {
+    flag.state = "carried";
+    flag.carrier = tank;
+    this.playSound("pickupSfx", 0.32);
+  }
+
+  private returnFlag(flag: CtfFlagRuntime): void {
+    flag.state = "home";
+    flag.carrier = undefined;
+    flag.position = { ...flag.home };
+    this.playSound("pickupSfx", 0.24);
+  }
+
+  private scoreCapture(team: TeamId, capturedFlag: CtfFlagRuntime): void {
+    if (team === "blue") {
+      this.score.player += 1;
+    } else {
+      this.score.enemy += 1;
+    }
+
+    this.returnFlag(capturedFlag);
+    this.publishScore();
+    this.checkOutcome();
+  }
+
+  private publishScore(): void {
+    this.callbacks.onScoreChanged({ ...this.score });
+  }
+
+  private dropCarriedFlag(tank: TankRuntime): void {
+    const flag = this.getCarriedFlag(tank);
+
+    if (!flag) {
+      return;
+    }
+
+    flag.state = "dropped";
+    flag.carrier = undefined;
+    flag.position = {
+      x: Phaser.Math.Clamp(tank.hull.x, SPAWN_MARGIN, this.map.width - SPAWN_MARGIN),
+      y: Phaser.Math.Clamp(tank.hull.y, SPAWN_MARGIN, this.map.height - SPAWN_MARGIN),
+    };
+  }
+
+  private getCarriedFlag(tank: TankRuntime): CtfFlagRuntime | undefined {
+    if (!this.ctf) {
+      return undefined;
+    }
+
+    return Object.values(this.ctf.flags).find((flag) => flag.carrier === tank);
+  }
+
+  private getFlagCarrier(flagTeam: TeamId): TankRuntime | undefined {
+    return this.getTeamFlag(flagTeam)?.carrier;
+  }
+
+  private getTeamFlag(team: TeamId): CtfFlagRuntime | undefined {
+    return this.ctf?.flags[team];
+  }
+
+  private getTeamBase(team: TeamId): Vec2 {
+    const config = this.map.ctf;
+
+    if (!config) {
+      return team === "blue" ? this.map.playerSpawn : this.map.enemySpawns[0] ?? this.map.playerSpawn;
+    }
+
+    return team === "blue" ? config.blueBase : config.redBase;
+  }
+
+  private isInsideTeamBase(tank: TankRuntime, team: TeamId): boolean {
+    const config = this.map.ctf;
+
+    if (!config) {
+      return false;
+    }
+
+    const base = team === "blue" ? config.blueBase : config.redBase;
+    return Phaser.Math.Distance.Between(tank.hull.x, tank.hull.y, base.x, base.y) <= base.radius;
+  }
+
+  private isNear(object: Phaser.Physics.Arcade.Image, point: Vec2, radius: number): boolean {
+    return Phaser.Math.Distance.Between(object.x, object.y, point.x, point.y) <= radius;
+  }
+
   private updateCamera(): void {
-    if (!this.isDeathmatch() || !this.playerTwo) {
+    if (!this.usesSharedCamera() || !this.playerTwo) {
       return;
     }
 
@@ -1336,12 +2200,67 @@ export class CampaignScene extends Phaser.Scene {
     return tank.side === "player" || tank.side === "playerTwo";
   }
 
+  private isHumanControlledTank(tank: TankRuntime): boolean {
+    if (tank.side === "player") {
+      return true;
+    }
+
+    if (tank.side === "playerTwo") {
+      return this.isDeathmatch() || this.matchMode === "captureTheFlagCoOp";
+    }
+
+    return false;
+  }
+
+  private canTankCollectPickup(tank: TankRuntime): boolean {
+    return this.isHumanTank(tank) || this.isCaptureTheFlag();
+  }
+
+  private getTankTeam(tank: TankRuntime): TeamId {
+    return this.getSideTeam(tank.side);
+  }
+
+  private getSideTeam(side: BulletOwner): TeamId {
+    return side === "enemy" ? "red" : "blue";
+  }
+
+  private getOpposingTeam(team: TeamId): TeamId {
+    return team === "blue" ? "red" : "blue";
+  }
+
+  private getNearestLivingOpponent(tank: TankRuntime): TankRuntime | undefined {
+    let best: TankRuntime | undefined;
+    let bestDistance = Infinity;
+
+    for (const candidate of this.getAllTanks()) {
+      if (!candidate.alive || this.getTankTeam(candidate) === this.getTankTeam(tank)) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(tank.hull.x, tank.hull.y, candidate.hull.x, candidate.hull.y);
+      if (distance < bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    }
+
+    return best;
+  }
+
   private isDeathmatch(): boolean {
     return this.matchMode === "deathmatch";
   }
 
   private isCoOp(): boolean {
     return this.matchMode === "coOp";
+  }
+
+  private isCaptureTheFlag(): boolean {
+    return this.matchMode === "captureTheFlag" || this.matchMode === "captureTheFlagCoOp";
+  }
+
+  private usesSharedCamera(): boolean {
+    return this.isDeathmatch() || this.matchMode === "captureTheFlagCoOp";
   }
 
   private playRandomSound(keys: AssetKey[], volume: number): void {

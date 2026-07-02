@@ -28,6 +28,26 @@ _Avoid_: Loose flag, dead flag
 A tank carrying the opposing team's flag. A Flag Carrier keeps normal movement, turret, shooting, and powerup behavior.
 _Avoid_: Runner, holder
 
+**Friendly Fire**:
+Damage from a tank to another tank on the same team. Friendly Fire is disabled in Capture the Flag, while teammate tanks remain physically solid.
+_Avoid_: Team damage
+
+**Powerup**:
+A map pickup that temporarily improves the collecting tank. Capture the Flag uses the same Powerups as other modes, and any tank may collect them.
+_Avoid_: Bonus, upgrade
+
+**Capture the Flag Map**:
+A purpose-built arena for Capture the Flag with Blue and Red bases, flags, team halves, respawn space, and routes for attacking and defending.
+_Avoid_: Converted campaign map, generic arena
+
+**Capture the Flag Playlist**:
+A fixed sequence of Capture the Flag Maps. Winning a match advances to the next map, losing restarts the current map, and clearing the final map completes the playlist.
+_Avoid_: CTF campaign
+
+**Capture the Flag Difficulty**:
+The challenge ramp in a Capture the Flag Playlist. Difficulty increases through map layout, AI skill, and enemy archetypes while preserving the two-tanks-per-team shape.
+_Avoid_: More enemies, larger teams
+
 **Flag Return**:
 The act of restoring a dropped flag to its own base when a tank from the flag's owning team touches it.
 _Avoid_: Reset, recover

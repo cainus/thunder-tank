@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "portless run --name thunder-tank npm run dev:raw",
+    "dev": "node scripts/dev-auto-update.mjs",
+    "dev:portless": "portless run --name thunder-tank npm run dev:raw",
     "dev:raw": "vite",
     "dev:api": "tsx server/index.ts",
     "build": "tsc -b && vite build",

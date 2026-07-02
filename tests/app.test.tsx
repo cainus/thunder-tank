@@ -7,7 +7,7 @@ vi.mock("../src/game/GameCanvas", () => ({
     matchMode,
     onMapEnded,
   }: {
-    matchMode: "campaign" | "deathmatch" | "coOp";
+    matchMode: "campaign" | "deathmatch" | "coOp" | "captureTheFlag" | "captureTheFlagCoOp";
     onMapEnded: (outcome: "won" | "lost") => void;
   }) => (
     <div data-testid="mock-game-canvas">
@@ -30,11 +30,37 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Start Campaign" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "2P Deathmatch" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Co-op Campaign" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Capture the Flag" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Co-op Capture the Flag" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Controller Setup" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Controller Recorder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Explosion Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Motor Sounds" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Level Editor" })).toBeInTheDocument();
+  });
+
+  it("starts one-player capture the flag from the title screen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Capture the Flag" }));
+
+    expect(screen.getByTestId("mock-game-canvas")).toBeInTheDocument();
+    expect(screen.getByText("Mode: captureTheFlag")).toBeInTheDocument();
+    expect(screen.getByText("01. Twin Depot")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mock Win" }));
+
+    expect(screen.getByRole("heading", { name: "Blue Wins" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next Map" })).toBeInTheDocument();
+  });
+
+  it("starts co-op capture the flag from the title screen", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Co-op Capture the Flag" }));
+
+    expect(screen.getByTestId("mock-game-canvas")).toBeInTheDocument();
+    expect(screen.getByText("Mode: captureTheFlagCoOp")).toBeInTheDocument();
   });
 
   it("starts co-op campaign from the title screen", () => {

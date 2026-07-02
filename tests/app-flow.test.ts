@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyBackAction, applyMapOutcome, applyPrimaryAction, startMap } from "../src/app-flow";
-import { CAMPAIGN_MAPS } from "../src/game/maps";
+import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "../src/game/maps";
 
 describe("single-player campaign flow", () => {
   it("starts on Map 1 from the title screen", () => {
@@ -98,5 +98,52 @@ describe("co-op campaign flow", () => {
       runId: 20,
     });
     expect(applyPrimaryAction(complete)).toEqual({ mode: "playing", matchMode: "coOp", mapIndex: 0, runId: 21 });
+  });
+});
+
+describe("capture the flag playlist flow", () => {
+  it("starts 1P CTF and advances through the CTF playlist", () => {
+    const ctf = startMap({ mode: "title", matchMode: "campaign", mapIndex: 0, runId: 0 }, 0, "captureTheFlag");
+
+    expect(ctf).toEqual({ mode: "playing", matchMode: "captureTheFlag", mapIndex: 0, runId: 1 });
+    expect(applyPrimaryAction(applyMapOutcome(ctf, "won"))).toEqual({
+      mode: "playing",
+      matchMode: "captureTheFlag",
+      mapIndex: 1,
+      runId: 2,
+    });
+    expect(applyPrimaryAction(applyMapOutcome({ ...ctf, mode: "playing", mapIndex: 2, runId: 7 }, "lost"))).toEqual({
+      mode: "playing",
+      matchMode: "captureTheFlag",
+      mapIndex: 2,
+      runId: 8,
+    });
+  });
+
+  it("starts co-op CTF and completes after the fifth CTF map", () => {
+    const finalWin = applyPrimaryAction(
+      applyMapOutcome(
+        {
+          mode: "playing",
+          matchMode: "captureTheFlagCoOp",
+          mapIndex: CAPTURE_THE_FLAG_MAPS.length - 1,
+          runId: 5,
+        },
+        "won",
+      ),
+    );
+
+    expect(finalWin).toEqual({
+      mode: "complete",
+      matchMode: "captureTheFlagCoOp",
+      mapIndex: CAPTURE_THE_FLAG_MAPS.length - 1,
+      runId: 5,
+    });
+    expect(applyPrimaryAction(finalWin)).toEqual({
+      mode: "playing",
+      matchMode: "captureTheFlagCoOp",
+      mapIndex: 0,
+      runId: 6,
+    });
   });
 });

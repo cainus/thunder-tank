@@ -1,4 +1,4 @@
-import { CAMPAIGN_MAPS } from "./game/maps";
+import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./game/maps";
 import type { MatchMode, MatchOutcome } from "./game/types";
 
 export type AppMode = "title" | "playing" | "paused" | "won" | "lost" | "complete";
@@ -40,12 +40,26 @@ export function applyPrimaryAction(state: FlowState): FlowState {
   }
 
   if (state.mode === "complete") {
+    if (isCaptureTheFlagMode(state.matchMode)) {
+      return startMap(state, 0, state.matchMode);
+    }
+
     return startMap(state, 0, state.matchMode === "coOp" ? "coOp" : "campaign");
   }
 
   if (state.mode === "won") {
     if (state.matchMode === "deathmatch") {
       return startMap(state, state.mapIndex, "deathmatch");
+    }
+
+    if (isCaptureTheFlagMode(state.matchMode)) {
+      const nextIndex = state.mapIndex + 1;
+
+      if (nextIndex >= CAPTURE_THE_FLAG_MAPS.length) {
+        return { ...state, mode: "complete" };
+      }
+
+      return startMap(state, nextIndex, state.matchMode);
     }
 
     const nextIndex = state.mapIndex + 1;
@@ -58,6 +72,10 @@ export function applyPrimaryAction(state: FlowState): FlowState {
   }
 
   return state;
+}
+
+export function isCaptureTheFlagMode(matchMode: MatchMode): boolean {
+  return matchMode === "captureTheFlag" || matchMode === "captureTheFlagCoOp";
 }
 
 export function applyBackAction(state: FlowState): FlowState {

@@ -1,4 +1,4 @@
-import type { CampaignMap } from "./types";
+import type { CampaignMap, EnemyArchetype, ObstacleConfig, PickupConfig } from "./types";
 
 const BASE_CAMPAIGN_MAPS: CampaignMap[] = [
   {
@@ -724,6 +724,364 @@ export const CAMPAIGN_MAPS: CampaignMap[] = [
   ...AUTHORED_CAMPAIGN_MAPS,
 ].map(numberCampaignMap);
 
+const BASE_CTF_MAPS: CampaignMap[] = [
+  {
+    id: "ctf-1",
+    name: "Twin Depot",
+    width: 2200,
+    height: 1400,
+    playerSpawn: { x: 280, y: 560 },
+    playerTwoSpawn: { x: 280, y: 840 },
+    playerScoreLimit: 3,
+    enemyScoreLimit: 3,
+    enemySpawns: [
+      { x: 1920, y: 560, archetype: "light" },
+      { x: 1920, y: 840, archetype: "light" },
+    ],
+    ctf: {
+      blueBase: { x: 230, y: 700, radius: 120 },
+      redBase: { x: 1970, y: 700, radius: 120 },
+      blueFlag: { x: 230, y: 700 },
+      redFlag: { x: 1970, y: 700 },
+      blueSpawns: [
+        { x: 330, y: 500 },
+        { x: 330, y: 900 },
+      ],
+      redSpawns: [
+        { x: 1870, y: 500 },
+        { x: 1870, y: 900 },
+      ],
+      captureLimit: 3,
+    },
+    pickups: [
+      { x: 1100, y: 700, type: "speed" },
+      { x: 760, y: 350, type: "rapidFire" },
+      { x: 1440, y: 1050, type: "shield" },
+    ],
+    obstacles: [
+      { x: 760, y: 560, kind: "crate" },
+      { x: 760, y: 840, kind: "crate" },
+      { x: 1100, y: 420, kind: "barricade" },
+      { x: 1100, y: 980, kind: "barricade" },
+      { x: 1440, y: 560, kind: "crate" },
+      { x: 1440, y: 840, kind: "crate" },
+      { x: 1100, y: 700, kind: "barrel" },
+    ],
+  },
+  {
+    id: "ctf-2",
+    name: "Bridge Cut",
+    width: 2400,
+    height: 1500,
+    playerSpawn: { x: 320, y: 560 },
+    playerTwoSpawn: { x: 320, y: 940 },
+    playerScoreLimit: 3,
+    enemyScoreLimit: 3,
+    enemySpawns: [
+      { x: 2080, y: 560, archetype: "light" },
+      { x: 2080, y: 940, archetype: "standard" },
+    ],
+    ctf: {
+      blueBase: { x: 260, y: 750, radius: 125 },
+      redBase: { x: 2140, y: 750, radius: 125 },
+      blueFlag: { x: 260, y: 750 },
+      redFlag: { x: 2140, y: 750 },
+      blueSpawns: [
+        { x: 380, y: 520 },
+        { x: 380, y: 980 },
+      ],
+      redSpawns: [
+        { x: 2020, y: 520 },
+        { x: 2020, y: 980 },
+      ],
+      captureLimit: 3,
+    },
+    pickups: [
+      { x: 1200, y: 750, type: "shield" },
+      { x: 900, y: 300, type: "speed" },
+      { x: 1500, y: 1200, type: "rapidFire" },
+    ],
+    obstacles: [
+      { x: 760, y: 380, kind: "sandbag" },
+      { x: 760, y: 1120, kind: "sandbag" },
+      { x: 1050, y: 650, kind: "barricade", rotation: 90 },
+      { x: 1050, y: 850, kind: "barricade", rotation: 90 },
+      { x: 1350, y: 650, kind: "barricade", rotation: 90 },
+      { x: 1350, y: 850, kind: "barricade", rotation: 90 },
+      { x: 1640, y: 380, kind: "sandbag" },
+      { x: 1640, y: 1120, kind: "sandbag" },
+    ],
+  },
+  {
+    id: "ctf-3",
+    name: "Forked Yard",
+    width: 2600,
+    height: 1600,
+    playerSpawn: { x: 360, y: 600 },
+    playerTwoSpawn: { x: 360, y: 1000 },
+    playerScoreLimit: 3,
+    enemyScoreLimit: 3,
+    enemySpawns: [
+      { x: 2240, y: 600, archetype: "standard" },
+      { x: 2240, y: 1000, archetype: "standard" },
+    ],
+    ctf: {
+      blueBase: { x: 290, y: 800, radius: 130 },
+      redBase: { x: 2310, y: 800, radius: 130 },
+      blueFlag: { x: 290, y: 800 },
+      redFlag: { x: 2310, y: 800 },
+      blueSpawns: [
+        { x: 430, y: 540 },
+        { x: 430, y: 1060 },
+      ],
+      redSpawns: [
+        { x: 2170, y: 540 },
+        { x: 2170, y: 1060 },
+      ],
+      captureLimit: 3,
+    },
+    pickups: [
+      { x: 1300, y: 800, type: "speed" },
+      { x: 1040, y: 410, type: "rapidFire" },
+      { x: 1560, y: 1190, type: "shield" },
+    ],
+    obstacles: [
+      { x: 860, y: 520, kind: "crate" },
+      { x: 860, y: 1080, kind: "crate" },
+      { x: 1160, y: 650, kind: "barricade" },
+      { x: 1160, y: 950, kind: "barricade" },
+      { x: 1300, y: 800, kind: "barrel" },
+      { x: 1440, y: 650, kind: "barricade" },
+      { x: 1440, y: 950, kind: "barricade" },
+      { x: 1740, y: 520, kind: "crate" },
+      { x: 1740, y: 1080, kind: "crate" },
+    ],
+  },
+  {
+    id: "ctf-4",
+    name: "Shell Garden",
+    width: 2800,
+    height: 1700,
+    playerSpawn: { x: 380, y: 650 },
+    playerTwoSpawn: { x: 380, y: 1050 },
+    playerScoreLimit: 3,
+    enemyScoreLimit: 3,
+    enemySpawns: [
+      { x: 2420, y: 650, archetype: "standard" },
+      { x: 2420, y: 1050, archetype: "heavy" },
+    ],
+    ctf: {
+      blueBase: { x: 320, y: 850, radius: 135 },
+      redBase: { x: 2480, y: 850, radius: 135 },
+      blueFlag: { x: 320, y: 850 },
+      redFlag: { x: 2480, y: 850 },
+      blueSpawns: [
+        { x: 470, y: 590 },
+        { x: 470, y: 1110 },
+      ],
+      redSpawns: [
+        { x: 2330, y: 590 },
+        { x: 2330, y: 1110 },
+      ],
+      captureLimit: 3,
+    },
+    pickups: [
+      { x: 1400, y: 850, type: "shield" },
+      { x: 1080, y: 430, type: "speed" },
+      { x: 1720, y: 1270, type: "rapidFire" },
+      { x: 1400, y: 300, type: "speed" },
+    ],
+    obstacles: [
+      { x: 820, y: 420, kind: "barrel" },
+      { x: 820, y: 1280, kind: "barrel" },
+      { x: 1040, y: 680, kind: "sandbag", rotation: 90 },
+      { x: 1040, y: 1020, kind: "sandbag", rotation: 90 },
+      { x: 1400, y: 620, kind: "crate" },
+      { x: 1400, y: 1080, kind: "crate" },
+      { x: 1760, y: 680, kind: "sandbag", rotation: 90 },
+      { x: 1760, y: 1020, kind: "sandbag", rotation: 90 },
+      { x: 1980, y: 420, kind: "barrel" },
+      { x: 1980, y: 1280, kind: "barrel" },
+    ],
+  },
+  {
+    id: "ctf-5",
+    name: "Citadel Run",
+    width: 3000,
+    height: 1800,
+    playerSpawn: { x: 420, y: 680 },
+    playerTwoSpawn: { x: 420, y: 1120 },
+    playerScoreLimit: 3,
+    enemyScoreLimit: 3,
+    enemySpawns: [
+      { x: 2580, y: 680, archetype: "heavy" },
+      { x: 2580, y: 1120, archetype: "heavy" },
+    ],
+    ctf: {
+      blueBase: { x: 350, y: 900, radius: 145 },
+      redBase: { x: 2650, y: 900, radius: 145 },
+      blueFlag: { x: 350, y: 900 },
+      redFlag: { x: 2650, y: 900 },
+      blueSpawns: [
+        { x: 520, y: 620 },
+        { x: 520, y: 1180 },
+      ],
+      redSpawns: [
+        { x: 2480, y: 620 },
+        { x: 2480, y: 1180 },
+      ],
+      captureLimit: 3,
+    },
+    pickups: [
+      { x: 1500, y: 900, type: "shield" },
+      { x: 1180, y: 520, type: "rapidFire" },
+      { x: 1820, y: 1280, type: "speed" },
+    ],
+    obstacles: [
+      { x: 900, y: 520, kind: "barricade" },
+      { x: 900, y: 900, kind: "crate" },
+      { x: 900, y: 1280, kind: "barricade" },
+      { x: 1260, y: 720, kind: "sandbag", rotation: 90 },
+      { x: 1260, y: 1080, kind: "sandbag", rotation: 90 },
+      { x: 1500, y: 540, kind: "barrel" },
+      { x: 1500, y: 1260, kind: "barrel" },
+      { x: 1740, y: 720, kind: "sandbag", rotation: 90 },
+      { x: 1740, y: 1080, kind: "sandbag", rotation: 90 },
+      { x: 2100, y: 520, kind: "barricade" },
+      { x: 2100, y: 900, kind: "crate" },
+      { x: 2100, y: 1280, kind: "barricade" },
+    ],
+  },
+];
+
+const AUTHORED_CTF_MAPS: CampaignMap[] = [
+  createCaptureTheFlagMap(6, "Canal Break", 3200, 1840, ["light", "standard"], 0),
+  createCaptureTheFlagMap(7, "Iron Switch", 3300, 1880, ["standard", "standard"], 1),
+  createCaptureTheFlagMap(8, "Depot Loop", 3400, 1920, ["standard", "heavy"], 2),
+  createCaptureTheFlagMap(9, "River Teeth", 3500, 1960, ["light", "heavy"], 3),
+  createCaptureTheFlagMap(10, "Bunker Split", 3600, 2000, ["heavy", "heavy"], 4),
+  createCaptureTheFlagMap(11, "Twin Locks", 3200, 1880, ["standard", "light"], 5),
+  createCaptureTheFlagMap(12, "Crossfire Yard", 3350, 1920, ["standard", "heavy"], 6),
+  createCaptureTheFlagMap(13, "Signal Flats", 3500, 1980, ["light", "standard"], 7),
+  createCaptureTheFlagMap(14, "Redline Pass", 3650, 2020, ["heavy", "standard"], 8),
+  createCaptureTheFlagMap(15, "Command Gate", 3800, 2060, ["heavy", "heavy"], 9),
+  createCaptureTheFlagMap(16, "Switchback", 3400, 1960, ["standard", "standard"], 10),
+  createCaptureTheFlagMap(17, "Battery Row", 3550, 2020, ["light", "heavy"], 11),
+  createCaptureTheFlagMap(18, "Causeway", 3700, 2080, ["standard", "heavy"], 12),
+  createCaptureTheFlagMap(19, "Forklift Maze", 3850, 2120, ["heavy", "standard"], 13),
+  createCaptureTheFlagMap(20, "Final Relay", 4000, 2160, ["heavy", "heavy"], 14),
+];
+
+export const CAPTURE_THE_FLAG_MAPS: CampaignMap[] = [
+  ...BASE_CTF_MAPS,
+  ...AUTHORED_CTF_MAPS,
+].map(numberCaptureTheFlagMap);
+
+function createCaptureTheFlagMap(
+  number: number,
+  name: string,
+  width: number,
+  height: number,
+  enemyArchetypes: [EnemyArchetype, EnemyArchetype],
+  variant: number,
+): CampaignMap {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const baseInset = Math.round(width * 0.12);
+  const spawnInset = baseInset + 180;
+  const upperLane = Math.round(height * 0.32);
+  const lowerLane = Math.round(height * 0.68);
+  const baseRadius = 130 + (variant % 4) * 8;
+
+  return {
+    id: `ctf-${number}`,
+    name,
+    width,
+    height,
+    playerSpawn: { x: spawnInset, y: upperLane },
+    playerTwoSpawn: { x: spawnInset, y: lowerLane },
+    playerScoreLimit: 3,
+    enemyScoreLimit: 3,
+    enemySpawns: [
+      { x: width - spawnInset, y: upperLane, archetype: enemyArchetypes[0] },
+      { x: width - spawnInset, y: lowerLane, archetype: enemyArchetypes[1] },
+    ],
+    ctf: {
+      blueBase: { x: baseInset, y: centerY, radius: baseRadius },
+      redBase: { x: width - baseInset, y: centerY, radius: baseRadius },
+      blueFlag: { x: baseInset, y: centerY },
+      redFlag: { x: width - baseInset, y: centerY },
+      blueSpawns: [
+        { x: spawnInset, y: upperLane },
+        { x: spawnInset, y: lowerLane },
+      ],
+      redSpawns: [
+        { x: width - spawnInset, y: upperLane },
+        { x: width - spawnInset, y: lowerLane },
+      ],
+      captureLimit: 3,
+    },
+    pickups: createCtfPickups(width, height, variant),
+    obstacles: createCtfObstacles(width, height, variant),
+  };
+}
+
+function createCtfPickups(width: number, height: number, variant: number): PickupConfig[] {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const stagger = (variant % 3) * 70;
+
+  return [
+    { x: centerX, y: centerY, type: variant % 2 === 0 ? "speed" : "shield" },
+    { x: Math.round(width * 0.34), y: Math.round(height * 0.24) + stagger, type: "rapidFire" },
+    { x: Math.round(width * 0.66), y: Math.round(height * 0.76) - stagger, type: "speed" },
+    { x: Math.round(width * 0.5), y: variant % 2 === 0 ? Math.round(height * 0.18) : Math.round(height * 0.82), type: "shield" },
+  ];
+}
+
+function createCtfObstacles(width: number, height: number, variant: number): ObstacleConfig[] {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const upperLane = Math.round(height * 0.34);
+  const lowerLane = Math.round(height * 0.66);
+  const leftGate = Math.round(width * 0.34);
+  const rightGate = Math.round(width * 0.66);
+  const offset = (variant % 4) * 34;
+  const middleKind: ObstacleConfig["kind"] = variant % 2 === 0 ? "crate" : "barrel";
+
+  const obstacles: ObstacleConfig[] = [
+    { x: leftGate, y: upperLane - offset, kind: "sandbag" },
+    { x: leftGate, y: lowerLane + offset, kind: "sandbag" },
+    { x: rightGate, y: upperLane + offset, kind: "sandbag" },
+    { x: rightGate, y: lowerLane - offset, kind: "sandbag" },
+    { x: centerX - 240, y: centerY - 170, kind: "barricade", rotation: 90 },
+    { x: centerX - 240, y: centerY + 170, kind: "barricade", rotation: 90 },
+    { x: centerX + 240, y: centerY - 170, kind: "barricade", rotation: 90 },
+    { x: centerX + 240, y: centerY + 170, kind: "barricade", rotation: 90 },
+    { x: centerX, y: centerY - 310, kind: middleKind },
+    { x: centerX, y: centerY + 310, kind: middleKind },
+  ];
+
+  if (variant % 3 === 0) {
+    obstacles.push(
+      { x: Math.round(width * 0.24), y: centerY, kind: "crate" },
+      { x: Math.round(width * 0.76), y: centerY, kind: "crate" },
+    );
+  } else if (variant % 3 === 1) {
+    obstacles.push(
+      { x: Math.round(width * 0.44), y: Math.round(height * 0.2), kind: "barrel" },
+      { x: Math.round(width * 0.56), y: Math.round(height * 0.8), kind: "barrel" },
+    );
+  } else {
+    obstacles.push(
+      { x: Math.round(width * 0.44), y: Math.round(height * 0.8), kind: "crate" },
+      { x: Math.round(width * 0.56), y: Math.round(height * 0.2), kind: "crate" },
+    );
+  }
+
+  return obstacles;
+}
+
 export function getMapByIndex(index: number): CampaignMap {
   const map = CAMPAIGN_MAPS[index];
 
@@ -734,7 +1092,25 @@ export function getMapByIndex(index: number): CampaignMap {
   return map;
 }
 
+export function getCaptureTheFlagMapByIndex(index: number): CampaignMap {
+  const map = CAPTURE_THE_FLAG_MAPS[index];
+
+  if (!map) {
+    throw new Error(`Unknown capture the flag map index ${index}`);
+  }
+
+  return map;
+}
+
 function numberCampaignMap(map: CampaignMap, index: number): CampaignMap {
+  const number = String(index + 1).padStart(2, "0");
+  return {
+    ...map,
+    name: `${number}. ${map.name}`,
+  };
+}
+
+function numberCaptureTheFlagMap(map: CampaignMap, index: number): CampaignMap {
   const number = String(index + 1).padStart(2, "0");
   return {
     ...map,
