@@ -1,0 +1,26 @@
+src/game/CampaignScene.ts
+  s_8cb33ecf37d2c5::t_9989c9c4f5598a 360-410,420,424-512
+  s_8cb33ecf37d2c5::t_3a44f880007ceb 513
+.zenflow/tasks/i-would-like-a-more-urban-map-wi-dd6c/plan.md
+  s_8cb33ecf37d2c5::t_4d7bef10373fd3 1-31,33-35,37-39,41-43
+  s_8cb33ecf37d2c5::t_fb271a76e640f2 32,36,40
+src/LevelEditor.tsx
+  s_8cb33ecf37d2c5::t_9989c9c4f5598a 436,578-670
+  s_8cb33ecf37d2c5::t_12fc204238e60f 671-672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "1ef6df76363d32ebc5ce12fb1201e9884311a98e",
+  "prompts": {},
+  "sessions": {
+    "s_8cb33ecf37d2c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f248d-aeb2-78d1-ad0b-dabd5524cc3a",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
