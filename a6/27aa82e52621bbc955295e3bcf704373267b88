@@ -1,0 +1,39 @@
+tests/app.test.tsx
+  s_7c5f3ff56fbfc4::t_8e6e8d0a27f458 9,13-17,21-32,120-130
+  s_7c5f3ff56fbfc4::t_31548e40bdcd4d 131
+src/styles.css
+  s_7c5f3ff56fbfc4::t_318c194f0699bb 111-146
+src/game/CampaignScene.ts
+  s_7c5f3ff56fbfc4::t_71ecff76d51c62 1193,1209-1211
+  s_7c5f3ff56fbfc4::t_63a61d0016a3ed 773
+  s_7c5f3ff56fbfc4::t_86eb37f060b8b6 315-323
+  s_7c5f3ff56fbfc4::t_7772168588b1db 58,89
+src/game/combat-state.ts
+  s_7c5f3ff56fbfc4::t_1d1df218599f06 25-29,57-60,62-65
+.zenflow/tasks/put-labels-on-the-power-ups-show-4ee5/plan.md
+  s_7c5f3ff56fbfc4::t_f0106861a99a5f 3,6,9
+  s_7c5f3ff56fbfc4::t_6f06adae1b729f 1-2,4-5,7-8,10
+tests/combat-state.test.ts
+  s_7c5f3ff56fbfc4::t_b8a836509da855 7,45-49
+  s_7c5f3ff56fbfc4::t_1fc28bfee44311 50-51
+src/App.tsx
+  s_7c5f3ff56fbfc4::t_ac02b9bc9ebf25 14-15,31-36,53,227-238
+.gitignore
+  s_7c5f3ff56fbfc4::t_5384bfda97ac7e 1-4,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "a627aa82e52621bbc955295e3bcf704373267b88",
+  "prompts": {},
+  "sessions": {
+    "s_7c5f3ff56fbfc4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2460-62b6-7ea0-b9f8-105c5da4dab7",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
