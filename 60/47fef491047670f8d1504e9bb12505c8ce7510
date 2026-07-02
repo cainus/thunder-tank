@@ -1,0 +1,35 @@
+.gitignore
+  s_485ecca0387d17::t_2704f0c9d41fc1 11-15
+.zenflow/tasks/don-t-let-power-ups-exist-on-top-7d64/plan.md
+  s_485ecca0387d17::t_c49cfb349d3e88 1-2,4-5
+  s_485ecca0387d17::t_9370217c2b44e8 3
+src/game/maps.ts
+  s_485ecca0387d17::t_a50c63824d3141 17,45-47,78,122,214,349,388,428-430,466,498,535-536,617,695
+tests/game-rules.test.ts
+  s_485ecca0387d17::t_77a56b462b2112 5-18,80-91
+  s_7c5f3ff56fbfc4::t_8229f6c82b8f2f 92-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "6047fef491047670f8d1504e9bb12505c8ce7510",
+  "prompts": {},
+  "sessions": {
+    "s_485ecca0387d17": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2460-e821-7b51-8b0d-bd2d2de0e436",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_7c5f3ff56fbfc4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2460-62b6-7ea0-b9f8-105c5da4dab7",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
