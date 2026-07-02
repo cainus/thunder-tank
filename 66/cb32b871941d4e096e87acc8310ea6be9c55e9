@@ -1,0 +1,28 @@
+.zenflow/tasks/add-dust-behind-the-tanks-when-t-42f2/plan.md
+  s_36372a1aa358cf::t_3339ae80d013e0 1-10
+src/game/types.ts
+  s_36372a1aa358cf::t_b1bc9c50a4f9b4 106
+src/game/CampaignScene.ts
+  s_36372a1aa358cf::t_1ae993567d2e18 515
+  s_36372a1aa358cf::t_890ea2de6a261a 2018-2027
+  s_36372a1aa358cf::t_5a16c5ad91b751 1490,1528
+  s_36372a1aa358cf::t_8dfe7d64659f36 1888-1956
+  s_36372a1aa358cf::t_b1bc9c50a4f9b4 79-84
+  s_36372a1aa358cf::t_0e1c57160e3e9b 340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "66cb32b871941d4e096e87acc8310ea6be9c55e9",
+  "prompts": {},
+  "sessions": {
+    "s_36372a1aa358cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f248c-8ac2-7c41-abdc-dc7b38e922c3",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
