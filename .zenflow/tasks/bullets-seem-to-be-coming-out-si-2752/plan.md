@@ -41,3 +41,6 @@ Pushed the current task branch head to `origin/main` as a fast-forward, updating
 ### [x] Step: Extend shipit cleanup
 Updated `./.codex/skills/shipit/SKILL.md` so `/shipit` also cleans up the task worktree and branch after a successful push when it is safe to do so.
 
+### [x] Step: Ship and clean up
+Shipped the remaining local commit to `origin/main`, then removed the task worktree and deleted the task branch after push.
+
