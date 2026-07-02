@@ -1,0 +1,25 @@
+src/game/assets.ts
+  s_ed082b35c0323d::t_3480405ae1daae 12-13
+.zenflow/tasks/bullets-seem-to-be-coming-out-si-2752/plan.md
+  s_ed082b35c0323d::t_060514e01505ab 1-33
+.gitignore
+  s_ed082b35c0323d::t_ff74eb86d2ebb2 4-6
+src/game/CampaignScene.ts
+  s_ed082b35c0323d::t_3480405ae1daae 663
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "33286b3aa810567176b2673e9386a5a64b686238",
+  "prompts": {},
+  "sessions": {
+    "s_ed082b35c0323d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2463-3700-7680-aa13-bfc63a8edb3e",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
