@@ -31,3 +31,6 @@ Update `{@artifacts_path}/plan.md` if it makes sense to have a plan and task has
 
 ### [x] Step: Fix projectile bullets
 Adjusted projectile sprite rotation to match barrel aim and switched projectile art to the black bullet asset for both player and enemy shots. Verified with a production build and the Vitest suite.
+
+### [x] Step: Add shipit skill
+Added a repo-local skill at `./.codex/skills/shipit/SKILL.md` that triggers on `/shipit` and returns exactly `commit and push to main`.
