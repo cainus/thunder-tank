@@ -17,7 +17,10 @@ export const EMPTY_GUN_HEAT: GunHeatState = {
 };
 
 export interface PlayerStatus {
+  alive: boolean;
   buffs: ActiveBuffs;
+  health: number;
+  maxHealth: number;
   gunFrozenUntil: number;
   now: number;
 }
@@ -58,4 +61,12 @@ export function getActiveBuffLabels(buffs: ActiveBuffs, now: number): string[] {
 
 export function getGunFreezeSeconds(status: PlayerStatus): number {
   return Math.max(0, Math.ceil((status.gunFrozenUntil - status.now) / 1_000));
+}
+
+export function getRemainingHits(status: PlayerStatus): number {
+  if (!status.alive) {
+    return 0;
+  }
+
+  return status.health + (status.buffs.shieldUntil > status.now ? 1 : 0);
 }

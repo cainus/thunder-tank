@@ -1198,6 +1198,9 @@ export class CampaignScene extends Phaser.Scene {
 
   private publishPlayerStatus(time: number): void {
     const key = [
+      this.player.alive ? 1 : 0,
+      this.player.health,
+      this.player.maxHealth,
       this.player.buffs.speedUntil,
       this.player.buffs.rapidFireUntil,
       this.player.buffs.shieldUntil,
@@ -1210,7 +1213,10 @@ export class CampaignScene extends Phaser.Scene {
 
     this.lastPlayerStatusKey = key;
     this.callbacks.onPlayerStatusChanged({
+      alive: this.player.alive,
       buffs: this.player.buffs,
+      health: this.player.health,
+      maxHealth: this.player.maxHealth,
       gunFrozenUntil: this.playerGunHeat.frozenUntil,
       now: time,
     });

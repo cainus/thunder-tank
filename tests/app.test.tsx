@@ -1,25 +1,63 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
 
 vi.mock("../src/game/GameCanvas", () => ({
   GameCanvas: ({
     matchMode,
+    onPlayerStatusChanged,
     onMapEnded,
   }: {
     matchMode: "campaign" | "deathmatch" | "coOp";
+    onPlayerStatusChanged: (status: {
+      alive: boolean;
+      buffs: { speedUntil: number; rapidFireUntil: number; shieldUntil: number };
+      health: number;
+      maxHealth: number;
+      gunFrozenUntil: number;
+      now: number;
+    }) => void;
     onMapEnded: (outcome: "won" | "lost") => void;
-  }) => (
-    <div data-testid="mock-game-canvas">
-      <span>Mode: {matchMode}</span>
-      <button type="button" onClick={() => onMapEnded("won")}>
-        Mock Win
-      </button>
-      <button type="button" onClick={() => onMapEnded("lost")}>
-        Mock Loss
-      </button>
-    </div>
-  ),
+  }) => {
+    useEffect(() => {
+      onPlayerStatusChanged({
+        alive: true,
+        buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 },
+        health: 1,
+        maxHealth: 1,
+        gunFrozenUntil: 0,
+        now: 0,
+      });
+    }, [onPlayerStatusChanged]);
+
+    return (
+      <div data-testid="mock-game-canvas">
+        <span>Mode: {matchMode}</span>
+        <button
+          type="button"
+          onClick={() =>
+            onPlayerStatusChanged({
+              alive: true,
+              buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 10_000 },
+              health: 3,
+              maxHealth: 3,
+              gunFrozenUntil: 0,
+              now: 100,
+            })
+          }
+        >
+          Mock Shielded Status
+        </button>
+        <button type="button" onClick={() => onMapEnded("won")}>
+          Mock Win
+        </button>
+        <button type="button" onClick={() => onMapEnded("lost")}>
+          Mock Loss
+        </button>
+      </div>
+    );
+  },
 }));
 
 describe("App", () => {
@@ -64,6 +102,20 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "P1 Wins" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rematch" })).toBeInTheDocument();
     expect(screen.getByText("Player 1 reached the score limit.")).toBeInTheDocument();
+  });
+
+  it("shows remaining hits in the HUD, including armor", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start Campaign" }));
+    const matchStatus = screen.getByRole("region", { name: "Match status" });
+    expect(matchStatus).toHaveTextContent("Hits");
+    expect(matchStatus).toHaveTextContent("1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Mock Shielded Status" }));
+
+    expect(matchStatus).toHaveTextContent("Shield");
+    expect(matchStatus).toHaveTextContent("4");
   });
 
   it("shows only the advance button on the map-cleared screen", () => {
