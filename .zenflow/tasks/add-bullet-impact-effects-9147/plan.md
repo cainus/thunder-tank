@@ -52,3 +52,11 @@ Update `{@artifacts_path}/plan.md` if it makes sense to have a plan and task has
 ### [x] Step: Re-verify the visibility fix
 - Re-checked the collision destruction path and impact tween settings in `./src/game/CampaignScene.ts`.
 - Validation was completed again with project typecheck and automated tests.
+
+### [x] Step: Add lingering bullet impact marks
+- Added a generated `impactMark` texture and a short-lived impact mark system so non-shield hits leave a brief scorch mark on the arena.
+- Wired impact mark lifecycle updates into the scene update loop and cleanup paths so the marks fade out automatically.
+
+### [x] Step: Verify lingering impact marks
+- Re-checked the impact rendering flow, mark cleanup, and scene reset/shutdown cleanup in `./src/game/CampaignScene.ts`.
+- Validation was completed with project typecheck and automated tests.

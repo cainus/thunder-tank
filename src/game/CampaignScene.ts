@@ -82,6 +82,8 @@ const DUST_REAR_OFFSET = 26;
 const DUST_LATERAL_OFFSET = 13;
 const DUST_MIN_SCALE = 0.34;
 const DUST_MAX_SCALE = 0.72;
+const IMPACT_MARK_DEPTH = 6;
+const IMPACT_MARK_LIFETIME_MS = 1_350;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
 const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
@@ -130,6 +132,11 @@ interface PickupSprite extends Phaser.Physics.Arcade.Image {
 
 interface TreadMark {
   container: Phaser.GameObjects.Container;
+  createdAt: number;
+}
+
+interface ImpactMark {
+  sprite: Phaser.GameObjects.Image;
   createdAt: number;
 }
 
@@ -187,6 +194,7 @@ export class CampaignScene extends Phaser.Scene {
   private playerGunHeat: GunHeatState = { ...EMPTY_GUN_HEAT };
   private lastPlayerStatusKey = "";
   private treadMarks: TreadMark[] = [];
+  private impactMarks: ImpactMark[] = [];
 
   constructor() {
     super("CampaignScene");
@@ -211,6 +219,7 @@ export class CampaignScene extends Phaser.Scene {
     this.playerGunHeat = { ...EMPTY_GUN_HEAT };
     this.lastPlayerStatusKey = "";
     this.destroyAllTreadMarks();
+    this.destroyAllImpactMarks();
   }
 
   preload(): void {
@@ -339,6 +348,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updatePickupVisuals(time);
     this.updateDustTrails(time);
     this.updateTreadMarks(time);
+    this.updateImpactMarks(time);
     this.updateTankVisuals();
     this.updateCaptureTheFlag(time);
     this.updateCamera();
@@ -2151,6 +2161,30 @@ export class CampaignScene extends Phaser.Scene {
     this.treadMarks = [];
   }
 
+  private updateImpactMarks(time: number): void {
+    this.impactMarks = this.impactMarks.filter((mark) => {
+      const age = time - mark.createdAt;
+
+      if (age >= IMPACT_MARK_LIFETIME_MS) {
+        mark.sprite.destroy();
+        return false;
+      }
+
+      const progress = age / IMPACT_MARK_LIFETIME_MS;
+      mark.sprite.setAlpha(0.34 * (1 - progress));
+      mark.sprite.setScale(0.78 + progress * 0.12);
+      return true;
+    });
+  }
+
+  private destroyAllImpactMarks(): void {
+    for (const mark of this.impactMarks) {
+      mark.sprite.destroy();
+    }
+
+    this.impactMarks = [];
+  }
+
   private createImpactTextures(): void {
     if (!this.textures.exists("dustPuff")) {
       const dust = this.add.graphics();
@@ -2191,6 +2225,18 @@ export class CampaignScene extends Phaser.Scene {
       ring.destroy();
       this.textures.get("impactRing").setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
+
+    if (!this.textures.exists("impactMark")) {
+      const mark = this.add.graphics();
+      mark.setVisible(false);
+      mark.fillStyle(0xffffff, 1);
+      mark.fillEllipse(24, 18, 34, 20);
+      mark.fillEllipse(16, 22, 20, 12);
+      mark.fillEllipse(31, 14, 16, 10);
+      mark.generateTexture("impactMark", 48, 36);
+      mark.destroy();
+      this.textures.get("impactMark").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
   }
 
   private addBulletImpact(x: number, y: number, options: ImpactEffectOptions): void {
@@ -2201,6 +2247,10 @@ export class CampaignScene extends Phaser.Scene {
     const sparkTint = kind === "shield" ? 0x8fe6ff : kind === "tank" ? 0xff9f6e : 0xf7efd4;
     const ringTint = kind === "shield" ? 0x8df7ff : kind === "tank" ? 0xffc36b : 0xd9cfaa;
     const direction = Phaser.Math.Angle.Wrap(angle + Math.PI);
+
+    if (kind !== "shield") {
+      this.addImpactMark(x, y, direction, scale);
+    }
 
     const flash = this.add.image(x, y, "impactFlash");
     flash.setDepth(46);
@@ -2265,6 +2315,20 @@ export class CampaignScene extends Phaser.Scene {
         onComplete: () => spark.destroy(),
       });
     }
+  }
+
+  private addImpactMark(x: number, y: number, angle: number, scale: number): void {
+    const mark = this.add.image(
+      x + Math.cos(angle) * Phaser.Math.FloatBetween(4, 10),
+      y + Math.sin(angle) * Phaser.Math.FloatBetween(4, 10),
+      "impactMark",
+    );
+    mark.setDepth(IMPACT_MARK_DEPTH);
+    mark.setRotation(angle + Phaser.Math.FloatBetween(-0.45, 0.45));
+    mark.setTint(0x17130d);
+    mark.setAlpha(0.34);
+    mark.setScale(Phaser.Math.FloatBetween(0.58, 0.8) * scale, Phaser.Math.FloatBetween(0.48, 0.68) * scale);
+    this.impactMarks.push({ sprite: mark, createdAt: this.time.now });
   }
 
   private updateTankVisuals(): void {
@@ -2873,6 +2937,7 @@ export class CampaignScene extends Phaser.Scene {
 
     this.stopAllMotorAudio();
     this.destroyAllTreadMarks();
+    this.destroyAllImpactMarks();
     this.cleanupListeners = [];
   }
 }
