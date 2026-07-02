@@ -6,6 +6,7 @@ import {
   PLAYER_GUN_HEAT_WINDOW_MS,
   getActiveBuffLabels,
   getGunFreezeSeconds,
+  getRemainingHits,
   isGunFrozen,
   recordPlayerShot,
 } from "../src/game/combat-state";
@@ -42,6 +43,41 @@ describe("player status", () => {
   });
 
   it("rounds gun freeze time up for the HUD", () => {
-    expect(getGunFreezeSeconds({ buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 }, gunFrozenUntil: 3_100, now: 1_250 })).toBe(2);
+    expect(
+      getGunFreezeSeconds({
+        alive: true,
+        buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 },
+        health: 1,
+        maxHealth: 1,
+        gunFrozenUntil: 3_100,
+        now: 1_250,
+      }),
+    ).toBe(2);
+  });
+
+  it("counts shield armor as an extra remaining hit", () => {
+    expect(
+      getRemainingHits({
+        alive: true,
+        buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 700 },
+        health: 3,
+        maxHealth: 3,
+        gunFrozenUntil: 0,
+        now: 100,
+      }),
+    ).toBe(4);
+  });
+
+  it("shows zero remaining hits while the player tank is destroyed", () => {
+    expect(
+      getRemainingHits({
+        alive: false,
+        buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 700 },
+        health: 3,
+        maxHealth: 3,
+        gunFrozenUntil: 0,
+        now: 100,
+      }),
+    ).toBe(0);
   });
 });

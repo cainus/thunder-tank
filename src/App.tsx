@@ -11,8 +11,8 @@ import {
 } from "./app-flow";
 import { GamepadRecorder } from "./GamepadRecorder";
 import { GamepadSetup } from "./GamepadSetup";
+import { EMPTY_GUN_HEAT, getActiveBuffLabels, getGunFreezeSeconds, getRemainingHits, type PlayerStatus } from "./game/combat-state";
 import { GameCanvas } from "./game/GameCanvas";
-import { EMPTY_GUN_HEAT, getActiveBuffLabels, getGunFreezeSeconds, type PlayerStatus } from "./game/combat-state";
 import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./game/maps";
 import type { CampaignMap, MatchMode, MatchOutcome, ScoreState } from "./game/types";
 import { getGamepadPreset, loadGamepadMapping, type GamepadMapping } from "./gamepad-config";
@@ -23,7 +23,10 @@ import "./styles.css";
 
 const INITIAL_SCORE: ScoreState = { player: 0, enemy: 0 };
 const INITIAL_PLAYER_STATUS: PlayerStatus = {
+  alive: true,
   buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 },
+  health: 1,
+  maxHealth: 1,
   gunFrozenUntil: EMPTY_GUN_HEAT.frozenUntil,
   now: 0,
 };
@@ -47,6 +50,7 @@ export function App() {
   const cta = useMemo(() => getCta(mode, mapIndex, matchMode), [mode, mapIndex, matchMode]);
   const activeBuffLabels = getActiveBuffLabels(playerStatus.buffs, playerStatus.now);
   const gunFreezeSeconds = getGunFreezeSeconds(playerStatus);
+  const remainingHits = getRemainingHits(playerStatus);
 
   useEffect(() => {
     const onPauseRequested = () => {
@@ -230,6 +234,10 @@ export function App() {
         <div>
           <span className="hud-label">Target</span>
           <strong>{currentMap.ctf?.captureLimit ?? currentMap.playerScoreLimit}</strong>
+        </div>
+        <div>
+          <span className="hud-label">Hits</span>
+          <strong>{remainingHits}</strong>
         </div>
         <div className="hud-powerups">
           <span className="hud-label">Powerups</span>

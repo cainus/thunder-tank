@@ -6,7 +6,9 @@ coverage
 build
 playwright-report
 test-results
+.cache
 .DS_Store
+*.log
 *.tsbuildinfo
 
 # Local environment config
