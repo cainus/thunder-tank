@@ -34,3 +34,6 @@ Update `{@artifacts_path}/plan.md` if it makes sense to have a plan and task has
 
 ### [x] Step: Provide tailored realism ideas
 - Prepared game-specific realism suggestions focused on tank handling, ballistics, audiovisual feedback, environment interaction, AI behavior, and match presentation.
+
+### [x] Step: Expand the realism idea list
+- Added a broader set of realism concepts covering controls, vehicle simulation, combat readability, AI behavior, map interaction, audio, UI presentation, and optional mode-specific features.
