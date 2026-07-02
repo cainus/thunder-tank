@@ -40,3 +40,15 @@ Update `{@artifacts_path}/plan.md` if it makes sense to have a plan and task has
 ### [x] Step: Verify the implementation
 - Checked the updated scene logic for bullet-hit paths, texture setup, and effect cleanup.
 - Validation was completed with project typecheck and automated tests.
+
+### [x] Step: Investigate invisible impact feedback
+- Found the impact flash/ring/sparks were rendering underneath the explosion sprite, making the new effect hard to notice in live play.
+- Confirmed the fix should focus on render order and stronger timing/scale rather than gameplay collision logic.
+
+### [x] Step: Make bullet impacts clearly visible
+- Reordered the impact/explosion spawn so the impact burst renders on top of the explosion.
+- Increased impact flash, ring, and spark depth, opacity, scale, and tween duration to make hits read clearly during gameplay.
+
+### [x] Step: Re-verify the visibility fix
+- Re-checked the collision destruction path and impact tween settings in `./src/game/CampaignScene.ts`.
+- Validation was completed again with project typecheck and automated tests.

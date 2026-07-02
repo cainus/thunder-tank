@@ -1552,8 +1552,8 @@ export class CampaignScene extends Phaser.Scene {
     impact: ImpactEffectOptions = {},
   ): void {
     const bullet = this.resolveGameObject(bulletObject) as Phaser.Physics.Arcade.Image;
-    this.addBulletImpact(bullet.x, bullet.y, impact);
     this.addExplosion(bullet.x, bullet.y, 0.45);
+    this.addBulletImpact(bullet.x, bullet.y, impact);
     bullet.disableBody(true, true);
   }
 
@@ -2203,29 +2203,30 @@ export class CampaignScene extends Phaser.Scene {
     const direction = Phaser.Math.Angle.Wrap(angle + Math.PI);
 
     const flash = this.add.image(x, y, "impactFlash");
-    flash.setDepth(39);
+    flash.setDepth(46);
     flash.setTint(flashTint);
     flash.setBlendMode(Phaser.BlendModes.ADD);
-    flash.setScale(0.18 * scale);
+    flash.setAlpha(0.96);
+    flash.setScale(0.26 * scale);
     this.tweens.add({
       targets: flash,
       alpha: 0,
-      scale: 0.85 * scale,
-      duration: 100,
+      scale: 1.25 * scale,
+      duration: 140,
       ease: "Cubic.Out",
       onComplete: () => flash.destroy(),
     });
 
     const ring = this.add.image(x, y, "impactRing");
-    ring.setDepth(38);
+    ring.setDepth(45);
     ring.setTint(ringTint);
-    ring.setAlpha(kind === "shield" ? 0.9 : 0.65);
-    ring.setScale(0.22 * scale);
+    ring.setAlpha(kind === "shield" ? 0.95 : 0.82);
+    ring.setScale(0.3 * scale);
     this.tweens.add({
       targets: ring,
       alpha: 0,
-      scale: 1.1 * scale,
-      duration: kind === "shield" ? 170 : 140,
+      scale: 1.45 * scale,
+      duration: kind === "shield" ? 220 : 180,
       ease: "Quad.Out",
       onComplete: () => ring.destroy(),
     });
@@ -2242,12 +2243,13 @@ export class CampaignScene extends Phaser.Scene {
         Math.round((kind === "shield" ? 42 : 34) * scale),
       );
       const spark = this.add.image(x, y, "impactSpark");
-      spark.setDepth(39);
+      spark.setDepth(46);
       spark.setTint(sparkTint);
       spark.setRotation(baseAngle);
+      spark.setAlpha(0.98);
       spark.setScale(
-        Phaser.Math.FloatBetween(0.45, 0.82) * scale,
-        Phaser.Math.FloatBetween(0.5, 0.95) * scale,
+        Phaser.Math.FloatBetween(0.7, 1.05) * scale,
+        Phaser.Math.FloatBetween(0.7, 1.15) * scale,
       );
       spark.setBlendMode(kind === "shield" ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
 
@@ -2256,9 +2258,9 @@ export class CampaignScene extends Phaser.Scene {
         x: x + Math.cos(baseAngle) * distance,
         y: y + Math.sin(baseAngle) * distance,
         alpha: 0,
-        scaleX: 0.2 * scale,
-        scaleY: 0.14 * scale,
-        duration: Phaser.Math.Between(80, 150),
+        scaleX: 0.28 * scale,
+        scaleY: 0.2 * scale,
+        duration: Phaser.Math.Between(110, 190),
         ease: "Cubic.Out",
         onComplete: () => spark.destroy(),
       });
