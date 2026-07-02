@@ -1,0 +1,19 @@
+.zenflow/tasks/bullets-seem-to-be-coming-out-si-2752/plan.md
+  s_61f4e07f1476a7::t_32b593b2662aea 37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "7caacdc9c527a7bf78762a848c110ba59a8e530a",
+  "prompts": {},
+  "sessions": {
+    "s_61f4e07f1476a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f2468-d169-7151-b29c-d1027035329a",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
