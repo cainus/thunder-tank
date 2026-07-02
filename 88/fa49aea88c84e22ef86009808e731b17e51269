@@ -1,0 +1,38 @@
+src/game/maps.ts
+  s_8c050867b30541::t_3a07ee4621396a 641,643-644,664-665,671,677-678
+src/game/types.ts
+  s_8c050867b30541::t_3a07ee4621396a 21-22,24,39,91-92
+.zenflow/tasks/create-a-night-map-with-headlamp-1dd2/plan.md
+  s_8c050867b30541::t_f57491f7ced0d7 1-35,37-39,41-42
+  s_8c050867b30541::t_ea48783a0650d2 36,40
+src/game/CampaignScene.ts
+  s_8c050867b30541::t_3a07ee4621396a 79-83,135-139,194,219,241,244,368-371,374-378,387,454-471,529-534,542-543,572-580,1537-1538,1576-1577,2029-2056,2146-2158,2741-2742
+  s_39c85c049e1e9b::t_ceafcbe96c64ce 2743-2744
+tests/game-rules.test.ts
+  s_8c050867b30541::t_3a07ee4621396a 7,16-17
+  s_39c85c049e1e9b::t_15ea7e46ab45e1 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "88fa49aea88c84e22ef86009808e731b17e51269",
+  "prompts": {},
+  "sessions": {
+    "s_39c85c049e1e9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62b644e3-0d7b-44e9-8a09-be9fe34e01ad",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_8c050867b30541": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f248c-eb24-7e60-8832-5c7539de89ce",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
