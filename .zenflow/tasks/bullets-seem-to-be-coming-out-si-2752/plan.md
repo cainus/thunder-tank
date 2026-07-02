@@ -34,3 +34,7 @@ Adjusted projectile sprite rotation to match barrel aim and switched projectile 
 
 ### [x] Step: Add shipit skill
 Added a repo-local skill at `./.codex/skills/shipit/SKILL.md` that performs a real ship workflow: inspect git state, confirm scope, commit the intended changes, and push to `main`.
+
+### [x] Step: Ship current changes to main
+Pushed the current task branch head to `origin/main` as a fast-forward, updating `main` from `3be63b4` to `83fe892`.
+
