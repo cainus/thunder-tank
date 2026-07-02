@@ -1,0 +1,27 @@
+.zenflow/tasks/create-a-night-map-with-headlamp-1dd2/plan.md
+  s_e1d22eac926ee9::t_efb879199a8164 1-42
+src/game/maps.ts
+  s_e1d22eac926ee9::t_efb879199a8164 641,643-644,664-665,671,677-678
+src/game/types.ts
+  s_e1d22eac926ee9::t_efb879199a8164 21-22,24,39,91-92
+src/game/CampaignScene.ts
+  s_e1d22eac926ee9::t_efb879199a8164 87-91,148-152,208,234,256,259,383-419,421-424,426-436,438-440,443-445,456,613-630,688-693,701-702,732-740,1698-1699,1738-1739,2306-2333,2443-2455,3038-3039
+tests/game-rules.test.ts
+  s_e1d22eac926ee9::t_efb879199a8164 7,16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "859dac380a504bfe987dca25bc79ddff2fa5f89f",
+  "prompts": {},
+  "sessions": {
+    "s_e1d22eac926ee9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f24e6-104c-7dc2-a754-01e51c074fd8",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
