@@ -81,22 +81,37 @@ export interface PlayerStatusKeyInput {
   now: number;
 }
 
-// Builds a change-detection key for the player HUD status. The buff portion is
-// derived from which buffs are *currently active* at `now` (not their raw expiry
-// timestamps) so the key changes the moment a buff expires. Keying on raw expiry
-// values instead would freeze the HUD once buffs stop changing, leaving active
-// buffs lingering and then vanishing unexpectedly on the next status publish.
-export function getPlayerStatusKey(input: PlayerStatusKeyInput): string {
-  const activeBuffKeys = getActiveBuffDisplays(input.buffs, input.now)
-    .map((buff) => buff.key)
-    .join(",");
+// Number of whole seconds remaining until `until`, clamped at zero. Used so the
+// HUD change-detection key ticks down once per second while a buff is active.
+function remainingSeconds(until: number, now: number): number {
+  return Math.max(0, Math.ceil((until - now) / 1_000));
+}
 
+// Builds a change-detection key for the player HUD status.
+//
+// Each buff contributes its *remaining seconds* (not just whether it is active)
+// so the key changes every second while any buff is running. That matters for
+// two reasons:
+//   1. It fixes the "pick up 2 power-ups and end up with none" bug. Keying only
+//      on the set of active buffs (or on raw expiry timestamps) leaves the key
+//      constant frame-to-frame while buffs are active, so `publishPlayerStatus`
+//      stops republishing and the HUD's `now` freezes. Nothing then re-publishes
+//      the moment a buff expires, so multiple buffs linger and later vanish all
+//      at once. Counting seconds down makes the key change each second, so the
+//      HUD refreshes and each buff disappears exactly when it expires.
+//   2. It makes re-picking the same buff type visible. Extending `speedUntil`
+//      (e.g. a second speed power-up bumping 9000 -> 15000) raises that buff's
+//      remaining seconds, changing the key so the HUD refreshes to show the new
+//      duration instead of being skipped by the dedup guard.
+export function getPlayerStatusKey(input: PlayerStatusKeyInput): string {
   return [
     input.alive ? 1 : 0,
     input.health,
     input.maxHealth,
-    activeBuffKeys,
-    Math.max(0, Math.ceil((input.gunFrozenUntil - input.now) / 1_000)),
+    remainingSeconds(input.buffs.speedUntil, input.now),
+    remainingSeconds(input.buffs.rapidFireUntil, input.now),
+    remainingSeconds(input.buffs.shieldUntil, input.now),
+    remainingSeconds(input.gunFrozenUntil, input.now),
   ].join(":");
 }
 
