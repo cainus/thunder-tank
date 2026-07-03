@@ -101,6 +101,11 @@ const NIGHT_HEADLAMP_OFFSET = 28;
 const LIGHT_POST_BASE_SCALE = 1.08;
 const URBAN_TREE_SIZE = 96;
 const URBAN_TREE_SHADOW_OFFSET = 30;
+// Non-collidable urban dressing (buildings, trees, parked cars, plaza) is
+// painted on the ground and must read as clearly subdued so players never
+// confuse it with real, collidable obstacles. This multiplier washes the
+// decoration back so actual obstacles (full opacity, depth 8) stay legible.
+const URBAN_DECOR_ALPHA = 0.45;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
 const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
@@ -427,10 +432,10 @@ export class CampaignScene extends Phaser.Scene {
       graphics.fillRect(roadInsetX - 34, roadInsetY, 34, roadHeight);
       graphics.fillRect(roadInsetX + roadWidth, roadInsetY, 34, roadHeight);
 
-      graphics.lineStyle(6, 0xc7cbd0, 0.9);
+      graphics.lineStyle(6, 0xc7cbd0, 0.9 * URBAN_DECOR_ALPHA);
       graphics.strokeRect(roadInsetX - 34, roadInsetY - 34, roadWidth + 68, roadHeight + 68);
 
-      graphics.lineStyle(8, 0xf0df85, 0.85);
+      graphics.lineStyle(8, 0xf0df85, 0.85 * URBAN_DECOR_ALPHA);
       const laneDash = 90;
       const laneGap = 62;
       const horizontalLaneY = this.map.height / 2;
@@ -446,7 +451,7 @@ export class CampaignScene extends Phaser.Scene {
       const crosswalkWidth = 96;
       const crosswalkBar = 18;
       const crosswalkGap = 14;
-      graphics.fillStyle(0xe7e8ea, 0.9);
+      graphics.fillStyle(0xe7e8ea, 0.9 * URBAN_DECOR_ALPHA);
       for (let offset = -4; offset <= 4; offset += 1) {
         const shift = offset * (crosswalkBar + crosswalkGap);
         graphics.fillRect(this.map.width / 2 - crosswalkWidth / 2, roadInsetY - 30 + shift, crosswalkWidth, crosswalkBar);
@@ -498,9 +503,9 @@ export class CampaignScene extends Phaser.Scene {
         building.width,
         building.height,
         building.color,
-        0.98,
+        0.98 * URBAN_DECOR_ALPHA,
       );
-      block.setStrokeStyle(4, 0x2b2f33, 0.55).setDepth(-11);
+      block.setStrokeStyle(4, 0x2b2f33, 0.55 * URBAN_DECOR_ALPHA).setDepth(-11);
 
       const windowColumns = Math.max(2, Math.floor(building.width / 70));
       const windowRows = Math.max(2, Math.floor(building.height / 60));
@@ -516,15 +521,15 @@ export class CampaignScene extends Phaser.Scene {
               16,
               22,
               0xcdd6db,
-              0.68,
+              0.68 * URBAN_DECOR_ALPHA,
             )
             .setDepth(-10);
         }
       }
     }
 
-    const plaza = this.add.rectangle(this.map.width / 2, this.map.height / 2, roadWidth * 0.18, roadHeight * 0.18, 0x666d72, 0.65);
-    plaza.setStrokeStyle(4, 0x8d959b, 0.5).setDepth(-11);
+    const plaza = this.add.rectangle(this.map.width / 2, this.map.height / 2, roadWidth * 0.18, roadHeight * 0.18, 0x666d72, 0.65 * URBAN_DECOR_ALPHA);
+    plaza.setStrokeStyle(4, 0x8d959b, 0.5 * URBAN_DECOR_ALPHA).setDepth(-11);
   }
 
   private addUrbanTrees(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
@@ -541,12 +546,15 @@ export class CampaignScene extends Phaser.Scene {
 
     for (const spot of treeSpots) {
       // Soft ground shadow so the larger canopy still reads as grounded.
+      // Trees are non-collidable dressing, so they are washed back with
+      // URBAN_DECOR_ALPHA to stay clearly subdued against real obstacles.
       this.add
-        .ellipse(spot.x, spot.y + URBAN_TREE_SHADOW_OFFSET, URBAN_TREE_SIZE * 0.7, URBAN_TREE_SIZE * 0.28, 0x1c2a1a, 0.28)
+        .ellipse(spot.x, spot.y + URBAN_TREE_SHADOW_OFFSET, URBAN_TREE_SIZE * 0.7, URBAN_TREE_SIZE * 0.28, 0x1c2a1a, 0.28 * URBAN_DECOR_ALPHA)
         .setDepth(-10);
       this.add
         .image(spot.x, spot.y, "treeGreenLarge")
         .setDisplaySize(URBAN_TREE_SIZE, URBAN_TREE_SIZE)
+        .setAlpha(URBAN_DECOR_ALPHA)
         .setDepth(-9);
     }
   }
@@ -564,10 +572,10 @@ export class CampaignScene extends Phaser.Scene {
     ];
 
     for (const car of carConfigs) {
-      const body = this.add.rectangle(car.x, car.y, 64, 30, car.color, 0.96).setDepth(-9);
-      body.setStrokeStyle(3, 0x1c1f22, 0.5);
+      const body = this.add.rectangle(car.x, car.y, 64, 30, car.color, 0.96 * URBAN_DECOR_ALPHA).setDepth(-9);
+      body.setStrokeStyle(3, 0x1c1f22, 0.5 * URBAN_DECOR_ALPHA);
       body.setAngle(car.rotation);
-      this.add.rectangle(car.x, car.y, 26, 18, 0xcfe3f7, 0.85).setDepth(-8).setAngle(car.rotation);
+      this.add.rectangle(car.x, car.y, 26, 18, 0xcfe3f7, 0.85 * URBAN_DECOR_ALPHA).setDepth(-8).setAngle(car.rotation);
     }
   }
 
