@@ -72,6 +72,34 @@ export function getGunFreezeSeconds(status: PlayerStatus): number {
   return Math.max(0, Math.ceil((status.gunFrozenUntil - status.now) / 1_000));
 }
 
+export interface PlayerStatusKeyInput {
+  alive: boolean;
+  health: number;
+  maxHealth: number;
+  buffs: ActiveBuffs;
+  gunFrozenUntil: number;
+  now: number;
+}
+
+// Builds a change-detection key for the player HUD status. The buff portion is
+// derived from which buffs are *currently active* at `now` (not their raw expiry
+// timestamps) so the key changes the moment a buff expires. Keying on raw expiry
+// values instead would freeze the HUD once buffs stop changing, leaving active
+// buffs lingering and then vanishing unexpectedly on the next status publish.
+export function getPlayerStatusKey(input: PlayerStatusKeyInput): string {
+  const activeBuffKeys = getActiveBuffDisplays(input.buffs, input.now)
+    .map((buff) => buff.key)
+    .join(",");
+
+  return [
+    input.alive ? 1 : 0,
+    input.health,
+    input.maxHealth,
+    activeBuffKeys,
+    Math.max(0, Math.ceil((input.gunFrozenUntil - input.now) / 1_000)),
+  ].join(":");
+}
+
 export function getRemainingHits(status: PlayerStatus): number {
   if (!status.alive) {
     return 0;

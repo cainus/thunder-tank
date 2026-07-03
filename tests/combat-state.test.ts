@@ -7,6 +7,7 @@ import {
   getActiveBuffDisplays,
   getActiveBuffLabels,
   getGunFreezeSeconds,
+  getPlayerStatusKey,
   getRemainingHits,
   isGunFrozen,
   recordPlayerShot,
@@ -87,5 +88,49 @@ describe("player status", () => {
         now: 100,
       }),
     ).toBe(0);
+  });
+});
+
+describe("player status change key", () => {
+  const baseInput = {
+    alive: true,
+    health: 3,
+    maxHealth: 3,
+    buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 },
+    gunFrozenUntil: 0,
+    now: 1_000,
+  };
+
+  it("keeps the key stable while the same buffs stay active", () => {
+    const buffs = { speedUntil: 9_000, rapidFireUntil: 9_000, shieldUntil: 0 };
+
+    const earlier = getPlayerStatusKey({ ...baseInput, buffs, now: 2_000 });
+    const later = getPlayerStatusKey({ ...baseInput, buffs, now: 5_000 });
+
+    expect(later).toBe(earlier);
+  });
+
+  it("changes the key the moment a buff expires so the HUD refreshes", () => {
+    const buffs = { speedUntil: 9_000, rapidFireUntil: 0, shieldUntil: 0 };
+
+    const active = getPlayerStatusKey({ ...baseInput, buffs, now: 8_999 });
+    const expired = getPlayerStatusKey({ ...baseInput, buffs, now: 9_001 });
+
+    expect(active).not.toBe(expired);
+  });
+
+  it("reflects each additional buff when multiple power-ups are stacked", () => {
+    const single = getPlayerStatusKey({
+      ...baseInput,
+      buffs: { speedUntil: 9_000, rapidFireUntil: 0, shieldUntil: 0 },
+      now: 1_000,
+    });
+    const stacked = getPlayerStatusKey({
+      ...baseInput,
+      buffs: { speedUntil: 9_000, rapidFireUntil: 9_000, shieldUntil: 0 },
+      now: 1_000,
+    });
+
+    expect(stacked).not.toBe(single);
   });
 });

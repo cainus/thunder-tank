@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { isGamepadButtonPressed, readAim, readDrive, type GamepadMapping } from "../gamepad-config";
 import { ASSETS, ASSET_KEYS, type AssetKey } from "./assets";
-import { EMPTY_GUN_HEAT, isGunFrozen, recordPlayerShot, type GunHeatState } from "./combat-state";
+import { EMPTY_GUN_HEAT, getPlayerStatusKey, isGunFrozen, recordPlayerShot, type GunHeatState } from "./combat-state";
 import {
   ENEMY_FIRE_LINE_PADDING,
   ENEMY_FIRE_RANGE,
@@ -2710,15 +2710,14 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private publishPlayerStatus(time: number): void {
-    const key = [
-      this.player.alive ? 1 : 0,
-      this.player.health,
-      this.player.maxHealth,
-      this.player.buffs.speedUntil,
-      this.player.buffs.rapidFireUntil,
-      this.player.buffs.shieldUntil,
-      Math.ceil(Math.max(0, this.playerGunHeat.frozenUntil - time) / 1_000),
-    ].join(":");
+    const key = getPlayerStatusKey({
+      alive: this.player.alive,
+      health: this.player.health,
+      maxHealth: this.player.maxHealth,
+      buffs: this.player.buffs,
+      gunFrozenUntil: this.playerGunHeat.frozenUntil,
+      now: time,
+    });
 
     if (key === this.lastPlayerStatusKey) {
       return;
