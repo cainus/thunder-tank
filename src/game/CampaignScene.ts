@@ -46,7 +46,7 @@ import type {
 } from "./types";
 
 const TANK_DEPTH = 20;
-const NON_CTF_RESPAWN_DELAY_MS = 3_000;
+const NON_CTF_RESPAWN_DELAY_MS = 10_000;
 const PICKUP_RESPAWN_MS = 9_000;
 const WORLD_PADDING = 120;
 const PLAYER_TURN_RATE = 3.2;
@@ -56,7 +56,6 @@ const SPAWN_MARGIN = 160;
 const SPAWN_CLEARANCE = 180;
 const SPAWN_ATTEMPTS = 48;
 const PLAYER_RESPAWN_GRACE_MS = 700;
-const PLAYER_RESPAWN_COUNTDOWN_MS = 10_000;
 const CTF_RESPAWN_DELAY_MS = 10_000;
 const CTF_TANK_HEALTH = 3;
 const CTF_FLAG_TOUCH_RADIUS = 82;
@@ -1726,6 +1725,10 @@ export class CampaignScene extends Phaser.Scene {
     this.stopTankMotorAudio(tank);
     tank.health = tank.maxHealth;
     tank.respawnAt = this.time.now + (this.isCaptureTheFlag() ? CTF_RESPAWN_DELAY_MS : NON_CTF_RESPAWN_DELAY_MS);
+
+    if (tank.side === "player" && !this.isDeathmatch()) {
+      this.playerControlLockedUntil = tank.respawnAt;
+    }
     this.clearAiNavigationState(tank);
     tank.hull.disableBody(true, true);
     tank.turret.setVisible(false);
@@ -1779,8 +1782,6 @@ export class CampaignScene extends Phaser.Scene {
     this.clearAiNavigationState(tank);
 
     if (tank.side === "player" && !this.isDeathmatch()) {
-      this.playerControlLockedUntil = this.time.now + PLAYER_RESPAWN_COUNTDOWN_MS;
-
       for (const enemy of this.enemies) {
         enemy.lastFiredAt = this.time.now + PLAYER_RESPAWN_GRACE_MS - ENEMY_STATS[enemy.archetype ?? "standard"].fireCooldownMs;
         enemy.nextDecisionAt = this.time.now + PLAYER_RESPAWN_GRACE_MS;
@@ -1817,7 +1818,7 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private isPlayerInRespawnCountdown(time: number): boolean {
-    return this.player.alive && time < this.playerControlLockedUntil;
+    return time < this.playerControlLockedUntil;
   }
 
   private updateRespawnCountdown(time: number): void {
