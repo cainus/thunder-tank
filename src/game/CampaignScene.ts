@@ -157,7 +157,10 @@ interface ImpactMark {
   tank?: TankRuntime;
   offsetX?: number;
   offsetY?: number;
-  baseAlpha: number;
+  // Per-kind opacity multiplier applied on top of the shared fade curve
+  // (getBulletMarkAlpha, which itself peaks at BULLET_MARK_BASE_ALPHA). This is
+  // NOT the same as BULLET_MARK_BASE_ALPHA: it only makes tank scorch subtler.
+  kindAlphaMultiplier: number;
 }
 
 interface LightPostRuntime {
@@ -2261,7 +2264,7 @@ export class CampaignScene extends Phaser.Scene {
       }
 
       const fade = getBulletMarkAlpha(mark.createdAt, time);
-      mark.sprite.setAlpha(mark.baseAlpha * fade);
+      mark.sprite.setAlpha(mark.kindAlphaMultiplier * fade);
       return true;
     });
   }
@@ -2376,7 +2379,9 @@ export class CampaignScene extends Phaser.Scene {
 
   private addBulletImpact(x: number, y: number, options: ImpactEffectOptions): void {
     const angle = options.angle ?? 0;
-    const kind = options.kind ?? "obstacle";
+    // Default omitted impacts to "obstacle" so `kind` is always a concrete
+    // ImpactKind (never undefined) before it is fed into the mark helpers.
+    const kind: ImpactKind = options.kind ?? "obstacle";
     const scale = options.scale ?? 1;
     const flashTint = kind === "shield" ? 0x8df7ff : kind === "tank" ? 0xffd37a : 0xfff1bd;
     const sparkTint = kind === "shield" ? 0x8fe6ff : kind === "tank" ? 0xff9f6e : 0xf7efd4;
@@ -2384,7 +2389,11 @@ export class CampaignScene extends Phaser.Scene {
     const direction = Phaser.Math.Angle.Wrap(angle + Math.PI);
 
     if (kind !== "shield") {
-      this.addImpactMark(x, y, direction, scale, kind, options.tank);
+      // The `kind !== "shield"` guard narrows ImpactKind down to exactly
+      // BulletMarkKind ("tank" | "obstacle" | "ground"), so obstacle impacts
+      // keep their obstacle sizing and no undefined can slip through.
+      const markKind: BulletMarkKind = kind;
+      this.addImpactMark(x, y, direction, scale, markKind, options.tank);
     }
 
     const flash = this.add.image(x, y, "impactFlash");
@@ -2465,18 +2474,22 @@ export class CampaignScene extends Phaser.Scene {
     const spawnY = y + Math.sin(angle) * jitter;
     const mark = this.add.image(spawnX, spawnY, "impactMark");
     const kindScale = getBulletMarkScale(kind);
-    const baseAlpha = kind === "tank" ? 0.62 : 1;
+    // Per-kind opacity multiplier layered on top of the shared fade curve. The
+    // fade curve (getBulletMarkAlpha) already caps peak opacity at
+    // BULLET_MARK_BASE_ALPHA (0.42), so tank scorch peaks at 0.62 * 0.42 ≈ 0.26
+    // while ground/obstacle peak at the full 0.42.
+    const kindAlphaMultiplier = kind === "tank" ? 0.62 : 1;
 
     mark.setDepth(kind === "tank" ? TANK_BULLET_MARK_DEPTH : IMPACT_MARK_DEPTH);
     mark.setRotation(angle + Phaser.Math.FloatBetween(-0.45, 0.45));
     mark.setTint(kind === "tank" ? 0x0c0a07 : 0x17130d);
-    mark.setAlpha(baseAlpha * getBulletMarkAlpha(this.time.now, this.time.now));
+    mark.setAlpha(kindAlphaMultiplier * getBulletMarkAlpha(this.time.now, this.time.now));
     mark.setScale(
       Phaser.Math.FloatBetween(0.58, 0.8) * scale * kindScale,
       Phaser.Math.FloatBetween(0.48, 0.68) * scale * kindScale,
     );
 
-    const entry: ImpactMark = { sprite: mark, createdAt: this.time.now, baseAlpha };
+    const entry: ImpactMark = { sprite: mark, createdAt: this.time.now, kindAlphaMultiplier };
 
     if (kind === "tank" && tank) {
       entry.tank = tank;
@@ -3030,6 +3043,11 @@ export class CampaignScene extends Phaser.Scene {
         bullet.y > this.map.height + 100;
 
       if (bullet.active && (exceededRange || outOfBounds)) {
+        // In this top-down game bullets never collide with the floor directly;
+        // tank and obstacle hits already leave scorch via handleBulletHit and
+        // the obstacle collider. The remaining "ground" case is a round that
+        // burns out at max range while still on the field, so we drop a ground
+        // scorch there. Bullets that leave the map (outOfBounds) get no mark.
         if (exceededRange && !outOfBounds) {
           this.addImpactMark(
             bullet.x,

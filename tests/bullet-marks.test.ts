@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BULLET_MARK_BASE_ALPHA,
+  BULLET_MARK_FADE_WINDOW_MS,
   BULLET_MARK_LIFETIME_MS,
   getBulletMarkAlpha,
   getBulletMarkScale,
@@ -11,6 +12,15 @@ describe("bullet mark helpers", () => {
   it("keeps marks at full alpha until the fade window begins", () => {
     expect(getBulletMarkAlpha(0, 0)).toBe(BULLET_MARK_BASE_ALPHA);
     expect(getBulletMarkAlpha(0, BULLET_MARK_LIFETIME_MS - 2_501)).toBe(BULLET_MARK_BASE_ALPHA);
+  });
+
+  it("holds full alpha at exactly the fade-window boundary and starts fading one ms later", () => {
+    const fadeStartsAt = BULLET_MARK_LIFETIME_MS - BULLET_MARK_FADE_WINDOW_MS;
+
+    // At the exact boundary (age === fadeStartsAt) the mark is still at full alpha.
+    expect(getBulletMarkAlpha(0, fadeStartsAt)).toBe(BULLET_MARK_BASE_ALPHA);
+    // One millisecond past the boundary the linear fade has begun.
+    expect(getBulletMarkAlpha(0, fadeStartsAt + 1)).toBeLessThan(BULLET_MARK_BASE_ALPHA);
   });
 
   it("fades marks linearly during the fade window and removes them after their lifetime", () => {
