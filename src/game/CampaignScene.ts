@@ -23,6 +23,13 @@ import {
   getRampedEnemyStats,
   hasShield,
 } from "./rules";
+import {
+  TEAM_STRIPE_ALPHA,
+  TEAM_STRIPE_LENGTH,
+  TEAM_STRIPE_OFFSET,
+  TEAM_STRIPE_THICKNESS,
+  teamStripeColor,
+} from "./team-stripe";
 import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
 import {
   BULLET_MARK_MAX_COUNT,
@@ -53,16 +60,6 @@ const WORLD_PADDING = 120;
 const PLAYER_TURN_RATE = 3.2;
 const PLAYER_TURRET_TURN_RATE = 4.1;
 const PLAYER_FRONT_MARKER_OFFSET = 33;
-// Tank hulls are all rendered grey; a pair of team-colored stripes running along
-// the hull identifies each tank's team so P1, P2, and enemies stay readable.
-const TEAM_STRIPE_LENGTH = 42;
-const TEAM_STRIPE_THICKNESS = 6;
-const TEAM_STRIPE_OFFSET = 16;
-const TEAM_STRIPE_COLORS = {
-  player: 0x4e89d8,
-  playerTwo: 0x53c66b,
-  enemy: 0xff533f,
-} as const;
 const SPAWN_MARGIN = 160;
 const SPAWN_CLEARANCE = 180;
 const SPAWN_ATTEMPTS = 48;
@@ -790,9 +787,23 @@ export class CampaignScene extends Phaser.Scene {
   // so a stripe is thin on X (thickness), long on Y (length), offset left/right
   // on X. The container is rotated with the hull each frame.
   private createTeamStripe(spawn: Vec2, side: TankSide): Phaser.GameObjects.Container {
-    const color = TEAM_STRIPE_COLORS[side];
-    const leftStripe = this.add.rectangle(-TEAM_STRIPE_OFFSET, 0, TEAM_STRIPE_THICKNESS, TEAM_STRIPE_LENGTH, color, 0.95);
-    const rightStripe = this.add.rectangle(TEAM_STRIPE_OFFSET, 0, TEAM_STRIPE_THICKNESS, TEAM_STRIPE_LENGTH, color, 0.95);
+    const color = teamStripeColor(side);
+    const leftStripe = this.add.rectangle(
+      -TEAM_STRIPE_OFFSET,
+      0,
+      TEAM_STRIPE_THICKNESS,
+      TEAM_STRIPE_LENGTH,
+      color,
+      TEAM_STRIPE_ALPHA,
+    );
+    const rightStripe = this.add.rectangle(
+      TEAM_STRIPE_OFFSET,
+      0,
+      TEAM_STRIPE_THICKNESS,
+      TEAM_STRIPE_LENGTH,
+      color,
+      TEAM_STRIPE_ALPHA,
+    );
     return this.add.container(spawn.x, spawn.y, [leftStripe, rightStripe]);
   }
 
