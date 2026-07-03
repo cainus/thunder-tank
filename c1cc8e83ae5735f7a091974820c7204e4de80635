@@ -1,0 +1,19 @@
+.zenflow/tasks/are-there-3d-models-we-can-use-f-tt3/plan.md
+  s_babbd4b94483a8::t_4e2e6a6adab1b5 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c1cc8e83ae5735f7a091974820c7204e4de80635",
+  "prompts": {},
+  "sessions": {
+    "s_babbd4b94483a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb20d6cd-498c-4c08-9ba8-4422a821c2ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
