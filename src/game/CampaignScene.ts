@@ -41,6 +41,7 @@ import type {
   ScoreState,
   TankStats,
   TankRuntime,
+  TankSide,
   TeamId,
   Vec2,
 } from "./types";
@@ -52,6 +53,16 @@ const WORLD_PADDING = 120;
 const PLAYER_TURN_RATE = 3.2;
 const PLAYER_TURRET_TURN_RATE = 4.1;
 const PLAYER_FRONT_MARKER_OFFSET = 33;
+// Tank hulls are all rendered grey; a pair of team-colored stripes running along
+// the hull identifies each tank's team so P1, P2, and enemies stay readable.
+const TEAM_STRIPE_LENGTH = 42;
+const TEAM_STRIPE_THICKNESS = 6;
+const TEAM_STRIPE_OFFSET = 16;
+const TEAM_STRIPE_COLORS = {
+  player: 0x4e89d8,
+  playerTwo: 0x53c66b,
+  enemy: 0xff533f,
+} as const;
 const SPAWN_MARGIN = 160;
 const SPAWN_CLEARANCE = 180;
 const SPAWN_ATTEMPTS = 48;
@@ -700,11 +711,11 @@ export class CampaignScene extends Phaser.Scene {
   private addTank(id: string, spawn: Vec2, archetype: EnemyArchetype): TankRuntime {
     const side = id === "player" ? "player" : id === "playerTwo" ? "playerTwo" : "enemy";
     const isBlueTeammate = side === "playerTwo" && this.isCaptureTheFlag();
-    const hullKey = side === "player" || isBlueTeammate ? "playerHull" : side === "playerTwo" ? "enemyLightHull" : this.enemyHullKey(archetype);
-    const turretKey =
-      side === "player" || isBlueTeammate ? "playerTurret" : side === "playerTwo" ? "enemyLightTurret" : this.enemyTurretKey(archetype);
+    const hullKey = this.tankHullKey(archetype);
+    const turretKey = this.tankTurretKey(archetype);
     const hull = this.physics.add.image(spawn.x, spawn.y, hullKey);
     const turret = this.add.image(spawn.x, spawn.y, turretKey);
+    const teamStripe = this.createTeamStripe(spawn, side);
     const frontMarker =
       side === "enemy"
         ? undefined
@@ -729,6 +740,7 @@ export class CampaignScene extends Phaser.Scene {
       hull,
       turret,
       frontMarker,
+      teamStripe,
       headlampCone,
       headlampGlow,
       spawn,
@@ -746,19 +758,17 @@ export class CampaignScene extends Phaser.Scene {
       buffs: { ...EMPTY_BUFFS },
     };
 
+    const hullScale = isBlueTeammate ? 0.92 : archetype === "boss" ? 1.45 : archetype === "heavy" ? 1.1 : 1;
     hull.setDepth(TANK_DEPTH);
     hull.setDrag(0.96);
-    hull.setScale(isBlueTeammate ? 0.92 : archetype === "boss" ? 1.45 : archetype === "heavy" ? 1.1 : 1);
-    if (isBlueTeammate) {
-      hull.setTint(0x75d7ff);
-    }
+    hull.setScale(hullScale);
     hull.setCollideWorldBounds(true);
     hull.body!.setSize(archetype === "boss" ? 76 : 56, archetype === "boss" ? 76 : 56);
+    // Stripe sits on the hull, just beneath the rotating turret.
+    teamStripe.setDepth(TANK_DEPTH + 0.5);
+    teamStripe.setScale(hullScale);
     turret.setDepth(TANK_DEPTH + 1);
     turret.setScale(isBlueTeammate ? 1.3 : archetype === "boss" ? 2 : archetype === "heavy" ? 1.55 : 1.4);
-    if (isBlueTeammate) {
-      turret.setTint(0x75d7ff);
-    }
     frontMarker?.setDepth(TANK_DEPTH + 2);
     if (headlampCone) {
       headlampCone.setOrigin(0.08, 0.5);
@@ -774,28 +784,35 @@ export class CampaignScene extends Phaser.Scene {
     return tank;
   }
 
-  private enemyHullKey(archetype: EnemyArchetype): string {
-    if (archetype === "light") {
-      return "enemyLightHull";
-    }
-
-    if (archetype === "heavy" || archetype === "boss") {
-      return "enemyHeavyHull";
-    }
-
-    return "enemyStandardHull";
+  // Team-colored stripes run lengthwise (front-to-back) along both sides of the
+  // grey hull so the owning player/team is readable at a glance: blue = P1,
+  // green = P2, red = enemy. The hull's forward axis is the local -Y direction,
+  // so a stripe is thin on X (thickness), long on Y (length), offset left/right
+  // on X. The container is rotated with the hull each frame.
+  private createTeamStripe(spawn: Vec2, side: TankSide): Phaser.GameObjects.Container {
+    const color = TEAM_STRIPE_COLORS[side];
+    const leftStripe = this.add.rectangle(-TEAM_STRIPE_OFFSET, 0, TEAM_STRIPE_THICKNESS, TEAM_STRIPE_LENGTH, color, 0.95);
+    const rightStripe = this.add.rectangle(TEAM_STRIPE_OFFSET, 0, TEAM_STRIPE_THICKNESS, TEAM_STRIPE_LENGTH, color, 0.95);
+    return this.add.container(spawn.x, spawn.y, [leftStripe, rightStripe]);
   }
 
-  private enemyTurretKey(archetype: EnemyArchetype): string {
+  // All tanks share the same grey hull; heavier archetypes use the larger grey
+  // body so size still communicates the archetype. Team identity comes from the
+  // colored stripe overlay, not the hull color.
+  private tankHullKey(archetype: EnemyArchetype): AssetKey {
+    return archetype === "heavy" || archetype === "boss" ? "greyHullLarge" : "greyHull";
+  }
+
+  private tankTurretKey(archetype: EnemyArchetype): AssetKey {
     if (archetype === "light") {
-      return "enemyLightTurret";
+      return "greyTurretLight";
     }
 
     if (archetype === "heavy" || archetype === "boss") {
-      return "enemyHeavyTurret";
+      return "greyTurretHeavy";
     }
 
-    return "enemyStandardTurret";
+    return "greyTurretStandard";
   }
 
   private updatePlayer(time: number): void {
@@ -1733,6 +1750,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.hull.disableBody(true, true);
     tank.turret.setVisible(false);
     tank.frontMarker?.setVisible(false);
+    tank.teamStripe?.setVisible(false);
     tank.lastDustAt = undefined;
     tank.headlampCone?.setVisible(false);
     tank.headlampGlow?.setVisible(false);
@@ -1773,6 +1791,7 @@ export class CampaignScene extends Phaser.Scene {
     tank.hull.enableBody(true, spawn.x, spawn.y, true, true);
     tank.turret.setVisible(true);
     tank.frontMarker?.setVisible(true);
+    tank.teamStripe?.setVisible(true);
     tank.lastDustAt = undefined;
     tank.headlampCone?.setVisible(true);
     tank.headlampGlow?.setVisible(true);
@@ -2536,6 +2555,12 @@ export class CampaignScene extends Phaser.Scene {
       tank.turret.setRotation(tank.aimAngle + Math.PI / 2);
       tank.turret.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.68 : 1);
       tank.hull.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.78 : 1);
+
+      if (tank.teamStripe) {
+        tank.teamStripe.setPosition(tank.hull.x, tank.hull.y);
+        tank.teamStripe.setRotation(tank.hull.rotation);
+        tank.teamStripe.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.78 : 1);
+      }
 
       if (tank.frontMarker) {
         const forwardAngle = tank.hull.rotation - Math.PI / 2;

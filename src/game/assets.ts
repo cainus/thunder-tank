@@ -1,14 +1,13 @@
 export const ASSET_BASE = "/assets/kenney";
 
 export const ASSETS = {
-  playerHull: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBody_blue.png`,
-  playerTurret: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBlue_barrel1.png`,
-  enemyLightHull: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBody_red.png`,
-  enemyLightTurret: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankRed_barrel1.png`,
-  enemyStandardHull: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBody_dark.png`,
-  enemyStandardTurret: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankDark_barrel2.png`,
-  enemyHeavyHull: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBody_bigRed.png`,
-  enemyHeavyTurret: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankRed_barrel3.png`,
+  // Every tank shares a neutral grey body/turret; team identity is shown with a
+  // colored stripe overlay instead of a colored hull.
+  greyHull: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBody_dark.png`,
+  greyHullLarge: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankBody_darkLarge.png`,
+  greyTurretLight: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankDark_barrel1.png`,
+  greyTurretStandard: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankDark_barrel2.png`,
+  greyTurretHeavy: `${ASSET_BASE}/top-down-tanks/PNG/Retina/tankDark_barrel3.png`,
   bulletPlayer: `${ASSET_BASE}/top-down-tanks/PNG/Retina/bulletDark1.png`,
   bulletEnemy: `${ASSET_BASE}/top-down-tanks/PNG/Retina/bulletDark1.png`,
   explosion: `${ASSET_BASE}/top-down-tanks/PNG/Retina/explosion1.png`,
