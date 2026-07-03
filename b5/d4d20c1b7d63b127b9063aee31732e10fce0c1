@@ -1,0 +1,35 @@
+src/game/CampaignScene.ts
+  s_1db581e98c80d1::t_0a0545ac195d8d 27-33
+  s_1db581e98c80d1::t_95067e2d3c5db1 157-160
+  s_1db581e98c80d1::t_cffd8dde870034 93-95
+  s_1db581e98c80d1::t_10047bf7a1a448 1542,1545,1547
+  s_1db581e98c80d1::t_3133cdd0931829 2387
+  s_1db581e98c80d1::t_77535bb75bb425 96
+  s_1db581e98c80d1::t_b6c639027b59b2 132,138
+  s_1db581e98c80d1::t_643b0a90f63149 2274,2284-2285,2455-2470,2472-2502
+  s_1db581e98c80d1::t_05d2539d81f0d4 3027-3043
+  s_1db581e98c80d1::t_35c9239070cca6 2271-2273
+  s_1db581e98c80d1::t_96812b542d7704 2275-2277,2281-2283
+  s_1db581e98c80d1::t_e8eba674da082c 2286
+  s_1db581e98c80d1::t_86e41a2ed442a0 1575,1578,1580,2249,2254-2264,2269-2270,2278-2280
+tests/bullet-marks.test.ts
+  s_1db581e98c80d1::t_3557e5382c09ac 1-31
+src/game/bullet-marks.ts
+  s_1db581e98c80d1::t_aa96474793f459 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "b5d4d20c1b7d63b127b9063aee31732e10fce0c1",
+  "prompts": {},
+  "sessions": {
+    "s_1db581e98c80d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8548fa74-e724-476f-a34e-27d4f1890860",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
