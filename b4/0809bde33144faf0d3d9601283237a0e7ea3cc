@@ -1,0 +1,25 @@
+src/game/CampaignScene.ts
+  s_c7cc8986e5efef::t_da259b4ed0dcb5 4
+  s_c7cc8986e5efef::t_1fd09d81d58ca4 2713-2720
+src/game/combat-state.ts
+  s_c7cc8986e5efef::t_ae1c99678c4acb 75-102
+tests/combat-state.test.ts
+  s_c7cc8986e5efef::t_d6c19bfb7040c0 93-136
+  s_c7cc8986e5efef::t_584c1b927957d4 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "b40809bde33144faf0d3d9601283237a0e7ea3cc",
+  "prompts": {},
+  "sessions": {
+    "s_c7cc8986e5efef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fdf7dc0e-88ff-459c-8f17-d4091ebc4b71",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
