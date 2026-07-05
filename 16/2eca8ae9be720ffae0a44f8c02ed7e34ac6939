@@ -1,0 +1,34 @@
+tests/app.test.tsx
+  s_daec5745d0ecea::t_e43af35e324455 5
+  s_daec5745d0ecea::t_5ef7720f0491af 163-185
+.gitignore
+  s_daec5745d0ecea::t_47aa2cd3d47017 1,18
+src/game/rules.ts
+  s_daec5745d0ecea::t_c8b360e986face 70-84
+  s_daec5745d0ecea::t_598da53ffea602 1
+src/App.tsx
+  s_daec5745d0ecea::t_fc1d3be54da8a3 62-63
+  s_daec5745d0ecea::t_4af35a411a8ab7 18
+  s_daec5745d0ecea::t_ad688537cdaeca 246-247
+src/styles.css
+  s_daec5745d0ecea::t_1b8d55f6ec5497 111-118
+tests/game-rules.test.ts
+  s_daec5745d0ecea::t_0c87b018cca450 124-156
+  s_daec5745d0ecea::t_ebf76368dabf3c 2-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "162eca8ae9be720ffae0a44f8c02ed7e34ac6939",
+  "prompts": {},
+  "sessions": {
+    "s_daec5745d0ecea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a36a0707-6ab0-4f5c-8b36-c46c92c14a7a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
