@@ -7,6 +7,7 @@ import {
   getActiveBuffDisplays,
   getActiveBuffLabels,
   getGunFreezeSeconds,
+  getPlayerStatusKey,
   getRemainingHits,
   isGunFrozen,
   recordPlayerShot,
@@ -87,5 +88,93 @@ describe("player status", () => {
         now: 100,
       }),
     ).toBe(0);
+  });
+});
+
+describe("player status change key", () => {
+  const baseInput = {
+    alive: true,
+    health: 3,
+    maxHealth: 3,
+    buffs: { speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 },
+    gunFrozenUntil: 0,
+    now: 1_000,
+  };
+
+  it("keeps the key stable within the same remaining second of an active buff", () => {
+    const buffs = { speedUntil: 9_000, rapidFireUntil: 9_000, shieldUntil: 0 };
+
+    const earlier = getPlayerStatusKey({ ...baseInput, buffs, now: 2_000 });
+    const later = getPlayerStatusKey({ ...baseInput, buffs, now: 2_400 });
+
+    expect(later).toBe(earlier);
+  });
+
+  it("ticks the key down each second so the HUD counts active buffs down", () => {
+    const buffs = { speedUntil: 9_000, rapidFireUntil: 9_000, shieldUntil: 0 };
+
+    const earlier = getPlayerStatusKey({ ...baseInput, buffs, now: 2_000 });
+    const later = getPlayerStatusKey({ ...baseInput, buffs, now: 5_000 });
+
+    expect(later).not.toBe(earlier);
+  });
+
+  it("changes the key the moment a buff expires so the HUD refreshes", () => {
+    const buffs = { speedUntil: 9_000, rapidFireUntil: 0, shieldUntil: 0 };
+
+    const active = getPlayerStatusKey({ ...baseInput, buffs, now: 8_999 });
+    const expired = getPlayerStatusKey({ ...baseInput, buffs, now: 9_001 });
+
+    expect(active).not.toBe(expired);
+  });
+
+  it("refreshes the HUD when re-picking the same buff type extends its expiry", () => {
+    // Finding 1: a second speed power-up bumps speedUntil (9000 -> 15000) while
+    // 'speed' is already the only active buff. The key must change so the HUD
+    // reflects the extended duration instead of being skipped by the dedup guard.
+    const now = 1_000;
+    const before = getPlayerStatusKey({
+      ...baseInput,
+      buffs: { speedUntil: 9_000, rapidFireUntil: 0, shieldUntil: 0 },
+      now,
+    });
+    const afterReplick = getPlayerStatusKey({
+      ...baseInput,
+      buffs: { speedUntil: 15_000, rapidFireUntil: 0, shieldUntil: 0 },
+      now,
+    });
+
+    expect(afterReplick).not.toBe(before);
+  });
+
+  it("expires stacked buffs one at a time instead of dropping them all at once", () => {
+    // Finding 2: the "pick up 2 power-ups and end up with none" bug. Two buffs
+    // with different expiries must produce distinct keys before either expires,
+    // between the two expiries, and after both expire, so the HUD republishes and
+    // removes each buff exactly when it lapses rather than all together later.
+    const buffs = { speedUntil: 6_000, rapidFireUntil: 9_000, shieldUntil: 0 };
+
+    const bothActive = getPlayerStatusKey({ ...baseInput, buffs, now: 5_000 });
+    const speedExpired = getPlayerStatusKey({ ...baseInput, buffs, now: 6_500 });
+    const bothExpired = getPlayerStatusKey({ ...baseInput, buffs, now: 9_500 });
+
+    expect(bothActive).not.toBe(speedExpired);
+    expect(speedExpired).not.toBe(bothExpired);
+    expect(bothActive).not.toBe(bothExpired);
+  });
+
+  it("reflects each additional buff when multiple power-ups are stacked", () => {
+    const single = getPlayerStatusKey({
+      ...baseInput,
+      buffs: { speedUntil: 9_000, rapidFireUntil: 0, shieldUntil: 0 },
+      now: 1_000,
+    });
+    const stacked = getPlayerStatusKey({
+      ...baseInput,
+      buffs: { speedUntil: 9_000, rapidFireUntil: 9_000, shieldUntil: 0 },
+      now: 1_000,
+    });
+
+    expect(stacked).not.toBe(single);
   });
 });
