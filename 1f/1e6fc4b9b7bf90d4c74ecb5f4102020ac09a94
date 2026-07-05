@@ -1,0 +1,19 @@
+node_modules
+  s_ac39d9ccb42d0b::t_2b9199ce2e5a2a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1f1e6fc4b9b7bf90d4c74ecb5f4102020ac09a94",
+  "prompts": {},
+  "sessions": {
+    "s_ac39d9ccb42d0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f265d-6de3-7ac0-9c42-d6451f7013bb",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

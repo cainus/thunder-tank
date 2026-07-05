@@ -1,0 +1,19 @@
+node_modules
+  s_d69764ac8382de::t_3420f7ba3f8a3a 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "03e2394804fda7ffc41ff2eeae6bbc0e6a630420",
+  "prompts": {},
+  "sessions": {
+    "s_d69764ac8382de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6ef0e6f-a8f3-4c02-8045-bdd809685990",
+        "model": "unknown"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

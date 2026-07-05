@@ -1,0 +1,22 @@
+tests/combat-state.test.ts
+  s_a50ba91e717554::t_881a60a2f521db 104,108,113-121,131-164
+  s_a50ba91e717554::t_c022c763530e2a 165
+src/game/combat-state.ts
+  s_a50ba91e717554::t_f61d8deaaa3c3b 84-88,90-106,111-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "80836693754041bde5dbfc3c0c657e5807077140",
+  "prompts": {},
+  "sessions": {
+    "s_a50ba91e717554": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61dfa762-3004-4c8b-a638-a9843117daab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
