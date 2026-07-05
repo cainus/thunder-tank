@@ -8,6 +8,8 @@ import {
   getActiveBuffLabels,
   getGunFreezeSeconds,
   getRemainingHits,
+  getTargetScore,
+  getTargetsRemaining,
   isGunFrozen,
   recordPlayerShot,
 } from "../src/game/combat-state";
@@ -87,5 +89,33 @@ describe("player status", () => {
         now: 100,
       }),
     ).toBe(0);
+  });
+});
+
+describe("target count", () => {
+  it("uses the campaign score limit as the HUD target", () => {
+    expect(getTargetScore({ playerScoreLimit: 8 })).toBe(8);
+  });
+
+  it("prefers the capture limit as the target for Capture the Flag maps", () => {
+    const ctf = {
+      blueBase: { x: 0, y: 0, radius: 1 },
+      redBase: { x: 1, y: 1, radius: 1 },
+      blueFlag: { x: 0, y: 0 },
+      redFlag: { x: 1, y: 1 },
+      blueSpawns: [],
+      redSpawns: [],
+      captureLimit: 3,
+    };
+
+    expect(getTargetScore({ playerScoreLimit: 8, ctf })).toBe(3);
+  });
+
+  it("counts how many points remain until the target is reached", () => {
+    expect(getTargetsRemaining({ playerScoreLimit: 8 }, { player: 5, enemy: 2 })).toBe(3);
+  });
+
+  it("never reports a negative count once the target is met or exceeded", () => {
+    expect(getTargetsRemaining({ playerScoreLimit: 8 }, { player: 9, enemy: 0 })).toBe(0);
   });
 });

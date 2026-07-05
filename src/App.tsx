@@ -11,7 +11,15 @@ import {
 } from "./app-flow";
 import { GamepadRecorder } from "./GamepadRecorder";
 import { GamepadSetup } from "./GamepadSetup";
-import { EMPTY_GUN_HEAT, getActiveBuffDisplays, getGunFreezeSeconds, getRemainingHits, type PlayerStatus } from "./game/combat-state";
+import {
+  EMPTY_GUN_HEAT,
+  getActiveBuffDisplays,
+  getGunFreezeSeconds,
+  getRemainingHits,
+  getTargetScore,
+  getTargetsRemaining,
+  type PlayerStatus,
+} from "./game/combat-state";
 import { ASSETS } from "./game/assets";
 import { GameCanvas } from "./game/GameCanvas";
 import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./game/maps";
@@ -58,6 +66,8 @@ export function App() {
   const activeBuffs = getActiveBuffDisplays(playerStatus.buffs, playerStatus.now);
   const gunFreezeSeconds = getGunFreezeSeconds(playerStatus);
   const remainingHits = getRemainingHits(playerStatus);
+  const targetScore = getTargetScore(currentMap);
+  const targetsRemaining = getTargetsRemaining(currentMap, score);
 
   useEffect(() => {
     const onPauseRequested = () => {
@@ -240,7 +250,10 @@ export function App() {
         </div>
         <div>
           <span className="hud-label">Target</span>
-          <strong>{currentMap.ctf?.captureLimit ?? currentMap.playerScoreLimit}</strong>
+          <strong>{targetScore}</strong>
+          <span className="hud-target-remaining">
+            {targetsRemaining > 0 ? `${targetsRemaining} to go` : "Reached"}
+          </span>
         </div>
         <div>
           <span className="hud-label">Hits</span>

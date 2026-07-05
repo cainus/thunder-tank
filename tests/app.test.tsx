@@ -159,6 +159,16 @@ describe("App", () => {
     expect(matchStatus).toHaveTextContent("4");
   });
 
+  it("shows the target count and remaining points in the HUD", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start Campaign" }));
+    const matchStatus = screen.getByRole("region", { name: "Match status" });
+
+    expect(matchStatus).toHaveTextContent("Target");
+    expect(matchStatus).toHaveTextContent(/\d+ to go/);
+  });
+
   it("shows only the advance button on the map-cleared screen", () => {
     render(<App />);
 

@@ -108,6 +108,16 @@ button:disabled {
   margin-top: 2px;
 }
 
+.hud-target-remaining {
+  color: #b9c0a8;
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
 .hud-powerups {
   min-width: 180px;
 }

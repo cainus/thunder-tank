@@ -1,4 +1,4 @@
-import type { ActiveBuffs } from "./types";
+import type { ActiveBuffs, CampaignMap, ScoreState } from "./types";
 
 export const PLAYER_GUN_FREEZE_MS = 3_000;
 export const PLAYER_GUN_HEAT_LIMIT = 7;
@@ -78,4 +78,22 @@ export function getRemainingHits(status: PlayerStatus): number {
   }
 
   return status.health + (status.buffs.shieldUntil > status.now ? 1 : 0);
+}
+
+type TargetLimits = Pick<CampaignMap, "playerScoreLimit" | "ctf">;
+
+/**
+ * The score the player must reach to win the current map: captures for a
+ * Capture the Flag map, otherwise the campaign/deathmatch score limit.
+ */
+export function getTargetScore(map: TargetLimits): number {
+  return map.ctf?.captureLimit ?? map.playerScoreLimit;
+}
+
+/**
+ * How many more points the player still needs to hit the target, clamped at
+ * zero so the HUD never shows a negative count once the target is reached.
+ */
+export function getTargetsRemaining(map: TargetLimits, score: ScoreState): number {
+  return Math.max(0, getTargetScore(map) - score.player);
 }
