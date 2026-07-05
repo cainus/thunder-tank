@@ -1,0 +1,37 @@
+src/game/combat-state.ts
+  s_1fd02c28260537::t_993b813397e693 1
+  s_1fd02c28260537::t_b84ed38cd35c30 125-133
+src/App.tsx
+  s_1fd02c28260537::t_4bb53ee2516134 245-247
+  s_1fd02c28260537::t_7a8553a72adfb8 61-62
+  s_1fd02c28260537::t_1d9d7193ea2cc7 14
+tests/combat-state.test.ts
+  s_1fd02c28260537::t_8fb696217f7eb1 12
+  s_1fd02c28260537::t_fe01513daf976e 93-102
+.gitignore
+  s_895f647adbbc55::t_f6fc956f2be7d5 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0c147aad09ef29be7e7a3ca0b6d187cdd31011fa",
+  "prompts": {},
+  "sessions": {
+    "s_1fd02c28260537": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6552f537-323f-4c65-8218-ea0260845242",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_895f647adbbc55": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36bb5e1e-6a91-4726-a481-83e319de87e7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
