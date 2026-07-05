@@ -1,0 +1,41 @@
+tests/app.test.tsx
+  s_18d28d12b99890::t_e42140ca91f885 162-171
+src/App.tsx
+  s_18d28d12b99890::t_e7e64bcab7e801 14-22
+  s_18d28d12b99890::t_dc6edd8ac141dc 253-256
+  s_18d28d12b99890::t_87ccbefb64137d 69-70
+src/styles.css
+  s_18d28d12b99890::t_ec9032457c5587 111-120
+tests/combat-state.test.ts
+  s_18d28d12b99890::t_d736f56724c59f 94-121
+  s_18d28d12b99890::t_1e32ee5fe70740 11-12
+src/game/combat-state.ts
+  s_18d28d12b99890::t_e75fb2c4d10e07 1
+  s_18d28d12b99890::t_0f4b2113f903b9 82-99
+node_modules
+  s_63f3e37d8dbabb::t_92ce6dd86fa1c4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e8c9d09774bb52b0a1da300ef04cb8563c168d0e",
+  "prompts": {},
+  "sessions": {
+    "s_18d28d12b99890": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b95edf26-154a-460e-b033-34c815c5e428",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_63f3e37d8dbabb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8e28b59-aa40-4e34-ac8b-938bc17a8a25",
+        "model": "unknown"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
