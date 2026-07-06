@@ -24,6 +24,13 @@ import {
   hasShield,
 } from "./rules";
 import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
+import {
+  BULLET_MARK_MAX_COUNT,
+  getBulletMarkAlpha,
+  getBulletMarkScale,
+  isBulletMarkExpired,
+  type BulletMarkKind,
+} from "./bullet-marks";
 import type {
   CampaignMap,
   EnemyArchetype,
@@ -83,7 +90,10 @@ const DUST_LATERAL_OFFSET = 13;
 const DUST_MIN_SCALE = 0.34;
 const DUST_MAX_SCALE = 0.72;
 const IMPACT_MARK_DEPTH = 6;
-const IMPACT_MARK_LIFETIME_MS = 1_350;
+// Sits above the hull (TANK_DEPTH) but below the turret (TANK_DEPTH + 1) so the
+// scorch reads as painted onto the tank's body.
+const TANK_BULLET_MARK_DEPTH = TANK_DEPTH + 0.5;
+const TANK_BULLET_MARK_OFFSET = 18;
 const NIGHT_HEADLAMP_DEPTH = 18;
 const NIGHT_HEADLAMP_CONE_ALPHA = 0.18;
 const NIGHT_HEADLAMP_GLOW_ALPHA = 0.54;
@@ -119,12 +129,13 @@ interface BulletData {
   maxRange: number;
 }
 
-type ImpactKind = "obstacle" | "tank" | "shield";
+type ImpactKind = "obstacle" | "tank" | "shield" | "ground";
 
 interface ImpactEffectOptions {
   angle?: number;
   kind?: ImpactKind;
   scale?: number;
+  tank?: TankRuntime;
 }
 
 interface PickupSprite extends Phaser.Physics.Arcade.Image {
@@ -143,6 +154,13 @@ interface TreadMark {
 interface ImpactMark {
   sprite: Phaser.GameObjects.Image;
   createdAt: number;
+  tank?: TankRuntime;
+  offsetX?: number;
+  offsetY?: number;
+  // Per-kind opacity multiplier applied on top of the shared fade curve
+  // (getBulletMarkAlpha, which itself peaks at BULLET_MARK_BASE_ALPHA). This is
+  // NOT the same as BULLET_MARK_BASE_ALPHA: it only makes tank scorch subtler.
+  kindAlphaMultiplier: number;
 }
 
 interface LightPostRuntime {
@@ -1524,10 +1542,12 @@ export class CampaignScene extends Phaser.Scene {
       return;
     }
 
+    const shielded = hasShield(tank.buffs, this.time.now);
     this.destroyBullet(bullet, {
       angle: this.getBulletTravelAngle(bullet),
-      kind: hasShield(tank.buffs, this.time.now) ? "shield" : "tank",
+      kind: shielded ? "shield" : "tank",
       scale: tank.archetype === "boss" ? 1.18 : tank.archetype === "heavy" ? 1.02 : 0.92,
+      tank: shielded ? undefined : tank,
     });
     this.damageTank(tank, data.owner);
   }
@@ -1555,10 +1575,12 @@ export class CampaignScene extends Phaser.Scene {
         const distance = Phaser.Math.Distance.Between(bullet.x, bullet.y, tank.hull.x, tank.hull.y);
 
         if (distance <= hitRadius) {
+          const shielded = hasShield(tank.buffs, this.time.now);
           this.destroyBullet(bullet, {
             angle: this.getBulletTravelAngle(bullet),
-            kind: hasShield(tank.buffs, this.time.now) ? "shield" : "tank",
+            kind: shielded ? "shield" : "tank",
             scale: tank.archetype === "boss" ? 1.18 : tank.archetype === "heavy" ? 1.02 : 0.92,
+            tank: shielded ? undefined : tank,
           });
           this.damageTank(tank, data.owner);
           break;
@@ -2227,18 +2249,42 @@ export class CampaignScene extends Phaser.Scene {
 
   private updateImpactMarks(time: number): void {
     this.impactMarks = this.impactMarks.filter((mark) => {
-      const age = time - mark.createdAt;
-
-      if (age >= IMPACT_MARK_LIFETIME_MS) {
+      if (isBulletMarkExpired(mark.createdAt, time)) {
         mark.sprite.destroy();
         return false;
       }
 
-      const progress = age / IMPACT_MARK_LIFETIME_MS;
-      mark.sprite.setAlpha(0.34 * (1 - progress));
-      mark.sprite.setScale(0.78 + progress * 0.12);
+      if (mark.tank) {
+        if (!mark.tank.alive || !mark.tank.hull.active) {
+          mark.sprite.destroy();
+          return false;
+        }
+
+        this.positionTankBulletMark(mark);
+      }
+
+      const fade = getBulletMarkAlpha(mark.createdAt, time);
+      mark.sprite.setAlpha(mark.kindAlphaMultiplier * fade);
       return true;
     });
+  }
+
+  private positionTankBulletMark(mark: ImpactMark): void {
+    const tank = mark.tank;
+
+    if (!tank) {
+      return;
+    }
+
+    const cos = Math.cos(tank.hull.rotation);
+    const sin = Math.sin(tank.hull.rotation);
+    const offsetX = mark.offsetX ?? 0;
+    const offsetY = mark.offsetY ?? 0;
+
+    mark.sprite.setPosition(
+      tank.hull.x + offsetX * cos - offsetY * sin,
+      tank.hull.y + offsetX * sin + offsetY * cos,
+    );
   }
 
   private destroyAllImpactMarks(): void {
@@ -2333,7 +2379,9 @@ export class CampaignScene extends Phaser.Scene {
 
   private addBulletImpact(x: number, y: number, options: ImpactEffectOptions): void {
     const angle = options.angle ?? 0;
-    const kind = options.kind ?? "obstacle";
+    // Default omitted impacts to "obstacle" so `kind` is always a concrete
+    // ImpactKind (never undefined) before it is fed into the mark helpers.
+    const kind: ImpactKind = options.kind ?? "obstacle";
     const scale = options.scale ?? 1;
     const flashTint = kind === "shield" ? 0x8df7ff : kind === "tank" ? 0xffd37a : 0xfff1bd;
     const sparkTint = kind === "shield" ? 0x8fe6ff : kind === "tank" ? 0xff9f6e : 0xf7efd4;
@@ -2341,7 +2389,11 @@ export class CampaignScene extends Phaser.Scene {
     const direction = Phaser.Math.Angle.Wrap(angle + Math.PI);
 
     if (kind !== "shield") {
-      this.addImpactMark(x, y, direction, scale);
+      // The `kind !== "shield"` guard narrows ImpactKind down to exactly
+      // BulletMarkKind ("tank" | "obstacle" | "ground"), so obstacle impacts
+      // keep their obstacle sizing and no undefined can slip through.
+      const markKind: BulletMarkKind = kind;
+      this.addImpactMark(x, y, direction, scale, markKind, options.tank);
     }
 
     const flash = this.add.image(x, y, "impactFlash");
@@ -2409,18 +2461,58 @@ export class CampaignScene extends Phaser.Scene {
     }
   }
 
-  private addImpactMark(x: number, y: number, angle: number, scale: number): void {
-    const mark = this.add.image(
-      x + Math.cos(angle) * Phaser.Math.FloatBetween(4, 10),
-      y + Math.sin(angle) * Phaser.Math.FloatBetween(4, 10),
-      "impactMark",
-    );
-    mark.setDepth(IMPACT_MARK_DEPTH);
+  private addImpactMark(
+    x: number,
+    y: number,
+    angle: number,
+    scale: number,
+    kind: BulletMarkKind,
+    tank?: TankRuntime,
+  ): void {
+    const jitter = Phaser.Math.FloatBetween(4, 10);
+    const spawnX = x + Math.cos(angle) * jitter;
+    const spawnY = y + Math.sin(angle) * jitter;
+    const mark = this.add.image(spawnX, spawnY, "impactMark");
+    const kindScale = getBulletMarkScale(kind);
+    // Per-kind opacity multiplier layered on top of the shared fade curve. The
+    // fade curve (getBulletMarkAlpha) already caps peak opacity at
+    // BULLET_MARK_BASE_ALPHA (0.42), so tank scorch peaks at 0.62 * 0.42 ≈ 0.26
+    // while ground/obstacle peak at the full 0.42.
+    const kindAlphaMultiplier = kind === "tank" ? 0.62 : 1;
+
+    mark.setDepth(kind === "tank" ? TANK_BULLET_MARK_DEPTH : IMPACT_MARK_DEPTH);
     mark.setRotation(angle + Phaser.Math.FloatBetween(-0.45, 0.45));
-    mark.setTint(0x17130d);
-    mark.setAlpha(0.34);
-    mark.setScale(Phaser.Math.FloatBetween(0.58, 0.8) * scale, Phaser.Math.FloatBetween(0.48, 0.68) * scale);
-    this.impactMarks.push({ sprite: mark, createdAt: this.time.now });
+    mark.setTint(kind === "tank" ? 0x0c0a07 : 0x17130d);
+    mark.setAlpha(kindAlphaMultiplier * getBulletMarkAlpha(this.time.now, this.time.now));
+    mark.setScale(
+      Phaser.Math.FloatBetween(0.58, 0.8) * scale * kindScale,
+      Phaser.Math.FloatBetween(0.48, 0.68) * scale * kindScale,
+    );
+
+    const entry: ImpactMark = { sprite: mark, createdAt: this.time.now, kindAlphaMultiplier };
+
+    if (kind === "tank" && tank) {
+      entry.tank = tank;
+      const cos = Math.cos(tank.hull.rotation);
+      const sin = Math.sin(tank.hull.rotation);
+      const dx = Phaser.Math.Clamp(spawnX - tank.hull.x, -TANK_BULLET_MARK_OFFSET, TANK_BULLET_MARK_OFFSET);
+      const dy = Phaser.Math.Clamp(spawnY - tank.hull.y, -TANK_BULLET_MARK_OFFSET, TANK_BULLET_MARK_OFFSET);
+      // Convert the world-space impact offset into the hull's local frame so the
+      // scorch stays glued to the tank as it drives and rotates.
+      entry.offsetX = dx * cos + dy * sin;
+      entry.offsetY = -dx * sin + dy * cos;
+      this.positionTankBulletMark(entry);
+    }
+
+    this.impactMarks.push(entry);
+    this.trimImpactMarks();
+  }
+
+  private trimImpactMarks(): void {
+    while (this.impactMarks.length > BULLET_MARK_MAX_COUNT) {
+      const oldest = this.impactMarks.shift();
+      oldest?.sprite.destroy();
+    }
   }
 
   private updateTankVisuals(): void {
@@ -2944,14 +3036,28 @@ export class CampaignScene extends Phaser.Scene {
         data &&
         Phaser.Math.Distance.Between(bullet.x, bullet.y, data.startX, data.startY) >= data.maxRange;
 
-      if (
-        bullet.active &&
-        (exceededRange ||
-          bullet.x < -100 ||
-          bullet.x > this.map.width + 100 ||
-          bullet.y < -100 ||
-          bullet.y > this.map.height + 100)
-      ) {
+      const outOfBounds =
+        bullet.x < -100 ||
+        bullet.x > this.map.width + 100 ||
+        bullet.y < -100 ||
+        bullet.y > this.map.height + 100;
+
+      if (bullet.active && (exceededRange || outOfBounds)) {
+        // In this top-down game bullets never collide with the floor directly;
+        // tank and obstacle hits already leave scorch via handleBulletHit and
+        // the obstacle collider. The remaining "ground" case is a round that
+        // burns out at max range while still on the field, so we drop a ground
+        // scorch there. Bullets that leave the map (outOfBounds) get no mark.
+        if (exceededRange && !outOfBounds) {
+          this.addImpactMark(
+            bullet.x,
+            bullet.y,
+            this.getBulletTravelAngle(bullet) + Math.PI,
+            0.8,
+            "ground",
+          );
+        }
+
         bullet.disableBody(true, true);
       }
     }
