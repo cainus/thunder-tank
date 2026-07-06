@@ -1,0 +1,33 @@
+src/App.tsx
+  s_8dc08d06337b81::t_3f3ba0488be77f 246-247
+  s_8dc08d06337b81::t_2e03a5088adabe 17
+  s_8dc08d06337b81::t_cdc4bd5e81e52e 62-63
+src/styles.css
+  s_8dc08d06337b81::t_e9e23842922754 111-118
+src/game/hud.ts
+  s_8dc08d06337b81::t_e96afee62b8fd4 1-26
+tests/app.test.tsx
+  s_8dc08d06337b81::t_c2b269aea9b01e 167-179
+  s_8dc08d06337b81::t_404c83f4642e8e 69-71
+  s_8dc08d06337b81::t_35cf3e0a878084 9,14
+.gitignore
+  s_8dc08d06337b81::t_a2b4d0cdd3e96a 1-2
+tests/hud.test.ts
+  s_8dc08d06337b81::t_8067bcdf8ed1c5 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a5a230c84f17f39a026d1bd229577fa6cbbf6b50",
+  "prompts": {},
+  "sessions": {
+    "s_8dc08d06337b81": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8554f292-9d7f-4674-b98e-5cf47d22229d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
