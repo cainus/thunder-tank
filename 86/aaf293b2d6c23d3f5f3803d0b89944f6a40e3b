@@ -1,0 +1,32 @@
+src/styles.css
+  s_755281f92ddd00::t_780a7a11975ff5 111-118
+tests/app.test.tsx
+  s_755281f92ddd00::t_c7dde63deece2b 11,23
+  s_755281f92ddd00::t_36c7765a6a11e8 70-72
+  s_755281f92ddd00::t_f534fbca2c1369 73-75
+  s_755281f92ddd00::t_d926324342dd7a 205-242,244,246-248
+  s_755281f92ddd00::t_cf10006dc3db03 243
+  s_755281f92ddd00::t_4b803fb8fae23a 245
+  s_755281f92ddd00::t_34db05b157f8eb 5
+.gitignore
+  s_755281f92ddd00::t_3b5dc78c16e677 18-20
+src/App.tsx
+  s_755281f92ddd00::t_f7b57de88e6cd4 242-244
+  s_755281f92ddd00::t_def6440afda05c 553-572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "86aaf293b2d6c23d3f5f3803d0b89944f6a40e3b",
+  "prompts": {},
+  "sessions": {
+    "s_755281f92ddd00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eb3b667-744e-4706-8220-464fad33bafa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
