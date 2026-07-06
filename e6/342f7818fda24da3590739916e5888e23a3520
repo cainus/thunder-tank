@@ -1,0 +1,34 @@
+src/game/GameCanvas.tsx
+  s_680da5574a7c5f::t_8dae91d50bbbed 17
+  s_680da5574a7c5f::t_9bb51b615ec80f 30,34,36
+  s_680da5574a7c5f::t_8aea171843d0ab 75
+src/App.tsx
+  s_680da5574a7c5f::t_f313337c288bfe 225
+  s_680da5574a7c5f::t_34d69fed1c7071 248-250
+  s_680da5574a7c5f::t_bf23282e1424cf 247
+  s_680da5574a7c5f::t_9839004ae77051 44
+src/game/types.ts
+  s_680da5574a7c5f::t_542d1ac7f470f5 118
+src/game/CampaignScene.ts
+  s_680da5574a7c5f::t_254ee64b011b5f 206
+  s_680da5574a7c5f::t_39cf4818e84e98 233
+  s_680da5574a7c5f::t_afd5057ec996fe 2585-2598
+  s_680da5574a7c5f::t_841a6b87867c15 342
+  s_680da5574a7c5f::t_3d08beb3fe9288 375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e6342f7818fda24da3590739916e5888e23a3520",
+  "prompts": {},
+  "sessions": {
+    "s_680da5574a7c5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afc68b23-32a5-497e-b5e1-c0237c048115",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

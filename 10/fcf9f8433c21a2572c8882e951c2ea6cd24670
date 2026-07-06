@@ -1,0 +1,34 @@
+tests/app.test.tsx
+  s_315185223ef49a::t_1b00d8a357364f 69-71
+  s_315185223ef49a::t_5dde39876ca9b0 167-180
+  s_315185223ef49a::t_068d856ccc6408 9,14
+tests/maps.test.ts
+  s_315185223ef49a::t_959e60b92c1584 2,19-50
+src/styles.css
+  s_315185223ef49a::t_1db9d24ac266f7 111-118
+.gitignore
+  s_315185223ef49a::t_87aec65471cfac 1-3
+src/game/maps.ts
+  s_315185223ef49a::t_c92a8eccd16942 1
+  s_315185223ef49a::t_e37f77f4350889 1111-1125
+src/App.tsx
+  s_315185223ef49a::t_6791398e72af1a 61-62
+  s_315185223ef49a::t_db29c84f84e7f1 17
+  s_315185223ef49a::t_5393c976e3405b 245-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "10fcf9f8433c21a2572c8882e951c2ea6cd24670",
+  "prompts": {},
+  "sessions": {
+    "s_315185223ef49a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba799752-ab4d-4c00-a82c-97088d87b847",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

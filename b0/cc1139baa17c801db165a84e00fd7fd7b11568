@@ -1,0 +1,25 @@
+src/App.tsx
+  s_e720247f0cf3fa::t_0c347632d04685 61-62
+  s_e720247f0cf3fa::t_11ad4854df4ce1 245,247
+  s_e720247f0cf3fa::t_075f9bba0f27b4 545-552
+  s_e720247f0cf3fa::t_63da32600bdb18 244
+  s_e720247f0cf3fa::t_d30a340d8932ef 246
+tests/app.test.tsx
+  s_e720247f0cf3fa::t_79d5c3bdb667a6 162-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b0cc1139baa17c801db165a84e00fd7fd7b11568",
+  "prompts": {},
+  "sessions": {
+    "s_e720247f0cf3fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "227a78e3-cf6e-4bc1-89af-cf393345a07f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

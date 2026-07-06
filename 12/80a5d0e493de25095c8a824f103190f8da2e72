@@ -1,0 +1,31 @@
+src/App.tsx
+  s_8e404de65a6893::t_aaa27a460ccdce 245-247
+  s_8e404de65a6893::t_b96b9fa4879ce0 14
+  s_8e404de65a6893::t_eb71ff12d1b1aa 61-62
+.gitignore
+  s_8e404de65a6893::t_616534b6d1ea04 2
+src/game/combat-state.ts
+  s_8e404de65a6893::t_abc7a12dd92172 1
+  s_8e404de65a6893::t_c1fa5c34fb9c91 125-136
+tests/combat-state.test.ts
+  s_8e404de65a6893::t_2f7a281c428838 12
+  s_8e404de65a6893::t_5b812c135ad932 93-102
+src/styles.css
+  s_8e404de65a6893::t_492e5881ce8c48 111-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1280a5d0e493de25095c8a824f103190f8da2e72",
+  "prompts": {},
+  "sessions": {
+    "s_8e404de65a6893": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e6ec09c-dda1-4b4c-b420-3cd527ddfaf1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

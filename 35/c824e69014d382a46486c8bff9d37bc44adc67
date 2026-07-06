@@ -1,0 +1,31 @@
+tests/app.test.tsx
+  s_aaf18fcd0f80a6::t_85511b96544b66 10,15
+  s_aaf18fcd0f80a6::t_8294452d34f559 70-72
+  s_aaf18fcd0f80a6::t_234a48e5467fe1 244-268
+  s_aaf18fcd0f80a6::t_cb340ccd1d79a5 202-231
+  s_aaf18fcd0f80a6::t_ddca8b7f53b678 4-5
+src/App.tsx
+  s_aaf18fcd0f80a6::t_9376ce49f5192e 245-246
+  s_aaf18fcd0f80a6::t_d2b67e71e368fa 61-62
+  s_aaf18fcd0f80a6::t_90fc17b28b1e41 544-557
+src/styles.css
+  s_aaf18fcd0f80a6::t_42fa0a52795cd8 111-120
+.gitignore
+  s_aaf18fcd0f80a6::t_6440904923905d 1,18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "35c824e69014d382a46486c8bff9d37bc44adc67",
+  "prompts": {},
+  "sessions": {
+    "s_aaf18fcd0f80a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42548f29-4181-41cb-9186-37b58ee5df2e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+src/styles.css
+  s_2e736e0d0c1640::t_84abc956afea4f 111-118
+src/game/maps.ts
+  s_2e736e0d0c1640::t_4b9e5b477061dd 1111-1120
+tests/maps.test.ts
+  s_2e736e0d0c1640::t_b0b4ded3418d26 2-17
+tests/app.test.tsx
+  s_2e736e0d0c1640::t_86c7d45001a902 167-194
+  s_2e736e0d0c1640::t_5a93f75e1f6fc7 69-71
+  s_2e736e0d0c1640::t_36ef6bf2b1d60c 10,22
+src/App.tsx
+  s_2e736e0d0c1640::t_b14619678b546f 553-566
+  s_2e736e0d0c1640::t_d1f9e31feb00c9 242-244
+  s_2e736e0d0c1640::t_d21f90a9871f2e 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f51645a2b2df9cc9bef48839f92391ae2a6213f9",
+  "prompts": {},
+  "sessions": {
+    "s_2e736e0d0c1640": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "059d440a-7ab8-48b0-8325-db97b9076679",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
