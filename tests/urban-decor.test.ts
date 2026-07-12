@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   TREE_CAMERA_TILT,
   computeUrbanTreeSpots,
+  occluderClipTransform,
   treeHeightScreenOffset,
   treeOrthoFrustum,
 } from "../src/game/urban-decor";
@@ -56,6 +57,31 @@ describe("treeOrthoFrustum", () => {
     const { halfHeight } = treeOrthoFrustum(1920, 1080);
     expect(halfHeight).toBeCloseTo((1080 * Math.cos(TREE_CAMERA_TILT)) / 2, 5);
     expect(halfHeight).toBeLessThan(540);
+  });
+});
+
+describe("occluderClipTransform", () => {
+  const view = { centerX: 1000, centerY: 800, width: 1920, height: 1080 };
+
+  it("maps the view centre to the clip-space origin", () => {
+    const transform = occluderClipTransform(view.centerX, view.centerY, view, 54);
+    expect(transform.x).toBeCloseTo(0, 5);
+    expect(transform.y).toBeCloseTo(0, 5);
+  });
+
+  it("maps the view edges to the clip-space extents", () => {
+    const right = occluderClipTransform(view.centerX + view.width / 2, view.centerY, view, 54);
+    const top = occluderClipTransform(view.centerX, view.centerY - view.height / 2, view, 54);
+    // Clip X grows to +1 at the right edge; clip Y grows to +1 up-screen (world
+    // Y decreasing), confirming the vertical flip.
+    expect(right.x).toBeCloseTo(1, 5);
+    expect(top.y).toBeCloseTo(1, 5);
+  });
+
+  it("scales the hole with the world radius relative to the view", () => {
+    const transform = occluderClipTransform(view.centerX, view.centerY, view, 54);
+    expect(transform.width).toBeCloseTo((2 * 54) / view.width, 5);
+    expect(transform.height).toBeCloseTo((2 * 54) / view.height, 5);
   });
 });
 

@@ -86,3 +86,38 @@ export function isWebglAvailable(): boolean {
 export function treeHeightScreenOffset(height: number, tilt: number = TREE_CAMERA_TILT): number {
   return height * Math.sin(tilt);
 }
+
+// World-space radius of the soft hole punched into the 3D tree canopy for each
+// tank so the tank (drawn by Phaser underneath) always reads on top of the
+// decoration, matching the pre-3D depth order (flat trees sat below tanks).
+export const TREE_OCCLUDER_WORLD_RADIUS = 54;
+
+export interface TreeViewRect {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Maps a ground-plane world position + radius onto the tree overlay's clip
+ * space, returning the centre and full width/height of an axis-aligned quad in
+ * normalized device coordinates ([-1, 1], y-up). Because the tree camera
+ * keeps ground positions in 1:1 registration with the Phaser view (see
+ * treeOrthoFrustum), a ground point maps linearly across the view rectangle.
+ * Kept engine-free so the occlusion mapping can be unit-tested without WebGL.
+ */
+export function occluderClipTransform(
+  worldX: number,
+  worldY: number,
+  view: TreeViewRect,
+  radius: number = TREE_OCCLUDER_WORLD_RADIUS,
+): { x: number; y: number; width: number; height: number } {
+  return {
+    x: ((worldX - view.centerX) / view.width) * 2,
+    // Screen/clip Y grows downward in world space but upward in NDC, so flip.
+    y: -((worldY - view.centerY) / view.height) * 2,
+    width: (2 * radius) / view.width,
+    height: (2 * radius) / view.height,
+  };
+}

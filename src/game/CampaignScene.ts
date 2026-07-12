@@ -617,10 +617,17 @@ export class CampaignScene extends Phaser.Scene {
     }
 
     const view = this.cameras.main.worldView;
+    // Feed the overlay each living tank's ground position so it can cut a hole in
+    // the canopy there, keeping tanks readable on top of the trees (the flat
+    // sprites they replaced sat below the tanks at depth -9).
+    const occluders = this.getAllTanks()
+      .filter((tank) => tank.alive)
+      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
     this.treeOverlay.render(
       { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
       this.scale.gameSize.width,
       this.scale.gameSize.height,
+      occluders,
     );
   }
 
