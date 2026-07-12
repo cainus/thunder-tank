@@ -88,6 +88,7 @@ export interface TankRuntime {
   hull: Phaser.Physics.Arcade.Image;
   turret: Phaser.GameObjects.Image;
   frontMarker?: Phaser.GameObjects.Rectangle;
+  teamStripe?: Phaser.GameObjects.Container;
   headlampCone?: Phaser.GameObjects.Image;
   headlampGlow?: Phaser.GameObjects.Arc;
   aiRoleLabel?: Phaser.GameObjects.Text;
