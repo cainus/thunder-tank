@@ -11,6 +11,7 @@ import {
   shouldReuseEnemyMoveAngle,
 } from "./enemy-pathing";
 import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./maps";
+import { computeCounterAimAngle } from "./turret-aim";
 import {
   EMPTY_BUFFS,
   ENEMY_STATS,
@@ -748,6 +749,7 @@ export class CampaignScene extends Phaser.Scene {
       lastFiredAt: -10_000,
       nextDecisionAt: 0,
       aimAngle: side === "player" ? -Math.PI / 2 : side === "playerTwo" ? Math.PI / 2 : 0,
+      baseTurnDelta: 0,
       moveAngle: undefined,
       nextMoveDecisionAt: 0,
       lastDustAt: undefined,
@@ -842,6 +844,7 @@ export class CampaignScene extends Phaser.Scene {
   private updateCoOpTank(time: number): void {
     if (!this.player.alive || this.isPlayerInRespawnCountdown(time)) {
       this.player.hull.setVelocity(0, 0);
+      this.player.baseTurnDelta = 0;
       return;
     }
 
@@ -854,6 +857,7 @@ export class CampaignScene extends Phaser.Scene {
     const nextRotation = this.player.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
+    this.player.baseTurnDelta = hullTurnDelta;
     this.player.hull.setRotation(nextRotation);
     this.player.hull.setVelocity(
       Math.cos(forwardAngle) * drive.throttle * stats.speed,
@@ -874,6 +878,7 @@ export class CampaignScene extends Phaser.Scene {
   private updateHumanTank(tank: TankRuntime, playerIndex: 0 | 1, time: number): void {
     if (!tank.alive || (tank.side === "player" && this.isPlayerInRespawnCountdown(time))) {
       tank.hull.setVelocity(0, 0);
+      tank.baseTurnDelta = 0;
       return;
     }
 
@@ -886,6 +891,7 @@ export class CampaignScene extends Phaser.Scene {
     const nextRotation = tank.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
+    tank.baseTurnDelta = hullTurnDelta;
     tank.hull.setRotation(nextRotation);
     tank.hull.setVelocity(
       Math.cos(forwardAngle) * drive.throttle * stats.speed,
@@ -949,7 +955,7 @@ export class CampaignScene extends Phaser.Scene {
 
       const hullTurnDelta = this.applyAiTankDrive(enemy, moveAngle, distance, stats);
 
-      this.updateAiTurret(enemy, desiredAngle, hullTurnDelta);
+      this.updateAiTurret(enemy, desiredAngle, hullTurnDelta, this.player);
 
       if (
         hasLineOfSight &&
@@ -988,6 +994,7 @@ export class CampaignScene extends Phaser.Scene {
           tank,
           Phaser.Math.Angle.Between(tank.hull.x, tank.hull.y, attackTarget.hull.x, attackTarget.hull.y),
           hullTurnDelta,
+          attackTarget,
         );
       } else {
         tank.aimAngle += hullTurnDelta;
@@ -1011,6 +1018,7 @@ export class CampaignScene extends Phaser.Scene {
 
     if (distanceToTarget <= stopDistance) {
       tank.hull.setVelocity(0, 0);
+      tank.baseTurnDelta = 0;
       return 0;
     }
 
@@ -1027,6 +1035,7 @@ export class CampaignScene extends Phaser.Scene {
     const throttleMagnitude = Phaser.Math.Clamp((alignment + 1) / 2, AI_MIN_DRIVE_THROTTLE, 1);
     const throttle = shouldReverse ? -throttleMagnitude : throttleMagnitude;
 
+    tank.baseTurnDelta = hullTurnDelta;
     tank.hull.setRotation(nextRotation);
     tank.hull.setVelocity(Math.cos(nextForwardAngle) * throttle * stats.speed, Math.sin(nextForwardAngle) * throttle * stats.speed);
 
@@ -1045,13 +1054,18 @@ export class CampaignScene extends Phaser.Scene {
     return role === "Return to Base" || role === "Recover Flag" || role === "Raid Flag";
   }
 
-  private updateAiTurret(tank: TankRuntime, desiredAimAngle: number, hullTurnDelta: number): void {
+  private updateAiTurret(tank: TankRuntime, desiredAimAngle: number, hullTurnDelta: number, target?: TankRuntime): void {
     const deltaSeconds = this.game.loop.delta / 1_000;
-    const carriedAimAngle = tank.aimAngle + hullTurnDelta;
-    const maxCounterTurn = PLAYER_TURRET_TURN_RATE * deltaSeconds;
-    const aimDelta = Phaser.Math.Angle.Wrap(desiredAimAngle - carriedAimAngle);
-
-    tank.aimAngle = carriedAimAngle + Phaser.Math.Clamp(aimDelta, -maxCounterTurn, maxCounterTurn);
+    // When the target rotates its base, drag this turret the full same amount so
+    // it must burn its normal turret speed re-aiming. Sustained spinning by the
+    // target therefore keeps the turret off-aim and unable to fire.
+    tank.aimAngle = computeCounterAimAngle({
+      aimAngle: tank.aimAngle,
+      desiredAimAngle,
+      hullTurnDelta,
+      targetBaseTurnDelta: target?.baseTurnDelta ?? 0,
+      maxCounterTurn: PLAYER_TURRET_TURN_RATE * deltaSeconds,
+    });
   }
 
   private getAiTankStats(tank: TankRuntime) {
