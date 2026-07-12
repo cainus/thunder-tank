@@ -34,3 +34,11 @@ export const ASSETS = {
 
 export const ASSET_KEYS = Object.keys(ASSETS) as Array<keyof typeof ASSETS>;
 export type AssetKey = keyof typeof ASSETS;
+
+// 3D models are loaded by the three.js overlay (see tree-3d.ts), not by Phaser's
+// image loader, so they live outside the ASSETS map that `preload` iterates.
+export const MODEL_ASSETS = {
+  // Low-poly urban tree, authored by scripts/generate-tree-model.mjs. The .obj
+  // references tree.mtl via `mtllib`, so both files must sit side by side.
+  tree: "/assets/models/tree.obj",
+};

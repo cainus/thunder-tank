@@ -28,6 +28,7 @@
     "phaser": "^3.87.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "three": "^0.185.1",
     "vite": "^6.0.7",
     "zod": "^4.4.3"
   },
@@ -42,6 +43,7 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@types/supertest": "^7.2.0",
+    "@types/three": "^0.185.1",
     "jsdom": "^25.0.1",
     "portless": "^0.13.0",
     "supertest": "^7.2.2",

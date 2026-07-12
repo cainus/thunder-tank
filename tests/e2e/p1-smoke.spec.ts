@@ -40,5 +40,7 @@ test("boots and starts the first P1 campaign map", async ({ page }) => {
   await page.getByRole("button", { name: "Start Campaign" }).click();
   await expect(page.getByTestId("game-canvas")).toBeVisible();
   await expect(page.getByText("Dust Yard")).toBeVisible();
-  await expect(page.locator("canvas")).toBeVisible();
+  // Daytime maps composite a second (3D tree overlay) canvas over the Phaser
+  // canvas, so target the game canvas itself rather than a bare `canvas` locator.
+  await expect(page.getByTestId("game-canvas").locator("canvas").first()).toBeVisible();
 });
