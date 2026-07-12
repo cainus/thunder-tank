@@ -99,6 +99,8 @@ const NIGHT_HEADLAMP_CONE_ALPHA = 0.18;
 const NIGHT_HEADLAMP_GLOW_ALPHA = 0.54;
 const NIGHT_HEADLAMP_OFFSET = 28;
 const LIGHT_POST_BASE_SCALE = 1.08;
+const URBAN_TREE_SIZE = 96;
+const URBAN_TREE_SHADOW_OFFSET = 30;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
 const MOTOR_IDLE_KEY: AssetKey = "motorSfx1";
@@ -538,10 +540,14 @@ export class CampaignScene extends Phaser.Scene {
     ];
 
     for (const spot of treeSpots) {
-      this.add.rectangle(spot.x, spot.y + 12, 12, 26, 0x6b4e34, 0.95).setDepth(-10);
-      this.add.circle(spot.x, spot.y - 8, 24, 0x3d7b45, 0.95).setDepth(-9);
-      this.add.circle(spot.x - 12, spot.y - 2, 16, 0x4d9455, 0.9).setDepth(-9);
-      this.add.circle(spot.x + 12, spot.y - 2, 16, 0x4d9455, 0.9).setDepth(-9);
+      // Soft ground shadow so the larger canopy still reads as grounded.
+      this.add
+        .ellipse(spot.x, spot.y + URBAN_TREE_SHADOW_OFFSET, URBAN_TREE_SIZE * 0.7, URBAN_TREE_SIZE * 0.28, 0x1c2a1a, 0.28)
+        .setDepth(-10);
+      this.add
+        .image(spot.x, spot.y, "treeGreenLarge")
+        .setDisplaySize(URBAN_TREE_SIZE, URBAN_TREE_SIZE)
+        .setDepth(-9);
     }
   }
 
