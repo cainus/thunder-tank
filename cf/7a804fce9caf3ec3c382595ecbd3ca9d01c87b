@@ -1,0 +1,35 @@
+src/game/turret-aim.ts
+  s_a2d3fce018435f::t_a6f1f0876bae18 1-49
+src/game/types.ts
+  s_a2d3fce018435f::t_ae8ba488a404a3 103-105
+src/game/CampaignScene.ts
+  s_a2d3fce018435f::t_ef79b8ecb55fdb 1021
+  s_a2d3fce018435f::t_382a7fc0955b24 14
+  s_a2d3fce018435f::t_1a04fd70bd358a 958
+  s_a2d3fce018435f::t_e1b240f33543df 847,860
+  s_a2d3fce018435f::t_8a5baaa0567bd1 881,894
+  s_a2d3fce018435f::t_47e47d41453347 1038
+  s_a2d3fce018435f::t_7d450c07ed82b6 1057,1059-1061
+  s_a2d3fce018435f::t_d2a7002e0b681a 752
+  s_a2d3fce018435f::t_136bc105ef3484 1062-1068
+  s_a2d3fce018435f::t_9a417648c6da2a 997
+tests/turret-aim.test.ts
+  s_a2d3fce018435f::t_c563adcb3174d4 23-26,31,33-39,41-42
+  s_a2d3fce018435f::t_c6ac209ca87bf5 1-22,27-30,32,40,43-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "cf7a804fce9caf3ec3c382595ecbd3ca9d01c87b",
+  "prompts": {},
+  "sessions": {
+    "s_a2d3fce018435f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d52c6da-f81b-4712-9f66-4f7a775f1a4e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
