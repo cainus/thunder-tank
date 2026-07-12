@@ -100,6 +100,9 @@ export interface TankRuntime {
   lastFiredAt: number;
   nextDecisionAt: number;
   aimAngle: number;
+  // Signed rotation applied to the hull (base) this frame. Enemies read their
+  // target's value to drag their turret the same way, forcing a counter-aim.
+  baseTurnDelta: number;
   moveAngle?: number;
   nextMoveDecisionAt: number;
   lastAiProgressAt?: number;
