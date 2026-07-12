@@ -1,0 +1,28 @@
+src/game/CampaignScene.ts
+  s_1df98abd818670::t_f7d6657cbc052f 619-624,629
+src/game/urban-decor.ts
+  s_1df98abd818670::t_8830a5d11a5e60 89-103,106-123
+  s_1df98abd818670::t_1f0dbd1d122cdd 104-105
+tests/urban-decor.test.ts
+  s_1df98abd818670::t_7f2398ea307842 5
+  s_1df98abd818670::t_604a403f72b8c8 63-87
+src/game/tree-3d.ts
+  s_1df98abd818670::t_8ee6b35439e2db 6-13,17-24,27-28,30,42-50,61-63,84-103,174-175,177,207,209-244,264-271,282-286,292-309
+  s_1df98abd818670::t_90aeea5306c638 310-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "fd05e39e2933fb5ac687bd38c05f5c23f6f3eeca",
+  "prompts": {},
+  "sessions": {
+    "s_1df98abd818670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32377d99-7dbd-4153-a50c-44b3f74784ef",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
