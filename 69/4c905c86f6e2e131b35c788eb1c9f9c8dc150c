@@ -1,0 +1,24 @@
+src/game/team-stripe.ts
+  s_6280b566181f5a::t_2168af79fa978c 1-19
+src/game/CampaignScene.ts
+  s_6280b566181f5a::t_6330f10a05d3a8 26-32
+  s_6280b566181f5a::t_0da498a497318d 790-806
+tests/team-stripe.test.ts
+  s_6280b566181f5a::t_11d80826e891f6 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "694c905c86f6e2e131b35c788eb1c9f9c8dc150c",
+  "prompts": {},
+  "sessions": {
+    "s_6280b566181f5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0947cf0-0fe7-48ee-ae55-808bc00a0d43",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
