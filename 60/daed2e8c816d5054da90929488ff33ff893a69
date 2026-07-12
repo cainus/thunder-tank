@@ -1,0 +1,52 @@
+public/assets/models/tree.obj
+  s_05d2c3c4304fa2::t_a4554111d025f9 1-96
+src/LevelEditor.tsx
+  s_05d2c3c4304fa2::t_2eccb13ac4f376 17
+  s_05d2c3c4304fa2::t_46e0398b234df3 591
+src/game/tree-3d.ts
+  s_05d2c3c4304fa2::t_05f1abbc1aaad8 1-211
+tests/urban-decor.test.ts
+  s_05d2c3c4304fa2::t_dcaaa73746005c 1-70
+package.json
+  s_05d2c3c4304fa2::t_28ea45d99a80c6 46
+  s_05d2c3c4304fa2::t_75c42e4b555e8a 31
+src/game/urban-decor.ts
+  s_05d2c3c4304fa2::t_3036225687404e 60-81
+  s_05d2c3c4304fa2::t_cc8564d98a0613 1-59,82-88
+src/game/CampaignScene.ts
+  s_05d2c3c4304fa2::t_b0a7b4f6a027e0 270
+  s_05d2c3c4304fa2::t_796360f66e8f6e 3282
+  s_05d2c3c4304fa2::t_c9cbb4e8e5c904 405
+  s_05d2c3c4304fa2::t_ca79d9ca20b9c7 549,551-554,559-560,567-571,576,591,595,605-606,611-630
+  s_05d2c3c4304fa2::t_54969700190d28 3
+  s_05d2c3c4304fa2::t_9292cf7b59aaa0 35-36
+  s_05d2c3c4304fa2::t_361f36eee25d12 244
+  s_05d2c3c4304fa2::t_9e6b955f6cf3b3 561-566,572-575,585-590,592-594,596-604,607-610
+  s_05d2c3c4304fa2::t_cb14aedc0d7885 631
+scripts/generate-tree-model.mjs
+  s_05d2c3c4304fa2::t_a8325e2952f537 1-115
+tests/e2e/p1-smoke.spec.ts
+  s_05d2c3c4304fa2::t_2d12ceef80c17b 43-45
+public/assets/models/tree.mtl
+  s_05d2c3c4304fa2::t_a4554111d025f9 1-13
+src/game/assets.ts
+  s_05d2c3c4304fa2::t_4d5d807efe4746 37-44
+package-lock.json
+  s_05d2c3c4304fa2::t_097cf7cec042c3 19,34,459-465,1380-1386,1614-1620,1645-1666,2583-2589,3028-3034,3972-3977
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "60daed2e8c816d5054da90929488ff33ff893a69",
+  "prompts": {},
+  "sessions": {
+    "s_05d2c3c4304fa2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2990fd4-1f85-4324-b479-9c333c810126",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
