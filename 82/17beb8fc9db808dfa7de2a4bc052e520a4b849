@@ -5,6 +5,7 @@ src/game/CampaignScene.ts
   s_7d2f8bd6415b92::t_ae94cc34e2824b 524
   s_7d2f8bd6415b92::t_476dc528f9f050 531-532
   s_7d2f8bd6415b92::t_56f8e2176f4006 435,438,506,508
+  s_11bd2d9ebb531a::t_87205f04840271 549-550,552,557
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -12,6 +13,14 @@ src/game/CampaignScene.ts
   "base_commit_sha": "8217beb8fc9db808dfa7de2a4bc052e520a4b849",
   "prompts": {},
   "sessions": {
+    "s_11bd2d9ebb531a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3aafd18-b876-4005-8ff4-604221342d41",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
     "s_7d2f8bd6415b92": {
       "agent_id": {
         "tool": "claude",
