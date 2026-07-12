@@ -1,0 +1,27 @@
+tests/dev-auto-update.test.ts
+  s_8e31d6ce0af98c::t_b72a1253a140f9 1-20
+scripts/dev-auto-update.d.mts
+  s_8e31d6ce0af98c::t_6bc5613fbb0297 1
+scripts/dev-auto-update.mjs
+  s_8e31d6ce0af98c::t_e81ceda9fa3384 3,9-18
+  s_8e31d6ce0af98c::t_9ecd35e2d97b12 37-54
+  s_8e31d6ce0af98c::t_0048c10a0f2861 137,143-150
+  s_8e31d6ce0af98c::t_0f7a31b765b312 168-174,177-186
+  s_8e31d6ce0af98c::t_eae3639bfc7e69 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "fec1110dbb149d9ef54d1c48a4439a4573abdb59",
+  "prompts": {},
+  "sessions": {
+    "s_8e31d6ce0af98c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1694d956-3324-455d-9824-5fe817c28450",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
