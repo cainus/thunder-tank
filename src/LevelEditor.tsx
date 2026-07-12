@@ -14,6 +14,7 @@ import {
   type EditablePickupType,
 } from "./game/map-schema";
 import type { CampaignMap } from "./game/types";
+import { computeUrbanTreeSpots } from "./game/urban-decor";
 
 type EditorTool =
   | { kind: "select"; label: string }
@@ -587,16 +588,7 @@ function UrbanPreview({ width, height }: { width: number; height: number }) {
     { x: 110, y: height - roadInsetY + 60, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#7b6f82" },
     { x: width - roadInsetX + 60, y: height - roadInsetY + 60, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#7f6958" },
   ].filter((building) => building.width > 40 && building.height > 40);
-  const trees = [
-    { x: roadInsetX * 0.55, y: roadInsetY * 0.58 },
-    { x: width - roadInsetX * 0.55, y: roadInsetY * 0.58 },
-    { x: roadInsetX * 0.55, y: height - roadInsetY * 0.58 },
-    { x: width - roadInsetX * 0.55, y: height - roadInsetY * 0.58 },
-    { x: width / 2, y: roadInsetY * 0.46 },
-    { x: width / 2, y: height - roadInsetY * 0.46 },
-    { x: roadInsetX * 0.42, y: height / 2 },
-    { x: width - roadInsetX * 0.42, y: height / 2 },
-  ];
+  const trees = computeUrbanTreeSpots(width, height, roadInsetX, roadInsetY);
   const parkedCars = [
     { x: width / 2 - 180, y: roadInsetY - 74, fill: "#c94a3f", rotation: 0 },
     { x: width / 2 + 180, y: roadInsetY - 74, fill: "#4e89d8", rotation: 0 },

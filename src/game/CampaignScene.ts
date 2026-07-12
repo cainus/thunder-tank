@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { isGamepadButtonPressed, readAim, readDrive, type GamepadMapping } from "../gamepad-config";
-import { ASSETS, ASSET_KEYS, type AssetKey } from "./assets";
+import { ASSETS, ASSET_KEYS, MODEL_ASSETS, type AssetKey } from "./assets";
 import { EMPTY_GUN_HEAT, getPlayerStatusKey, isGunFrozen, recordPlayerShot, type GunHeatState } from "./combat-state";
 import {
   ENEMY_FIRE_LINE_PADDING,
@@ -32,6 +32,8 @@ import {
   teamStripeColor,
 } from "./team-stripe";
 import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
+import { computeUrbanTreeSpots, isWebglAvailable } from "./urban-decor";
+import type { TreeOverlay3D } from "./tree-3d";
 import {
   BULLET_MARK_MAX_COUNT,
   getBulletMarkAlpha,
@@ -239,6 +241,7 @@ export class CampaignScene extends Phaser.Scene {
   private treadMarks: TreadMark[] = [];
   private impactMarks: ImpactMark[] = [];
   private lightPosts: LightPostRuntime[] = [];
+  private treeOverlay?: TreeOverlay3D;
 
   constructor() {
     super("CampaignScene");
@@ -264,6 +267,7 @@ export class CampaignScene extends Phaser.Scene {
     this.lastPlayerStatusKey = "";
     this.destroyAllTreadMarks();
     this.destroyAllImpactMarks();
+    this.destroyTreeOverlay();
     this.lightPosts = [];
   }
 
@@ -398,6 +402,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updateTankVisuals();
     this.updateCaptureTheFlag(time);
     this.updateCamera();
+    this.renderTreeOverlay();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
     this.cleanupFarBullets();
@@ -541,30 +546,94 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private addUrbanTrees(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
-    const treeSpots = [
-      { x: roadInsetX * 0.55, y: roadInsetY * 0.58 },
-      { x: this.map.width - roadInsetX * 0.55, y: roadInsetY * 0.58 },
-      { x: roadInsetX * 0.55, y: this.map.height - roadInsetY * 0.58 },
-      { x: this.map.width - roadInsetX * 0.55, y: this.map.height - roadInsetY * 0.58 },
-      { x: this.map.width / 2, y: roadInsetY * 0.46 },
-      { x: this.map.width / 2, y: this.map.height - roadInsetY * 0.46 },
-      { x: roadInsetX * 0.42, y: this.map.height / 2 },
-      { x: this.map.width - roadInsetX * 0.42, y: this.map.height / 2 },
-    ];
+    const treeSpots = computeUrbanTreeSpots(this.map.width, this.map.height, roadInsetX, roadInsetY);
 
+    // Soft ground shadow so the canopy still reads as grounded. Trees are
+    // non-collidable dressing, so the shadow is washed back with URBAN_DECOR_ALPHA
+    // to stay clearly subdued against real obstacles. The shadow stays on the 2D
+    // ground layer even when the canopy is a 3D model composited on top.
     for (const spot of treeSpots) {
-      // Soft ground shadow so the larger canopy still reads as grounded.
-      // Trees are non-collidable dressing, so they are washed back with
-      // URBAN_DECOR_ALPHA to stay clearly subdued against real obstacles.
       this.add
         .ellipse(spot.x, spot.y + URBAN_TREE_SHADOW_OFFSET, URBAN_TREE_SIZE * 0.7, URBAN_TREE_SIZE * 0.28, 0x1c2a1a, 0.28 * URBAN_DECOR_ALPHA)
         .setDepth(-10);
+    }
+
+    const host = this.game.canvas?.parentElement;
+
+    if (host && isWebglAvailable()) {
+      // three.js is heavy, so it is code-split behind a dynamic import and only
+      // pulled in for daytime urban maps that actually render 3D trees.
+      void this.addTreeOverlay(host, treeSpots);
+      return;
+    }
+
+    // Fallback (no WebGL / overlay host): keep the original flat sprite trees so
+    // the arena never renders bare where the 3D models would have been.
+    this.addFlatTrees(treeSpots);
+  }
+
+  private addFlatTrees(treeSpots: Vec2[]): void {
+    for (const spot of treeSpots) {
       this.add
         .image(spot.x, spot.y, "treeGreenLarge")
         .setDisplaySize(URBAN_TREE_SIZE, URBAN_TREE_SIZE)
         .setAlpha(URBAN_DECOR_ALPHA)
         .setDepth(-9);
     }
+  }
+
+  // Lazily loads the three.js overlay module + tree model, then places the 3D
+  // trees. Falls back to flat sprites if anything fails. Guards against the
+  // scene shutting down or restarting during the async work.
+  private async addTreeOverlay(host: HTMLElement, treeSpots: Vec2[]): Promise<void> {
+    try {
+      const { TreeOverlay3D } = await import("./tree-3d");
+
+      if (!this.scene.isActive()) {
+        return;
+      }
+
+      const overlay = new TreeOverlay3D(host);
+      this.treeOverlay = overlay;
+
+      await overlay.load(MODEL_ASSETS.tree);
+
+      // The scene may have shut down (or restarted) while the model loaded.
+      if (this.treeOverlay === overlay && this.scene.isActive()) {
+        overlay.setTrees(treeSpots);
+      }
+    } catch (error) {
+      console.warn("3D tree overlay unavailable, falling back to sprites:", error);
+      this.destroyTreeOverlay();
+      if (this.scene.isActive()) {
+        this.addFlatTrees(treeSpots);
+      }
+    }
+  }
+
+  private renderTreeOverlay(): void {
+    if (!this.treeOverlay) {
+      return;
+    }
+
+    const view = this.cameras.main.worldView;
+    // Feed the overlay each living tank's ground position so it can cut a hole in
+    // the canopy there, keeping tanks readable on top of the trees (the flat
+    // sprites they replaced sat below the tanks at depth -9).
+    const occluders = this.getAllTanks()
+      .filter((tank) => tank.alive)
+      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
+    this.treeOverlay.render(
+      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
+      this.scale.gameSize.width,
+      this.scale.gameSize.height,
+      occluders,
+    );
+  }
+
+  private destroyTreeOverlay(): void {
+    this.treeOverlay?.dispose();
+    this.treeOverlay = undefined;
   }
 
   private addParkedCars(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
@@ -3217,6 +3286,7 @@ export class CampaignScene extends Phaser.Scene {
     this.stopAllMotorAudio();
     this.destroyAllTreadMarks();
     this.destroyAllImpactMarks();
+    this.destroyTreeOverlay();
     this.cleanupListeners = [];
   }
 }
