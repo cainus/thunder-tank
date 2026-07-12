@@ -1,0 +1,20 @@
+tests/tree-3d-imports.test.ts
+  s_963e11fb8392c6::t_4e0944832e4e1a 17,20-22
+  s_963e11fb8392c6::t_8e71c64767603a 1-16,18-19,23-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "42c05b7aea4a06b6391c77a1c9dd95c276670ed7",
+  "prompts": {},
+  "sessions": {
+    "s_963e11fb8392c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9f05127-d101-4400-9099-1e708d841467",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
