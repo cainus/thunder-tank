@@ -1,4 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
@@ -15,6 +17,24 @@ const DEPENDENCY_MANIFESTS = ["package-lock.json", "package.json"];
 /** Returns true when any changed path is a dependency manifest that requires reinstalling. */
 export function shouldReinstallDependencies(changedFiles) {
   return changedFiles.some((file) => DEPENDENCY_MANIFESTS.includes(file));
+}
+
+/** Collects every declared package name from a parsed package.json manifest. */
+export function collectDependencyNames(manifest) {
+  return [
+    ...Object.keys(manifest?.dependencies ?? {}),
+    ...Object.keys(manifest?.devDependencies ?? {}),
+  ];
+}
+
+/**
+ * Returns the declared dependencies that are not installed. `isInstalled` reports
+ * whether a given package name is present in node_modules. This is what catches an
+ * already-pulled-but-never-installed package such as "three", so the dev server can
+ * self-heal on startup instead of forcing a manual `npm install`.
+ */
+export function findMissingDependencies(dependencyNames, isInstalled) {
+  return dependencyNames.filter((name) => !isInstalled(name));
 }
 
 let child;
@@ -39,16 +59,50 @@ function changedFilesBetween(fromRef, toRef) {
   return output ? output.split("\n").filter(Boolean) : [];
 }
 
-function installDependencies() {
-  console.log("[auto-update] dependency manifest changed; running npm install");
-  const install = spawnSync("npm", ["install"], {
+function installDependencies(reason) {
+  // Use `npm ci` rather than `npm install`: it restores node_modules to exactly
+  // match package-lock.json without mutating the lockfile, which keeps the
+  // working tree clean for the auto-updater's subsequent `git pull --ff-only`.
+  console.log(`[auto-update] ${reason}; running npm ci`);
+  const install = spawnSync("npm", ["ci"], {
     cwd: process.cwd(),
     env: process.env,
     stdio: "inherit",
   });
 
   if (install.status !== 0) {
-    console.warn(`[auto-update] npm install exited with code ${install.status ?? install.signal}`);
+    console.warn(`[auto-update] npm ci exited with code ${install.status ?? install.signal}`);
+  }
+}
+
+/** Reads and parses package.json from the current working directory, or null if unreadable. */
+function readManifest() {
+  try {
+    return JSON.parse(readFileSync(path.join(process.cwd(), "package.json"), "utf8"));
+  } catch (error) {
+    console.warn(`[auto-update] could not read package.json: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Installs dependencies when node_modules is missing any declared package. This
+ * clears an already-broken checkout (e.g. a pulled commit added "three" but
+ * node_modules was never refreshed) that surfaces as "Failed to resolve import".
+ */
+function ensureDependenciesInstalled() {
+  const manifest = readManifest();
+  if (!manifest) {
+    return;
+  }
+
+  const nodeModules = path.join(process.cwd(), "node_modules");
+  const missing = findMissingDependencies(collectDependencyNames(manifest), (name) =>
+    existsSync(path.join(nodeModules, ...name.split("/"))),
+  );
+
+  if (missing.length > 0) {
+    installDependencies(`missing dependencies detected (${missing.join(", ")})`);
   }
 }
 
@@ -146,7 +200,7 @@ async function checkForUpdates() {
       const newHead = gitOutput(["rev-parse", "HEAD"]);
       const changedFiles = previousHead && newHead ? changedFilesBetween(previousHead, newHead) : [];
       if (shouldReinstallDependencies(changedFiles)) {
-        installDependencies();
+        installDependencies("dependency manifest changed");
       }
     }
 
@@ -168,6 +222,9 @@ async function shutdown(signal) {
 let interval;
 
 function bootstrap() {
+  // Self-heal a stale checkout before the dev server starts, so an already-pulled
+  // dependency that was never installed doesn't crash Vite on first launch.
+  ensureDependenciesInstalled();
   startServer();
   interval = setInterval(() => {
     void checkForUpdates();
