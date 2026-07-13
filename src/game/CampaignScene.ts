@@ -32,11 +32,19 @@ import {
   teamStripeColor,
 } from "./team-stripe";
 import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
-import { computeUrbanTreeSpots, isWebglAvailable, treeScaleFactor } from "./urban-decor";
+import {
+  CAR_BODY_LENGTH,
+  CAR_BODY_WIDTH,
+  computeParkedCarSpots,
+  computeUrbanTreeSpots,
+  isWebglAvailable,
+  treeScaleFactor,
+} from "./urban-decor";
 import { hullYaw, tankModelScale, turretYaw } from "./tank-decor";
 import type { TreeOverlay3D } from "./tree-3d";
 import type { TankOverlay3D } from "./tank-3d";
 import type { CrateOverlay3D, CratePlacement } from "./crate-3d";
+import type { CarOverlay3D, CarPlacement } from "./car-3d";
 import {
   BULLET_MARK_MAX_COUNT,
   getBulletMarkAlpha,
@@ -125,12 +133,18 @@ const CRATE_SHADOW_OFFSET = 12;
 // tree reads as a real obstacle without collision reaching the wide, purely
 // decorative canopy that overhangs it.
 const URBAN_TREE_TRUNK_RADIUS = 30;
-// Non-collidable urban dressing (buildings, parked cars, plaza, and the trees'
-// decorative canopies) is painted on the ground and must read as clearly
-// subdued so players never confuse it with real, collidable obstacles. This
-// multiplier washes the decoration back so actual obstacles (full opacity,
-// depth 8) stay legible. (Trees also have a solid, invisible trunk core — see
-// URBAN_TREE_TRUNK_RADIUS — even though their canopy stays dressing.)
+// Soft ground shadow footprint for a 3D parked car, drawn just below the car
+// depth (its footprint before rotation; rotated with the sprite) so the model
+// reads as grounded.
+const CAR_SHADOW_LENGTH = CAR_BODY_LENGTH + 10;
+const CAR_SHADOW_WIDTH = CAR_BODY_WIDTH + 8;
+const CAR_SHADOW_OFFSET = 10;
+// Non-collidable urban dressing (buildings, plaza, and the trees' decorative
+// canopies) is painted on the ground and must read as clearly subdued so players
+// never confuse it with real, collidable obstacles. This multiplier washes the
+// decoration back so actual obstacles (full opacity, depth 8) — now including
+// the parked cars, and the trees' solid, invisible trunk cores (see
+// URBAN_TREE_TRUNK_RADIUS) — stay legible.
 const URBAN_DECOR_ALPHA = 0.45;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
@@ -273,6 +287,10 @@ export class CampaignScene extends Phaser.Scene {
   // Physics bodies for the square crate obstacles. Kept for collision but hidden
   // when the 3D crate overlay takes over their visual (see addCrateOverlays).
   private crateSprites: Phaser.Physics.Arcade.Image[] = [];
+  private carOverlay?: CarOverlay3D;
+  // Physics bodies for the parked-car obstacles. Kept for collision but hidden
+  // when the 3D car overlay takes over their visual (see addParkedCars).
+  private carSprites: Phaser.Physics.Arcade.Image[] = [];
 
   constructor() {
     super("CampaignScene");
@@ -301,9 +319,11 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTreeOverlay();
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
+    this.destroyCarOverlay();
     this.crateSprites = [];
     this.treeColliders = undefined;
     this.treeSpots = [];
+    this.carSprites = [];
     this.lightPosts = [];
   }
 
@@ -331,8 +351,10 @@ export class CampaignScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, this.map.width, this.map.height);
     this.cameras.main.setBackgroundColor(this.isNightMap() ? "#071018" : "#293529");
 
-    this.addArena();
+    // The obstacle group must exist before addArena() runs, because the urban
+    // arena seeds it with the parked-car obstacles (see addParkedCars).
     this.obstacles = this.physics.add.staticGroup();
+    this.addArena();
     this.bullets = this.physics.add.group({ classType: Phaser.Physics.Arcade.Image, maxSize: 64 });
     this.pickups = this.physics.add.group({ classType: Phaser.Physics.Arcade.Image, maxSize: 16 });
 
@@ -486,6 +508,7 @@ export class CampaignScene extends Phaser.Scene {
     // in create()) so it renders with the exact frame Phaser just drew.
     this.renderTankOverlay();
     this.renderCrateOverlay();
+    this.renderCarOverlay();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
     this.cleanupFarBullets();
@@ -908,24 +931,176 @@ export class CampaignScene extends Phaser.Scene {
     this.crateOverlay = undefined;
   }
 
+  // Places the parked cars that line the urban road. Unlike the old two-rectangle
+  // dressing, each car is now a real, collidable obstacle (a static physics body
+  // added to the shared obstacle group) rendered as a 3D model via a three.js
+  // overlay, mirroring the crate treatment. The flat car sprite doubles as the
+  // physics body's texture and the fallback look when WebGL/host is unavailable;
+  // when the 3D overlay loads it hides the flat sprites while the bodies stay for
+  // collision.
   private addParkedCars(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
-    const carConfigs = [
-      { x: this.map.width / 2 - 180, y: roadInsetY - 74, color: 0xc94a3f, rotation: 0 },
-      { x: this.map.width / 2 + 180, y: roadInsetY - 74, color: 0x4e89d8, rotation: 0 },
-      { x: this.map.width / 2 - 180, y: roadInsetY + roadHeight + 74, color: 0xd7a53d, rotation: 0 },
-      { x: this.map.width / 2 + 180, y: roadInsetY + roadHeight + 74, color: 0x8f5fd1, rotation: 0 },
-      { x: roadInsetX - 74, y: this.map.height / 2 - 180, color: 0x3ca7a2, rotation: 90 },
-      { x: roadInsetX - 74, y: this.map.height / 2 + 180, color: 0xbb5252, rotation: 90 },
-      { x: roadInsetX + roadWidth + 74, y: this.map.height / 2 - 180, color: 0x9babb7, rotation: 90 },
-      { x: roadInsetX + roadWidth + 74, y: this.map.height / 2 + 180, color: 0x50565d, rotation: 90 },
-    ];
+    this.createCarTexture();
 
-    for (const car of carConfigs) {
-      const body = this.add.rectangle(car.x, car.y, 64, 30, car.color, 0.96 * URBAN_DECOR_ALPHA).setDepth(-9);
-      body.setStrokeStyle(3, 0x1c1f22, 0.5 * URBAN_DECOR_ALPHA);
-      body.setAngle(car.rotation);
-      this.add.rectangle(car.x, car.y, 26, 18, 0xcfe3f7, 0.85 * URBAN_DECOR_ALPHA).setDepth(-8).setAngle(car.rotation);
+    const placements = computeParkedCarSpots(
+      this.map.width,
+      this.map.height,
+      roadInsetX,
+      roadInsetY,
+      roadWidth,
+      roadHeight,
+    );
+
+    for (const car of placements) {
+      const sprite = this.obstacles.create(car.x, car.y, "carTop") as Phaser.Physics.Arcade.Image;
+      sprite.setDepth(8);
+      sprite.setAngle(car.rotation);
+      sprite.setTint(car.color);
+      // Position the body from the (rotated) sprite first, then shrink it to the
+      // car's true footprint. Static bodies stay axis-aligned, so a vertical car
+      // (rotation 90) needs its length and width swapped.
+      sprite.refreshBody();
+      const horizontal = car.rotation % 180 === 0;
+      const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
+      body.setSize(
+        horizontal ? CAR_BODY_LENGTH : CAR_BODY_WIDTH,
+        horizontal ? CAR_BODY_WIDTH : CAR_BODY_LENGTH,
+        true,
+      );
+      this.carSprites.push(sprite);
     }
+
+    this.addCarOverlays(placements);
+  }
+
+  // Builds the flat top-down car texture used for the parked-car physics bodies
+  // and the WebGL-unavailable fallback. Drawn white so setTint() can paint each
+  // car its own body colour; the dark wheels/outline stay dark under any tint.
+  private createCarTexture(): void {
+    if (this.textures.exists("carTop")) {
+      return;
+    }
+
+    const width = 76;
+    const height = 40;
+    const car = this.add.graphics();
+    car.setVisible(false);
+
+    // Wheels first, so the body overlaps their inner edges.
+    car.fillStyle(0x141414, 1);
+    for (const wheelX of [12, 48]) {
+      car.fillRoundedRect(wheelX, 3, 16, 8, 3);
+      car.fillRoundedRect(wheelX, height - 11, 16, 8, 3);
+    }
+
+    // Painted body (tintable): drawn white so the tint reproduces the exact car
+    // colour.
+    car.fillStyle(0xffffff, 1);
+    car.fillRoundedRect(5, 9, width - 10, height - 18, 9);
+    car.lineStyle(3, 0x14171a, 1);
+    car.strokeRoundedRect(5, 9, width - 10, height - 18, 9);
+
+    // Cabin / windshield in a light glassy grey.
+    car.fillStyle(0xd7e6f5, 1);
+    car.fillRoundedRect(26, 13, 24, height - 26, 5);
+
+    car.generateTexture("carTop", width, height);
+    car.destroy();
+    this.textures.get("carTop").setFilter(Phaser.Textures.FilterMode.LINEAR);
+  }
+
+  // Renders the parked cars as 3D models via a three.js overlay, mirroring the
+  // crate overlay. The cars' Phaser physics bodies always stay in the scene for
+  // collision; when the 3D overlay is available the flat car sprites are hidden
+  // and a soft ground shadow is added so the models read as grounded. Falls back
+  // to the flat sprites when WebGL/host is unavailable.
+  private addCarOverlays(placements: CarPlacement[]): void {
+    if (placements.length === 0) {
+      return;
+    }
+
+    const host = this.game.canvas?.parentElement;
+
+    if (!host || !isWebglAvailable()) {
+      // Fallback: leave the flat car sprites visible (their tinted look).
+      return;
+    }
+
+    // Soft ground shadow beneath each car so the 3D model reads as grounded,
+    // matching the treatment given to the 3D crates. The shadow rotates with the
+    // car but stays nudged down-screen from its centre.
+    for (const car of placements) {
+      const horizontal = car.rotation % 180 === 0;
+      this.add
+        .ellipse(
+          car.x,
+          car.y + CAR_SHADOW_OFFSET,
+          horizontal ? CAR_SHADOW_LENGTH : CAR_SHADOW_WIDTH,
+          horizontal ? CAR_SHADOW_WIDTH : CAR_SHADOW_LENGTH,
+          0x0b0f14,
+          0.3,
+        )
+        .setDepth(7);
+    }
+
+    // three.js is heavy, so it is code-split behind a dynamic import and only
+    // pulled in when there are cars to render on a WebGL-capable host.
+    void this.addCarOverlay(host, placements);
+  }
+
+  // Lazily loads the three.js car overlay module + model, hides the flat car
+  // sprites, then places the 3D cars. Falls back to the flat sprites if anything
+  // fails. Guards against the scene shutting down during the async work.
+  private async addCarOverlay(host: HTMLElement, placements: CarPlacement[]): Promise<void> {
+    try {
+      const { CarOverlay3D } = await import("./car-3d");
+
+      if (!this.scene.isActive()) {
+        return;
+      }
+
+      const overlay = new CarOverlay3D(host);
+      this.carOverlay = overlay;
+
+      await overlay.load(MODEL_ASSETS.car);
+
+      // The scene may have shut down (or restarted) while the model loaded.
+      if (this.carOverlay === overlay && this.scene.isActive()) {
+        overlay.setCars(placements);
+        // Hand the visual over to the 3D models; the bodies stay for collision.
+        for (const sprite of this.carSprites) {
+          sprite.setVisible(false);
+        }
+      }
+    } catch (error) {
+      console.warn("3D car overlay unavailable, keeping flat sprites:", error);
+      this.destroyCarOverlay();
+      // Leave the flat car sprites visible as the fallback look.
+    }
+  }
+
+  private renderCarOverlay(): void {
+    if (!this.carOverlay) {
+      return;
+    }
+
+    const view = this.cameras.main.worldView;
+    // Feed the overlay each living tank's ground position so it can cut a hole in
+    // the cars there, keeping tanks readable on top (the flat car sprites they
+    // replaced sat below the tanks at depth 8 < TANK_DEPTH).
+    const occluders = this.getAllTanks()
+      .filter((tank) => tank.alive)
+      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
+    this.carOverlay.render(
+      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
+      this.scale.gameSize.width,
+      this.scale.gameSize.height,
+      occluders,
+    );
+  }
+
+  private destroyCarOverlay(): void {
+    this.carOverlay?.dispose();
+    this.carOverlay = undefined;
   }
 
   private addCaptureTheFlagArena(): void {
@@ -3588,6 +3763,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTreeOverlay();
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
+    this.destroyCarOverlay();
     this.cleanupListeners = [];
   }
 }

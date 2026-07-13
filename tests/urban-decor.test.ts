@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  CAR_BODY_LENGTH,
+  CAR_BODY_WIDTH,
+  CAR_OVERLAY_TESTID,
+  CAR_WORLD_SCALE,
   CRATE_OVERLAY_TESTID,
   CRATE_WORLD_SCALE,
   TREE_CAMERA_TILT,
@@ -7,8 +11,10 @@ import {
   TREE_CANOPY_BASE_RADIUS,
   TREE_OVERLAY_TESTID,
   TREE_SCALE_VARIATION,
+  computeParkedCarSpots,
   computeUrbanTreeSpots,
   occluderClipTransform,
+  removeExistingCarOverlays,
   removeExistingCrateOverlays,
   removeExistingTreeOverlays,
   treeCameraEye,
@@ -55,6 +61,101 @@ describe("computeUrbanTreeSpots", () => {
     const centreColumn = spots.filter((spot) => Math.abs(spot.x - width / 2) < 1);
     expect(centreColumn).toHaveLength(2);
     expect(centreColumn[0].y + centreColumn[1].y).toBeCloseTo(height, 5);
+  });
+});
+
+describe("computeParkedCarSpots", () => {
+  const width = 2400;
+  const height = 1800;
+  const roadInsetX = Math.max(180, Math.round(width * 0.2));
+  const roadInsetY = Math.max(180, Math.round(height * 0.2));
+  const roadWidth = width - roadInsetX * 2;
+  const roadHeight = height - roadInsetY * 2;
+  const cars = computeParkedCarSpots(width, height, roadInsetX, roadInsetY, roadWidth, roadHeight);
+
+  it("places eight parked cars", () => {
+    expect(cars).toHaveLength(8);
+  });
+
+  it("keeps every car inside the map bounds", () => {
+    for (const car of cars) {
+      expect(car.x).toBeGreaterThan(0);
+      expect(car.x).toBeLessThan(width);
+      expect(car.y).toBeGreaterThan(0);
+      expect(car.y).toBeLessThan(height);
+    }
+  });
+
+  it("only uses axis-aligned rotations (0 for horizontal, 90 for vertical)", () => {
+    for (const car of cars) {
+      expect([0, 90]).toContain(car.rotation);
+    }
+  });
+
+  it("gives each car a distinct body colour so the row stays varied", () => {
+    const colors = new Set(cars.map((car) => car.color));
+    expect(colors.size).toBe(cars.length);
+  });
+
+  it("keeps the cars off the drivable road, in the parking margins", () => {
+    // Every car sits within the decorative border ring, not on the road itself.
+    for (const car of cars) {
+      const onRoad =
+        car.x > roadInsetX && car.x < width - roadInsetX && car.y > roadInsetY && car.y < height - roadInsetY;
+      expect(onRoad).toBe(false);
+    }
+  });
+});
+
+describe("CAR_WORLD_SCALE", () => {
+  it("scales the 1-unit car model to roughly the flat sprite's footprint length", () => {
+    // The model is authored with a 1-unit length, so the world scale should land
+    // near the flat car sprite's length.
+    expect(CAR_WORLD_SCALE).toBe(CAR_BODY_LENGTH);
+    expect(CAR_BODY_LENGTH).toBeGreaterThan(CAR_BODY_WIDTH);
+  });
+});
+
+describe("removeExistingCarOverlays", () => {
+  function makeCarOverlayCanvas(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", CAR_OVERLAY_TESTID);
+    return canvas;
+  }
+
+  it("uses a distinct testid from the tree and crate overlays", () => {
+    expect(CAR_OVERLAY_TESTID).not.toBe(TREE_OVERLAY_TESTID);
+    expect(CAR_OVERLAY_TESTID).not.toBe(CRATE_OVERLAY_TESTID);
+  });
+
+  it("removes a stray car overlay canvas left by a prior game", () => {
+    const host = document.createElement("div");
+    host.appendChild(makeCarOverlayCanvas());
+    host.appendChild(makeCarOverlayCanvas());
+
+    removeExistingCarOverlays(host);
+
+    expect(host.querySelectorAll(`[data-testid="${CAR_OVERLAY_TESTID}"]`)).toHaveLength(0);
+  });
+
+  it("leaves the tree/crate overlays and non-overlay children untouched", () => {
+    const host = document.createElement("div");
+    const gameCanvas = document.createElement("canvas");
+    const treeOverlay = document.createElement("canvas");
+    treeOverlay.setAttribute("data-testid", TREE_OVERLAY_TESTID);
+    const crateOverlay = document.createElement("canvas");
+    crateOverlay.setAttribute("data-testid", CRATE_OVERLAY_TESTID);
+    host.appendChild(gameCanvas);
+    host.appendChild(treeOverlay);
+    host.appendChild(crateOverlay);
+    host.appendChild(makeCarOverlayCanvas());
+
+    removeExistingCarOverlays(host);
+
+    expect(host.contains(gameCanvas)).toBe(true);
+    expect(host.contains(treeOverlay)).toBe(true);
+    expect(host.contains(crateOverlay)).toBe(true);
+    expect(host.querySelectorAll(`[data-testid="${CAR_OVERLAY_TESTID}"]`)).toHaveLength(0);
   });
 });
 

@@ -14,7 +14,7 @@ import {
   type EditablePickupType,
 } from "./game/map-schema";
 import type { CampaignMap } from "./game/types";
-import { computeUrbanTreeSpots } from "./game/urban-decor";
+import { computeParkedCarSpots, computeUrbanTreeSpots } from "./game/urban-decor";
 
 type EditorTool =
   | { kind: "select"; label: string }
@@ -589,16 +589,9 @@ function UrbanPreview({ width, height }: { width: number; height: number }) {
     { x: width - roadInsetX + 60, y: height - roadInsetY + 60, width: roadInsetX - 180, height: roadInsetY - 170, fill: "#7f6958" },
   ].filter((building) => building.width > 40 && building.height > 40);
   const trees = computeUrbanTreeSpots(width, height, roadInsetX, roadInsetY);
-  const parkedCars = [
-    { x: width / 2 - 180, y: roadInsetY - 74, fill: "#c94a3f", rotation: 0 },
-    { x: width / 2 + 180, y: roadInsetY - 74, fill: "#4e89d8", rotation: 0 },
-    { x: width / 2 - 180, y: roadInsetY + roadHeight + 74, fill: "#d7a53d", rotation: 0 },
-    { x: width / 2 + 180, y: roadInsetY + roadHeight + 74, fill: "#8f5fd1", rotation: 0 },
-    { x: roadInsetX - 74, y: height / 2 - 180, fill: "#3ca7a2", rotation: 90 },
-    { x: roadInsetX - 74, y: height / 2 + 180, fill: "#bb5252", rotation: 90 },
-    { x: roadInsetX + roadWidth + 74, y: height / 2 - 180, fill: "#9babb7", rotation: 90 },
-    { x: roadInsetX + roadWidth + 74, y: height / 2 + 180, fill: "#50565d", rotation: 90 },
-  ];
+  const parkedCars = computeParkedCarSpots(width, height, roadInsetX, roadInsetY, roadWidth, roadHeight).map(
+    (car) => ({ ...car, fill: `#${car.color.toString(16).padStart(6, "0")}` }),
+  );
 
   return (
     <g aria-hidden="true">
@@ -653,9 +646,15 @@ function UrbanPreview({ width, height }: { width: number; height: number }) {
       ))}
 
       {parkedCars.map((car, index) => (
+        // Parked cars are real, collidable obstacles, so they read at full
+        // opacity here (like crates), with dark wheels peeking past the body.
         <g key={`car-${index}`} transform={`rotate(${car.rotation} ${car.x} ${car.y})`}>
-          <rect x={car.x - 32} y={car.y - 15} width="64" height="30" rx="10" fill={car.fill} opacity="0.96" stroke="#1c1f22" strokeWidth="3" />
-          <rect x={car.x - 13} y={car.y - 9} width="26" height="18" rx="5" fill="#cfe3f7" opacity="0.85" />
+          <rect x={car.x - 26} y={car.y - 17} width="14" height="8" rx="3" fill="#141414" />
+          <rect x={car.x + 12} y={car.y - 17} width="14" height="8" rx="3" fill="#141414" />
+          <rect x={car.x - 26} y={car.y + 9} width="14" height="8" rx="3" fill="#141414" />
+          <rect x={car.x + 12} y={car.y + 9} width="14" height="8" rx="3" fill="#141414" />
+          <rect x={car.x - 32} y={car.y - 15} width="64" height="30" rx="10" fill={car.fill} stroke="#14171a" strokeWidth="3" />
+          <rect x={car.x - 12} y={car.y - 9} width="24" height="18" rx="5" fill="#d7e6f5" opacity="0.9" />
         </g>
       ))}
     </g>
