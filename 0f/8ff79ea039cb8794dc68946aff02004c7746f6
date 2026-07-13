@@ -1,0 +1,29 @@
+tests/car-push.test.ts
+  s_50d62ae6d2e12f::t_d06f6f1c244e85 1-63
+src/game/CampaignScene.ts
+  s_50d62ae6d2e12f::t_4b62573beb45b9 158-159
+  s_50d62ae6d2e12f::t_7e872dfb86b103 1186
+  s_50d62ae6d2e12f::t_56a765a0313cec 585
+  s_50d62ae6d2e12f::t_486d12c8f0e8c9 1506
+  s_50d62ae6d2e12f::t_9985495886b3f7 1541,1687
+  s_50d62ae6d2e12f::t_451f1175a20b01 21
+  s_50d62ae6d2e12f::t_cd031fb4b2b265 527-531,533,539
+src/game/car-push.ts
+  s_50d62ae6d2e12f::t_0ad996ae33a28a 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "0f8ff79ea039cb8794dc68946aff02004c7746f6",
+  "prompts": {},
+  "sessions": {
+    "s_50d62ae6d2e12f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc00de4c-31e4-4298-bf86-fd4993a69b65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
