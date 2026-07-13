@@ -1113,7 +1113,7 @@ export class CampaignScene extends Phaser.Scene {
 
       const hullTurnDelta = this.applyAiTankDrive(enemy, moveAngle, distance, stats);
 
-      this.updateAiTurret(enemy, desiredAngle, hullTurnDelta, this.player);
+      this.updateAiTurret(enemy, desiredAngle, hullTurnDelta, stats.turretTurnRate, this.player);
 
       if (
         hasLineOfSight &&
@@ -1152,6 +1152,7 @@ export class CampaignScene extends Phaser.Scene {
           tank,
           Phaser.Math.Angle.Between(tank.hull.x, tank.hull.y, attackTarget.hull.x, attackTarget.hull.y),
           hullTurnDelta,
+          stats.turretTurnRate,
           attackTarget,
         );
       } else {
@@ -1212,17 +1213,23 @@ export class CampaignScene extends Phaser.Scene {
     return role === "Return to Base" || role === "Recover Flag" || role === "Raid Flag";
   }
 
-  private updateAiTurret(tank: TankRuntime, desiredAimAngle: number, hullTurnDelta: number, target?: TankRuntime): void {
+  private updateAiTurret(
+    tank: TankRuntime,
+    desiredAimAngle: number,
+    hullTurnDelta: number,
+    turretTurnRate: number,
+    target?: TankRuntime,
+  ): void {
     const deltaSeconds = this.game.loop.delta / 1_000;
     // When the target rotates its base, drag this turret the full same amount so
-    // it must burn its normal turret speed re-aiming. Sustained spinning by the
-    // target therefore keeps the turret off-aim and unable to fire.
+    // it must burn its (slower, per-archetype) turret speed re-aiming. Sustained
+    // spinning by the target therefore keeps the turret off-aim and unable to fire.
     tank.aimAngle = computeCounterAimAngle({
       aimAngle: tank.aimAngle,
       desiredAimAngle,
       hullTurnDelta,
       targetBaseTurnDelta: target?.baseTurnDelta ?? 0,
-      maxCounterTurn: PLAYER_TURRET_TURN_RATE * deltaSeconds,
+      maxCounterTurn: turretTurnRate * deltaSeconds,
     });
   }
 
