@@ -18,6 +18,7 @@ import {
   shouldReuseEnemyMoveAngle,
 } from "./enemy-pathing";
 import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./maps";
+import { clearTankPushFlags, markTankPushingCar, pushSpeedFactor } from "./car-push";
 import { computeCounterAimAngle } from "./turret-aim";
 import {
   EMPTY_BUFFS,
@@ -154,8 +155,8 @@ const CAR_SHADOW_OFFSET = 10;
 // Parked cars are pushable obstacles (TT-26): any tank that drives into one
 // shoves it along. The car body is heavier than a tank and heavily damped so it
 // only creeps while being pushed and coasts to a quick stop once released, and
-// any pushing tank drives at CAR_PUSH_SPEED_FACTOR of its normal speed.
-const CAR_PUSH_SPEED_FACTOR = 0.5;
+// any pushing tank drives at CAR_PUSH_SPEED_FACTOR of its normal speed (the push
+// slowdown itself lives in ./car-push).
 const CAR_BODY_MASS = 4;
 const CAR_BODY_DRAG = 1200;
 const CAR_MAX_PUSH_SPEED = 130;
@@ -523,12 +524,19 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    // Push flags are consumed and cleared during a normal update, but the collider
+    // still fires (and may raise a flag) during the physics step even on frames
+    // this returns early. Clear on those paths too so a tank that was pushing when
+    // the game paused or ended can't keep a stale flag and drive one slow frame on
+    // resume before the collider re-evaluates it (see TT-26).
     if (this.ended) {
+      clearTankPushFlags(this.getAllTanks());
       return;
     }
 
     if (this.externallyPaused) {
       this.stopMovingBodies();
+      clearTankPushFlags(this.getAllTanks());
       return;
     }
 
@@ -574,9 +582,7 @@ export class CampaignScene extends Phaser.Scene {
     // Clear this frame's push flags now that every drive path has consumed them;
     // the tank/car collider re-sets them during the next physics step for any
     // tank still shoving a car (see handleTankPushCar / TT-26).
-    for (const tank of this.getAllTanks()) {
-      tank.pushingCar = false;
-    }
+    clearTankPushFlags(this.getAllTanks());
   }
 
   private addArena(): void {
@@ -1177,14 +1183,8 @@ export class CampaignScene extends Phaser.Scene {
   private handleTankPushCar(hull: Phaser.GameObjects.GameObject): void {
     const tank = this.tankByBody.get(hull);
     if (tank) {
-      tank.pushingCar = true;
+      markTankPushingCar(tank);
     }
-  }
-
-  // Speed multiplier a tank drives at this frame: reduced while it is pushing a
-  // car so shoving a car noticeably slows the tank (see TT-26).
-  private pushSpeedFactor(tank: TankRuntime): number {
-    return tank.pushingCar ? CAR_PUSH_SPEED_FACTOR : 1;
   }
 
   // Keeps the pushed cars' ground shadows and 3D models registered to their
@@ -1503,7 +1503,7 @@ export class CampaignScene extends Phaser.Scene {
     const nextRotation = this.player.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
-    const speed = stats.speed * this.pushSpeedFactor(this.player);
+    const speed = stats.speed * pushSpeedFactor(this.player);
     this.player.baseTurnDelta = hullTurnDelta;
     this.player.hull.setRotation(nextRotation);
     this.player.hull.setVelocity(
@@ -1538,7 +1538,7 @@ export class CampaignScene extends Phaser.Scene {
     const nextRotation = tank.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
-    const speed = stats.speed * this.pushSpeedFactor(tank);
+    const speed = stats.speed * pushSpeedFactor(tank);
     tank.baseTurnDelta = hullTurnDelta;
     tank.hull.setRotation(nextRotation);
     tank.hull.setVelocity(
@@ -1684,7 +1684,7 @@ export class CampaignScene extends Phaser.Scene {
     const throttleMagnitude = Phaser.Math.Clamp((alignment + 1) / 2, AI_MIN_DRIVE_THROTTLE, 1);
     const throttle = shouldReverse ? -throttleMagnitude : throttleMagnitude;
 
-    const speed = stats.speed * this.pushSpeedFactor(tank);
+    const speed = stats.speed * pushSpeedFactor(tank);
     tank.baseTurnDelta = hullTurnDelta;
     tank.hull.setRotation(nextRotation);
     tank.hull.setVelocity(Math.cos(nextForwardAngle) * throttle * speed, Math.sin(nextForwardAngle) * throttle * speed);
