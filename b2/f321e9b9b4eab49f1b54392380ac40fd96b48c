@@ -34,6 +34,7 @@ src/game/CampaignScene.ts
   s_7980603c3ec063::t_d7031bd7e8e859 3766
   s_7980603c3ec063::t_57345191944771 511
   s_7980603c3ec063::t_302f54175973b2 354-355,357
+  s_8438169eeca76b::t_dc7c5de2275236 142-147
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -45,6 +46,14 @@ src/game/CampaignScene.ts
       "agent_id": {
         "tool": "claude",
         "id": "a702de54-6da0-4f20-bf9a-3ff195c02e95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_8438169eeca76b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44636ad4-b115-4f79-9cde-b15ec587fa6b",
         "model": "claude-opus-4-8"
       },
       "human_author": "Greggory Caines <gregg@caines.ca>"
