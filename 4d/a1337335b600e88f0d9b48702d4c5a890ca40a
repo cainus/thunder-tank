@@ -1,0 +1,29 @@
+src/game/CampaignScene.ts
+  s_f32e21e86068a9::t_6a08a8999014b7 1155
+  s_f32e21e86068a9::t_93468626d29755 1216-1222,1225-1226,1232
+  s_f32e21e86068a9::t_f3a3184d37c44a 1116
+src/game/rules.ts
+  s_f32e21e86068a9::t_1cda171aa65994 76-78
+  s_f32e21e86068a9::t_de8958c2c1f4c2 3-6,12,21,28,35,42
+src/game/types.ts
+  s_f32e21e86068a9::t_d8751729e6c20d 76-79
+tests/game-rules.test.ts
+  s_f32e21e86068a9::t_2c5571481d1830 3-12
+  s_f32e21e86068a9::t_347d5e523dedc9 129-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "4da1337335b600e88f0d9b48702d4c5a890ca40a",
+  "prompts": {},
+  "sessions": {
+    "s_f32e21e86068a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "006865bd-dca6-4b1e-8fdd-139c68d84695",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
