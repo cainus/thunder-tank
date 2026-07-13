@@ -45,6 +45,7 @@ import {
   computeParkedCarSpots,
   computeUrbanTreeSpots,
   isWebglAvailable,
+  removeExistingCrateOverlays,
   treeScaleFactor,
 } from "./urban-decor";
 import { hullYaw, tankModelScale, turretYaw } from "./tank-decor";
@@ -876,11 +877,23 @@ export class CampaignScene extends Phaser.Scene {
       .filter((obstacle) => obstacle.kind === "crate")
       .map((obstacle) => ({ x: obstacle.x, y: obstacle.y, rotation: obstacle.rotation ?? 0 }));
 
+    const host = this.game.canvas?.parentElement;
+
+    // Sweep any 3D crate canvas orphaned by a prior game on this shared host,
+    // even when THIS map has no crates. Each map runs inside a fresh Phaser.Game
+    // mounted on the same persistent DOM host, and a crate overlay's canvas is
+    // only swept when a new CrateOverlay3D is constructed. On a crateless map no
+    // overlay is built, so without this the previous map's 3D crates stay
+    // floating on the new one — "crates not clearing at the end of a map"
+    // (TT-27), the crateless-map analogue of the TT-22 tank sweep (which every
+    // map runs because every map has tanks). Runs before the early return below.
+    if (host) {
+      removeExistingCrateOverlays(host);
+    }
+
     if (placements.length === 0) {
       return;
     }
-
-    const host = this.game.canvas?.parentElement;
 
     if (!host || !isWebglAvailable()) {
       // Fallback: leave the flat crate sprites visible (their default look).
