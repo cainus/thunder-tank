@@ -73,6 +73,13 @@ export const CAR_BODY_WIDTH = 30;
 // CAR_BODY_LENGTH pixels long.
 export const CAR_WORLD_SCALE = CAR_BODY_LENGTH;
 
+// Single owner for "how solid a real 3D obstacle reads". Trees and crates are
+// solid objects (not the translucent ground dressing washed back by
+// URBAN_DECOR_ALPHA), so both their 3D overlay canvases — and the flat-sprite
+// fallback trees — composite fully opaque. Hoisted here so the tree and crate
+// overlays share one value and cannot drift apart again.
+export const OPAQUE_OVERLAY_OPACITY = 1;
+
 /**
  * Removes any pre-existing 3D tree overlay canvases from `host`. Each map runs
  * inside a fresh Phaser.Game mounted on the same persistent DOM host, so an
