@@ -50,11 +50,28 @@ export const TREE_OVERLAY_TESTID = "tree-overlay-3d";
 // swept, and cleaned up independently.
 export const CRATE_OVERLAY_TESTID = "crate-overlay-3d";
 
+// data-testid stamped on the 3D parked-car overlay canvas. Distinct from the
+// tree and crate overlays so all three stacked overlays can be found, swept, and
+// cleaned up independently.
+export const CAR_OVERLAY_TESTID = "car-overlay-3d";
+
 // Uniform world-units-per-model-unit scale applied to the loaded crate model.
 // The model is authored with a 1-unit footprint, so this makes a crate read at
 // roughly the size of the flat crateMetal sprite it replaces (56px sprite scaled
 // 1.25 in-scene ≈ 70px).
 export const CRATE_WORLD_SCALE = 70;
+
+// Footprint of a parked car in world pixels: length along its facing axis and
+// width across it, matching the flat car sprite the 3D model replaces. Shared by
+// the collision body, the flat fallback sprite, and the 3D overlay so a car reads
+// (and blocks) the same size whichever renderer draws it.
+export const CAR_BODY_LENGTH = 64;
+export const CAR_BODY_WIDTH = 30;
+
+// Uniform world-units-per-model-unit scale applied to the loaded car model. The
+// model is authored with a 1-unit length, so this makes a car read at roughly
+// CAR_BODY_LENGTH pixels long.
+export const CAR_WORLD_SCALE = CAR_BODY_LENGTH;
 
 /**
  * Removes any pre-existing 3D tree overlay canvases from `host`. Each map runs
@@ -76,6 +93,16 @@ export function removeExistingTreeOverlays(host: HTMLElement): void {
  */
 export function removeExistingCrateOverlays(host: HTMLElement): void {
   removeOverlayCanvases(host, CRATE_OVERLAY_TESTID);
+}
+
+/**
+ * Removes any pre-existing 3D parked-car overlay canvases from `host`, for the
+ * same reason as {@link removeExistingTreeOverlays}: each map runs inside a fresh
+ * Phaser.Game on the same persistent DOM host, so an overlay left behind by a
+ * prior game would stack a second row of cars on top of the new map's.
+ */
+export function removeExistingCarOverlays(host: HTMLElement): void {
+  removeOverlayCanvases(host, CAR_OVERLAY_TESTID);
 }
 
 /** Removes every overlay canvas under `host` tagged with the given data-testid. */
@@ -105,6 +132,41 @@ export function computeUrbanTreeSpots(
     { x: width / 2, y: height - roadInsetY * 0.46 },
     { x: roadInsetX * 0.42, y: height / 2 },
     { x: width - roadInsetX * 0.42, y: height / 2 },
+  ];
+}
+
+/** A parked car to place: ground position, screen-space rotation (degrees), and
+ * the painted body colour (0xRRGGBB) used to keep the row of cars varied. */
+export interface ParkedCarSpot extends Vec2 {
+  rotation: number;
+  color: number;
+}
+
+/**
+ * Fixed positions, rotations, and body colours for the parked cars that line the
+ * urban road, expressed in world coordinates. The cars sit in the parking lanes
+ * flanking the mid-points of each road edge, just off the drivable road. Shared
+ * between CampaignScene (renders + collides them) and the Level Editor preview
+ * (schematic) so both agree on the layout. Horizontal cars (top/bottom edges)
+ * use rotation 0; vertical cars (left/right edges) use rotation 90.
+ */
+export function computeParkedCarSpots(
+  width: number,
+  height: number,
+  roadInsetX: number,
+  roadInsetY: number,
+  roadWidth: number,
+  roadHeight: number,
+): ParkedCarSpot[] {
+  return [
+    { x: width / 2 - 180, y: roadInsetY - 74, color: 0xc94a3f, rotation: 0 },
+    { x: width / 2 + 180, y: roadInsetY - 74, color: 0x4e89d8, rotation: 0 },
+    { x: width / 2 - 180, y: roadInsetY + roadHeight + 74, color: 0xd7a53d, rotation: 0 },
+    { x: width / 2 + 180, y: roadInsetY + roadHeight + 74, color: 0x8f5fd1, rotation: 0 },
+    { x: roadInsetX - 74, y: height / 2 - 180, color: 0x3ca7a2, rotation: 90 },
+    { x: roadInsetX - 74, y: height / 2 + 180, color: 0xbb5252, rotation: 90 },
+    { x: roadInsetX + roadWidth + 74, y: height / 2 - 180, color: 0x9babb7, rotation: 90 },
+    { x: roadInsetX + roadWidth + 74, y: height / 2 + 180, color: 0x50565d, rotation: 90 },
   ];
 }
 

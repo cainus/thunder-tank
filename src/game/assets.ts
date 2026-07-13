@@ -49,4 +49,7 @@ export const MODEL_ASSETS = {
   // Low-poly crate obstacle, authored by scripts/generate-crate-model.mjs. As
   // with the tree, the .obj references crate.mtl via `mtllib`.
   crate: "/assets/models/crate.obj",
+  // Low-poly parked car obstacle, authored by scripts/generate-car-model.mjs.
+  // As with the crate, the .obj references car.mtl via `mtllib`.
+  car: "/assets/models/car.obj",
 };
