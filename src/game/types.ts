@@ -108,6 +108,10 @@ export interface TankRuntime {
   // target's value to drag their turret the same way, forcing a counter-aim.
   baseTurnDelta: number;
   moveAngle?: number;
+  // Set for the frame while this tank is shoving a parked car (see TT-26). The
+  // tank/car collider raises it during the physics step and the drive code reads
+  // it to slow the tank, then clears it at the end of the scene update.
+  pushingCar?: boolean;
   nextMoveDecisionAt: number;
   lastAiProgressAt?: number;
   lastAiProgressDistance?: number;
