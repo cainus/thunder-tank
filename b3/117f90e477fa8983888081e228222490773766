@@ -1,0 +1,24 @@
+tests/crate-overlay-clear.test.ts
+  s_1d62966d802330::t_58309e68266e5d 1-15,25-28,33-72
+  s_1d62966d802330::t_1a42594d428308 16-24,29-31
+  s_1d62966d802330::t_589383c08867e9 32
+src/game/CampaignScene.ts
+  s_1d62966d802330::t_8e0b70c5e0bddd 880-893
+  s_1d62966d802330::t_e9785a55bd85ab 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "b3117f90e477fa8983888081e228222490773766",
+  "prompts": {},
+  "sessions": {
+    "s_1d62966d802330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53349564-04ed-4484-bc1f-d08011a96639",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
