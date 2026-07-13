@@ -14,6 +14,43 @@ export const TREE_CAMERA_TILT = (24 * Math.PI) / 180;
 // read at roughly URBAN_TREE_SIZE (96px) across.
 export const TREE_WORLD_SCALE = 46;
 
+// Peak deviation from the base tree size, as a fraction. A tree's size is
+// multiplied by treeScaleFactor(), which lands within [1 - v, 1 + v], so the
+// canopies read as a varied grove instead of identical stamps.
+export const TREE_SCALE_VARIATION = 0.3;
+
+/**
+ * Deterministic per-tree size multiplier in [1 - TREE_SCALE_VARIATION,
+ * 1 + TREE_SCALE_VARIATION]. Keyed off the tree's index so the layout is stable
+ * across renders (and testable) while neighbouring trees still differ markedly.
+ * Shared by the 3D overlay, the flat-sprite fallback, and their ground shadows
+ * so a given tree reads at the same size whichever renderer draws it.
+ */
+export function treeScaleFactor(index: number): number {
+  // Cheap hash → fractional part gives a well-spread pseudo-random value in
+  // [0, 1) that jumps between adjacent indices (unlike a smooth ramp).
+  const hash = Math.sin((index + 1) * 12.9898) * 43758.5453;
+  const fraction = hash - Math.floor(hash);
+  return 1 - TREE_SCALE_VARIATION + fraction * (2 * TREE_SCALE_VARIATION);
+}
+
+// data-testid stamped on the 3D tree overlay canvas. Exported so the overlay
+// (which stamps it) and the duplicate-cleanup sweep agree on one selector.
+export const TREE_OVERLAY_TESTID = "tree-overlay-3d";
+
+/**
+ * Removes any pre-existing 3D tree overlay canvases from `host`. Each map runs
+ * inside a fresh Phaser.Game mounted on the same persistent DOM host, so an
+ * overlay canvas left behind by a prior game would stack a second grove on top
+ * of the new map's — the reported "trees duplicate on every map". Sweeping the
+ * host before appending a new overlay guarantees at most one overlay canvas,
+ * regardless of Phaser teardown timing or async model-load races.
+ */
+export function removeExistingTreeOverlays(host: HTMLElement): void {
+  const existing = host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`);
+  existing.forEach((node) => node.remove());
+}
+
 /**
  * Fixed positions for the urban trees, expressed in world coordinates. The
  * layout hugs the plaza corners and the mid-points of each road edge so the

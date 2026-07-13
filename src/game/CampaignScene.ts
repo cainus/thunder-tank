@@ -32,7 +32,7 @@ import {
   teamStripeColor,
 } from "./team-stripe";
 import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
-import { computeUrbanTreeSpots, isWebglAvailable } from "./urban-decor";
+import { computeUrbanTreeSpots, isWebglAvailable, treeScaleFactor } from "./urban-decor";
 import type { TreeOverlay3D } from "./tree-3d";
 import {
   BULLET_MARK_MAX_COUNT,
@@ -551,12 +551,21 @@ export class CampaignScene extends Phaser.Scene {
     // Soft ground shadow so the canopy still reads as grounded. Trees are
     // non-collidable dressing, so the shadow is washed back with URBAN_DECOR_ALPHA
     // to stay clearly subdued against real obstacles. The shadow stays on the 2D
-    // ground layer even when the canopy is a 3D model composited on top.
-    for (const spot of treeSpots) {
+    // ground layer even when the canopy is a 3D model composited on top, and is
+    // sized by the same per-tree factor so it tracks each canopy's variation.
+    treeSpots.forEach((spot, index) => {
+      const scale = treeScaleFactor(index);
       this.add
-        .ellipse(spot.x, spot.y + URBAN_TREE_SHADOW_OFFSET, URBAN_TREE_SIZE * 0.7, URBAN_TREE_SIZE * 0.28, 0x1c2a1a, 0.28 * URBAN_DECOR_ALPHA)
+        .ellipse(
+          spot.x,
+          spot.y + URBAN_TREE_SHADOW_OFFSET * scale,
+          URBAN_TREE_SIZE * 0.7 * scale,
+          URBAN_TREE_SIZE * 0.28 * scale,
+          0x1c2a1a,
+          0.28 * URBAN_DECOR_ALPHA,
+        )
         .setDepth(-10);
-    }
+    });
 
     const host = this.game.canvas?.parentElement;
 
@@ -573,13 +582,14 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private addFlatTrees(treeSpots: Vec2[]): void {
-    for (const spot of treeSpots) {
+    treeSpots.forEach((spot, index) => {
+      const size = URBAN_TREE_SIZE * treeScaleFactor(index);
       this.add
         .image(spot.x, spot.y, "treeGreenLarge")
-        .setDisplaySize(URBAN_TREE_SIZE, URBAN_TREE_SIZE)
+        .setDisplaySize(size, size)
         .setAlpha(URBAN_DECOR_ALPHA)
         .setDepth(-9);
-    }
+    });
   }
 
   // Lazily loads the three.js overlay module + tree model, then places the 3D

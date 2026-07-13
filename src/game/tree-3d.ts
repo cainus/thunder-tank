@@ -17,9 +17,12 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import {
   TREE_CAMERA_TILT,
   TREE_OCCLUDER_WORLD_RADIUS,
+  TREE_OVERLAY_TESTID,
   TREE_WORLD_SCALE,
   occluderClipTransform,
+  removeExistingTreeOverlays,
   treeOrthoFrustum,
+  treeScaleFactor,
   type TreeViewRect,
 } from "./urban-decor";
 import type { Vec2 } from "./types";
@@ -63,7 +66,7 @@ export class TreeOverlay3D {
     this.renderer.autoClear = false;
 
     this.canvas = this.renderer.domElement;
-    this.canvas.setAttribute("data-testid", "tree-overlay-3d");
+    this.canvas.setAttribute("data-testid", TREE_OVERLAY_TESTID);
     Object.assign(this.canvas.style, {
       position: "absolute",
       inset: "0",
@@ -72,6 +75,9 @@ export class TreeOverlay3D {
       pointerEvents: "none",
       opacity: String(TREE_OVERLAY_OPACITY),
     } satisfies Partial<CSSStyleDeclaration>);
+    // Drop any overlay canvas orphaned by a prior game on this shared host before
+    // adding ours, so trees never stack up across maps (see helper docs).
+    removeExistingTreeOverlays(host);
     host.appendChild(this.canvas);
 
     this.scene = new THREE.Scene();
@@ -158,10 +164,10 @@ export class TreeOverlay3D {
     positions.forEach((spot, index) => {
       const tree = this.template!.clone(true);
       tree.position.set(spot.x, 0, spot.y);
-      tree.scale.setScalar(TREE_WORLD_SCALE);
-      // Deterministic per-tree variation so the copies don't look stamped.
+      // Deterministic per-tree rotation + size variation so the copies read as a
+      // grove instead of identical stamps.
       tree.rotation.y = (index * 0.7) % (Math.PI * 2);
-      tree.scale.multiplyScalar(0.9 + ((index * 37) % 20) / 100);
+      tree.scale.setScalar(TREE_WORLD_SCALE * treeScaleFactor(index));
       tree.userData.isTree = true;
       this.scene.add(tree);
     });

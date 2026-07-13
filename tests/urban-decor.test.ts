@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   TREE_CAMERA_TILT,
+  TREE_OVERLAY_TESTID,
+  TREE_SCALE_VARIATION,
   computeUrbanTreeSpots,
   occluderClipTransform,
+  removeExistingTreeOverlays,
   treeHeightScreenOffset,
   treeOrthoFrustum,
+  treeScaleFactor,
 } from "../src/game/urban-decor";
 
 describe("computeUrbanTreeSpots", () => {
@@ -92,5 +96,61 @@ describe("treeHeightScreenOffset", () => {
 
   it("leans taller geometry further up-screen", () => {
     expect(treeHeightScreenOffset(200)).toBeGreaterThan(treeHeightScreenOffset(100));
+  });
+});
+
+describe("treeScaleFactor", () => {
+  const indices = Array.from({ length: 8 }, (_, index) => index);
+
+  it("is deterministic for a given index", () => {
+    for (const index of indices) {
+      expect(treeScaleFactor(index)).toBe(treeScaleFactor(index));
+    }
+  });
+
+  it("stays within [1 - variation, 1 + variation]", () => {
+    for (const index of indices) {
+      const factor = treeScaleFactor(index);
+      expect(factor).toBeGreaterThanOrEqual(1 - TREE_SCALE_VARIATION);
+      expect(factor).toBeLessThanOrEqual(1 + TREE_SCALE_VARIATION);
+    }
+  });
+
+  it("actually varies tree sizes (not all the same)", () => {
+    const factors = indices.map(treeScaleFactor);
+    const unique = new Set(factors.map((factor) => factor.toFixed(6)));
+    expect(unique.size).toBeGreaterThan(1);
+    // The spread should be visibly wide, not a token nudge.
+    expect(Math.max(...factors) - Math.min(...factors)).toBeGreaterThan(0.2);
+  });
+});
+
+describe("removeExistingTreeOverlays", () => {
+  function makeOverlayCanvas(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", TREE_OVERLAY_TESTID);
+    return canvas;
+  }
+
+  it("removes a stray overlay canvas left by a prior game", () => {
+    const host = document.createElement("div");
+    host.appendChild(makeOverlayCanvas());
+    host.appendChild(makeOverlayCanvas());
+
+    removeExistingTreeOverlays(host);
+
+    expect(host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`)).toHaveLength(0);
+  });
+
+  it("leaves non-overlay children (e.g. the Phaser canvas) untouched", () => {
+    const host = document.createElement("div");
+    const gameCanvas = document.createElement("canvas");
+    host.appendChild(gameCanvas);
+    host.appendChild(makeOverlayCanvas());
+
+    removeExistingTreeOverlays(host);
+
+    expect(host.contains(gameCanvas)).toBe(true);
+    expect(host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`)).toHaveLength(0);
   });
 });
