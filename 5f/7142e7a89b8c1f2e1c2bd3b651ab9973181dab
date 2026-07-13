@@ -1,0 +1,31 @@
+tests/three-dependency.test.ts
+  s_6f9a36da626602::t_93cbf03ee2dcad 1-33
+tests/dev-auto-update.test.mjs
+  s_6227ed27e24894::t_724012ae433c5e 1-86
+scripts/dev-auto-update.mjs
+  s_6227ed27e24894::t_2487b3380c85e2 2-3,5,11-20,38-113,196,202-206,224-235,238-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "5f7142e7a89b8c1f2e1c2bd3b651ab9973181dab",
+  "prompts": {},
+  "sessions": {
+    "s_6227ed27e24894": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "959e35d2-55e3-499b-9a0c-201168270798",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_6f9a36da626602": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8d4d461-2980-4830-8c48-79ba634c6a2c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
