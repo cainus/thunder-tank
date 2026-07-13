@@ -1,0 +1,23 @@
+scripts/verify-deps.mjs
+  s_4817194a747f0a::t_dba1ec361a4d8a 1-121
+tests/verify-deps.test.mjs
+  s_4817194a747f0a::t_f919830bdb9df6 1-100
+package.json
+  s_4817194a747f0a::t_0d4a69b79d5b06 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "f4e611926625b2d3178c3d1061c6c779ad84444c",
+  "prompts": {},
+  "sessions": {
+    "s_4817194a747f0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "522581b9-c893-4997-9bdc-28198d36b683",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
