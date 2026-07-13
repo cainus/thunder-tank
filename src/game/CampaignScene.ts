@@ -121,7 +121,11 @@ const NIGHT_HEADLAMP_GLOW_ALPHA = 0.54;
 const NIGHT_HEADLAMP_OFFSET = 28;
 const LIGHT_POST_BASE_SCALE = 1.08;
 const URBAN_TREE_SIZE = 96;
-const URBAN_TREE_SHADOW_OFFSET = 30;
+// How far below the trunk base (spot.y) the ground shadow's centre is drawn.
+// Kept small so the soft ellipse pools around the trunk base rather than
+// sitting in a gap beneath it — a larger offset left daylight between trunk and
+// shadow and made the canopy read as floating.
+const URBAN_TREE_SHADOW_OFFSET = 8;
 // Soft ground shadow footprint for a 3D crate (roughly the crate's ~70px base),
 // drawn just below the crate depth so the model reads as grounded.
 const CRATE_SHADOW_WIDTH = 74;
