@@ -1,0 +1,38 @@
+src/game/CampaignScene.ts
+  s_8e2e718e4d5e9d::t_6db01968b39a7f 4-11
+  s_8e2e718e4d5e9d::t_3f3f7264e453f7 834-836
+  s_8e2e718e4d5e9d::t_c7cea06aab2c99 846-856
+public/assets/models/tank-turret.obj
+  s_8e2e718e4d5e9d::t_a5483ffd8b9ace 34
+src/game/tank-3d.ts
+  s_8e2e718e4d5e9d::t_14964b66605614 75,78
+  s_8e2e718e4d5e9d::t_3844739c23e1f7 245-261
+  s_8e2e718e4d5e9d::t_6479524f716830 277,279,285-289,293-294,302-312
+  s_8e2e718e4d5e9d::t_d4cb0a6adbf075 352-355,357
+  s_8e2e718e4d5e9d::t_9d0da10c9d7c2a 61-66
+  s_8e2e718e4d5e9d::t_cbb32f1aeb7326 50-52
+  s_8e2e718e4d5e9d::t_6b6f8b2ab83db4 218
+scripts/generate-tank-model.mjs
+  s_8e2e718e4d5e9d::t_e291f6bd38c2f7 123-126
+  s_8e2e718e4d5e9d::t_19e96cea5e8941 138-141
+tests/tank-model.test.ts
+  s_8e2e718e4d5e9d::t_dfde6e5e3d41ad 1-65
+public/assets/models/tank-turret.mtl
+  s_8e2e718e4d5e9d::t_a5483ffd8b9ace 9-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "c735525c985fbcdd1c69bd5d0f500e53b1bf02cf",
+  "prompts": {},
+  "sessions": {
+    "s_8e2e718e4d5e9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b6d1e4-28d5-4691-ae3f-bfa436179532",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
