@@ -1,7 +1,14 @@
 import Phaser from "phaser";
 import { isGamepadButtonPressed, readAim, readDrive, type GamepadMapping } from "../gamepad-config";
 import { ASSETS, ASSET_KEYS, MODEL_ASSETS, type AssetKey } from "./assets";
-import { EMPTY_GUN_HEAT, getPlayerStatusKey, isGunFrozen, recordPlayerShot, type GunHeatState } from "./combat-state";
+import {
+  EMPTY_GUN_HEAT,
+  getPlayerStatusKey,
+  isGunFrozen,
+  PLAYER_GUN_FREEZE_MS,
+  recordPlayerShot,
+  type GunHeatState,
+} from "./combat-state";
 import {
   ENEMY_FIRE_LINE_PADDING,
   ENEMY_FIRE_RANGE,
@@ -824,6 +831,9 @@ export class CampaignScene extends Phaser.Scene {
         scale: tankModelScale(tank.archetype, this.isBlueTeammate(tank)),
         color: teamStripeColor(tank.side),
         shielded: tank.buffs.shieldUntil > now,
+        // Only the player's overheat freeze drives the barrel tint; enemies have
+        // no heat model, so their gun always reads ready (grey).
+        gunReadiness: tank === this.player ? this.playerGunReadiness(now) : 1,
       }));
     this.tankOverlay.render(
       { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
@@ -831,6 +841,17 @@ export class CampaignScene extends Phaser.Scene {
       this.scale.gameSize.height,
       tanks,
     );
+  }
+
+  // Maps the player's overheat freeze onto a 0..1 barrel-readiness value for the
+  // 3D tint: 1 when the gun is ready (grey), dropping to 0 the moment it
+  // overheats (orange) and easing back to 1 as the freeze timer runs down.
+  private playerGunReadiness(now: number): number {
+    const remaining = this.playerGunHeat.frozenUntil - now;
+    if (remaining <= 0) {
+      return 1;
+    }
+    return 1 - Math.min(1, remaining / PLAYER_GUN_FREEZE_MS);
   }
 
   private destroyTankOverlay(): void {

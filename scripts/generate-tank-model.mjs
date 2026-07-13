@@ -120,8 +120,10 @@ function buildTurret() {
   const model = createModel();
   // Turret box / mantlet.
   model.addBox([-0.34, 0.52, -0.34], [0.34, 0.82, 0.3], "turret");
-  // Gun barrel, extending forward past the turret front.
-  model.addBox([-0.08, 0.6, -1.18], [0.08, 0.74, -0.3], "turret");
+  // Gun barrel, extending forward past the turret front. Its own "barrel"
+  // material so the renderer can tint just the gun to show its readiness
+  // (grey when ready, orange when overheated) without recolouring the turret.
+  model.addBox([-0.08, 0.6, -1.18], [0.08, 0.74, -0.3], "barrel");
   return model;
 }
 
@@ -133,6 +135,10 @@ const hullMaterials = [
 
 const turretMaterials = [
   { name: "turret", kd: [0.34, 0.35, 0.34], ka: [0.09, 0.09, 0.09], ks: [0.06, 0.06, 0.06], ns: 14.0 },
+  // The barrel shares the turret's neutral grey base; the renderer lerps it
+  // toward orange while the gun is overheated (see applyGunReadiness in
+  // tank-3d.ts) and back to this grey as it cools.
+  { name: "barrel", kd: [0.34, 0.35, 0.34], ka: [0.09, 0.09, 0.09], ks: [0.06, 0.06, 0.06], ns: 14.0 },
 ];
 
 const hullVerts = serialize(buildHull(), "tank-hull", hullMaterials);

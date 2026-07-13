@@ -47,6 +47,9 @@ export interface TankRender {
   // Team colour as a 0xRRGGBB int (see team-stripe.ts).
   color: number;
   shielded: boolean;
+  // Gun readiness for the barrel tint: 1 = ready (grey), 0 = just overheated
+  // (orange). Eases back to 1 as the overheat freeze cools down. Enemies pass 1.
+  gunReadiness: number;
 }
 
 // Matches the tree overlay so both stacked canvases stay near/far aligned.
@@ -54,6 +57,12 @@ const CAMERA_HEIGHT = 4000;
 // Opacity applied to a tank's materials while its shield buff is active, so the
 // 3D tank keeps the translucent "shielded" cue the flat sprite had.
 const SHIELDED_OPACITY = 0.72;
+
+// Barrel tint endpoints for the gun-readiness cue: the authored neutral grey at
+// full readiness (gun ready), lerped toward a hot orange the moment the gun
+// overheats and back again as it cools. Mirrors the shield tint approach.
+const BARREL_GREY = new THREE.Color(0.34, 0.35, 0.34);
+const BARREL_ORANGE = new THREE.Color(0xff7a1a);
 
 // A pooled tank instance: cloned hull + turret groups with per-instance
 // materials so each tank can be tinted (and faded when shielded) independently.
@@ -63,8 +72,10 @@ interface TankInstance {
   readonly turret: THREE.Object3D;
   readonly materials: THREE.Material[];
   readonly hullMaterials: THREE.MeshPhongMaterial[];
+  readonly barrelMaterials: THREE.MeshPhongMaterial[];
   lastColor: number;
   lastShielded: boolean;
+  lastReadiness: number;
 }
 
 export class TankOverlay3D {
@@ -204,6 +215,7 @@ export class TankOverlay3D {
       instance.hull.rotation.y = tank.hullYaw;
       instance.turret.rotation.y = tank.turretYaw;
       this.applyTankStyle(instance, tank.color, tank.shielded);
+      this.applyGunReadiness(instance, tank.gunReadiness);
     }
 
     this.renderer.render(this.scene, this.camera);
@@ -230,6 +242,23 @@ export class TankOverlay3D {
     }
   }
 
+  // Tints the gun barrel to signal readiness: grey when ready (readiness 1) and
+  // orange the moment it overheats (readiness 0), lerping between the two as the
+  // overheat freeze cools. Cached so the material update only runs when the
+  // readiness actually changes (i.e. never for an always-ready enemy barrel),
+  // matching the change-guard used by applyTankStyle.
+  private applyGunReadiness(instance: TankInstance, readiness: number): void {
+    const clamped = Math.min(1, Math.max(0, readiness));
+    if (instance.lastReadiness === clamped) {
+      return;
+    }
+
+    for (const material of instance.barrelMaterials) {
+      material.color.copy(BARREL_ORANGE).lerp(BARREL_GREY, clamped);
+    }
+    instance.lastReadiness = clamped;
+  }
+
   private syncPool(count: number): void {
     while (this.pool.length < count) {
       this.pool.push(this.createInstance());
@@ -245,33 +274,24 @@ export class TankOverlay3D {
     const turret = this.turretTemplate!.clone(true);
     const materials: THREE.Material[] = [];
     const hullMaterials: THREE.MeshPhongMaterial[] = [];
+    const barrelMaterials: THREE.MeshPhongMaterial[] = [];
 
-    const cloneMaterials = (root: THREE.Object3D, collectHull: boolean): void => {
+    const cloneMaterials = (root: THREE.Object3D): void => {
       root.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) {
           return;
         }
         const source = child.material as THREE.Material | THREE.Material[];
-        if (Array.isArray(source)) {
-          const cloned = source.map((entry) => entry.clone());
-          child.material = cloned;
-          materials.push(...cloned);
-          if (collectHull) {
-            collectHullMaterials(cloned, hullMaterials);
-          }
-        } else {
-          const cloned = source.clone();
-          child.material = cloned;
-          materials.push(cloned);
-          if (collectHull) {
-            collectHullMaterials([cloned], hullMaterials);
-          }
-        }
+        const cloned = Array.isArray(source) ? source.map((entry) => entry.clone()) : [source.clone()];
+        child.material = Array.isArray(source) ? cloned : cloned[0];
+        materials.push(...cloned);
+        collectNamedMaterials(cloned, "hull", hullMaterials);
+        collectNamedMaterials(cloned, "barrel", barrelMaterials);
       });
     };
 
-    cloneMaterials(hull, true);
-    cloneMaterials(turret, false);
+    cloneMaterials(hull);
+    cloneMaterials(turret);
 
     const group = new THREE.Group();
     group.add(hull);
@@ -279,7 +299,17 @@ export class TankOverlay3D {
     group.frustumCulled = false;
     this.scene.add(group);
 
-    return { group, hull, turret, materials, hullMaterials, lastColor: -1, lastShielded: false };
+    return {
+      group,
+      hull,
+      turret,
+      materials,
+      hullMaterials,
+      barrelMaterials,
+      lastColor: -1,
+      lastShielded: false,
+      lastReadiness: -1,
+    };
   }
 
   setVisible(visible: boolean): void {
@@ -319,11 +349,12 @@ export class TankOverlay3D {
   }
 }
 
-// Collects the recolourable "hull" materials (named in the .mtl) so team tint can
-// be applied to just the body, leaving treads and turret their authored colours.
-function collectHullMaterials(materials: THREE.Material[], into: THREE.MeshPhongMaterial[]): void {
+// Collects the materials with the given .mtl name so a runtime tint can be
+// applied to just that part — "hull" for the team colour (body only, leaving
+// treads/turret their authored colours) and "barrel" for the gun-readiness cue.
+function collectNamedMaterials(materials: THREE.Material[], name: string, into: THREE.MeshPhongMaterial[]): void {
   for (const material of materials) {
-    if (material instanceof THREE.MeshPhongMaterial && material.name === "hull") {
+    if (material instanceof THREE.MeshPhongMaterial && material.name === name) {
       into.push(material);
     }
   }
