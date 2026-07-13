@@ -64,6 +64,9 @@ export class CarOverlay3D {
   private readonly occluderGeometry: THREE.PlaneGeometry;
   private readonly occluderPool: THREE.Mesh[] = [];
   private template?: THREE.Object3D;
+  // Placed car meshes, in the same order they were passed to setCars, so pushed
+  // cars can be repositioned by index each frame via syncPositions (see TT-26).
+  private readonly cars: THREE.Object3D[] = [];
   private disposed = false;
   private lastPixelWidth = 0;
   private lastPixelHeight = 0;
@@ -188,7 +191,28 @@ export class CarOverlay3D {
         tintBody(car, placement.color);
       }
       this.scene.add(car);
+      this.cars.push(car);
     });
+  }
+
+  /**
+   * Repositions the placed cars on the ground plane, by index against the order
+   * passed to setCars. Used when a tank shoves a parked car so the 3D model
+   * tracks its moving physics body (see TT-26). Rotation is left untouched
+   * because pushed cars keep their parked orientation (Arcade bodies don't spin).
+   */
+  syncPositions(positions: Vec2[]): void {
+    if (this.disposed) {
+      return;
+    }
+
+    for (let i = 0; i < this.cars.length; i += 1) {
+      const position = positions[i];
+      if (position) {
+        this.cars[i].position.x = position.x;
+        this.cars[i].position.z = position.y;
+      }
+    }
   }
 
   /**
@@ -300,6 +324,7 @@ export class CarOverlay3D {
   }
 
   private clearCars(): void {
+    this.cars.length = 0;
     for (const child of [...this.scene.children]) {
       if (child.userData.isCar) {
         this.scene.remove(child);

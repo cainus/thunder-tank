@@ -18,6 +18,7 @@ import {
   shouldReuseEnemyMoveAngle,
 } from "./enemy-pathing";
 import { CAMPAIGN_MAPS, CAPTURE_THE_FLAG_MAPS } from "./maps";
+import { clearTankPushFlags, markTankPushingCar, pushSpeedFactor } from "./car-push";
 import { computeCounterAimAngle } from "./turret-aim";
 import {
   EMPTY_BUFFS,
@@ -151,6 +152,14 @@ const URBAN_TREE_TRUNK_RADIUS = 30;
 const CAR_SHADOW_LENGTH = CAR_BODY_LENGTH + 10;
 const CAR_SHADOW_WIDTH = CAR_BODY_WIDTH + 8;
 const CAR_SHADOW_OFFSET = 10;
+// Parked cars are pushable obstacles (TT-26): any tank that drives into one
+// shoves it along. The car body is heavier than a tank and heavily damped so it
+// only creeps while being pushed and coasts to a quick stop once released, and
+// any pushing tank drives at CAR_PUSH_SPEED_FACTOR of its normal speed (the push
+// slowdown itself lives in ./car-push).
+const CAR_BODY_MASS = 4;
+const CAR_BODY_DRAG = 1200;
+const CAR_MAX_PUSH_SPEED = 130;
 // Non-collidable urban dressing (buildings, plaza, and the trees' decorative
 // canopies) is painted on the ground and must read as clearly subdued so players
 // never confuse it with real, collidable obstacles. This multiplier washes the
@@ -300,9 +309,16 @@ export class CampaignScene extends Phaser.Scene {
   // when the 3D crate overlay takes over their visual (see addCrateOverlays).
   private crateSprites: Phaser.Physics.Arcade.Image[] = [];
   private carOverlay?: CarOverlay3D;
+  // Dynamic (pushable) physics group holding the parked-car obstacles, kept
+  // separate from the static `obstacles` group so tanks can shove the cars while
+  // crates/walls stay immovable (see addParkedCars).
+  private carGroup!: Phaser.Physics.Arcade.Group;
   // Physics bodies for the parked-car obstacles. Kept for collision but hidden
   // when the 3D car overlay takes over their visual (see addParkedCars).
   private carSprites: Phaser.Physics.Arcade.Image[] = [];
+  // Ground-shadow ellipses beneath the 3D cars, aligned by index with
+  // carSprites so a pushed car's shadow tracks it (see syncPushedCars).
+  private carShadows: Phaser.GameObjects.Ellipse[] = [];
 
   constructor() {
     super("CampaignScene");
@@ -336,6 +352,7 @@ export class CampaignScene extends Phaser.Scene {
     this.treeColliders = undefined;
     this.treeSpots = [];
     this.carSprites = [];
+    this.carShadows = [];
     this.lightPosts = [];
   }
 
@@ -363,9 +380,11 @@ export class CampaignScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, this.map.width, this.map.height);
     this.cameras.main.setBackgroundColor(this.isNightMap() ? "#071018" : "#293529");
 
-    // The obstacle group must exist before addArena() runs, because the urban
-    // arena seeds it with the parked-car obstacles (see addParkedCars).
+    // The obstacle and car groups must exist before addArena() runs, because the
+    // urban arena seeds the car group with the pushable parked cars and may add
+    // static obstacles (see addParkedCars).
     this.obstacles = this.physics.add.staticGroup();
+    this.carGroup = this.physics.add.group({ classType: Phaser.Physics.Arcade.Image });
     this.addArena();
     this.bullets = this.physics.add.group({ classType: Phaser.Physics.Arcade.Image, maxSize: 64 });
     this.pickups = this.physics.add.group({ classType: Phaser.Physics.Arcade.Image, maxSize: 16 });
@@ -408,6 +427,23 @@ export class CampaignScene extends Phaser.Scene {
         kind: "obstacle",
       }),
     );
+    // Any tank can shove the pushable cars; the callback flags the tank so its
+    // drive code slows it while pushing (see TT-26). Cars still collide with the
+    // static obstacles and one another so they can't be driven through walls or
+    // stacked, and bullets pop on them as they did when the cars were static
+    // (overlap rather than collider so a bullet destroys itself without nudging
+    // the car).
+    this.physics.add.collider(tankHulls, this.carGroup, (hull) =>
+      this.handleTankPushCar(hull as Phaser.GameObjects.GameObject),
+    );
+    this.physics.add.collider(this.carGroup, this.obstacles);
+    this.physics.add.collider(this.carGroup, this.carGroup);
+    this.physics.add.overlap(this.bullets, this.carGroup, (bullet) =>
+      this.destroyBullet(bullet as Phaser.GameObjects.GameObject, {
+        angle: this.getBulletTravelAngleFromObject(bullet as Phaser.GameObjects.GameObject),
+        kind: "obstacle",
+      }),
+    );
     // The tree trunk colliders are populated during addArena() above (only on
     // daytime maps that place trees), so the group must already exist here.
     // Assert that ordering invariant: any daytime map places trees, so a missing
@@ -420,6 +456,7 @@ export class CampaignScene extends Phaser.Scene {
     }
     if (this.treeColliders) {
       this.physics.add.collider(tankHulls, this.treeColliders);
+      this.physics.add.collider(this.carGroup, this.treeColliders);
       this.physics.add.collider(this.bullets, this.treeColliders, (bullet) =>
         this.destroyBullet(bullet as Phaser.GameObjects.GameObject, {
           angle: this.getBulletTravelAngleFromObject(bullet as Phaser.GameObjects.GameObject),
@@ -487,12 +524,19 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    // Push flags are consumed and cleared during a normal update, but the collider
+    // still fires (and may raise a flag) during the physics step even on frames
+    // this returns early. Clear on those paths too so a tank that was pushing when
+    // the game paused or ended can't keep a stale flag and drive one slow frame on
+    // resume before the collider re-evaluates it (see TT-26).
     if (this.ended) {
+      clearTankPushFlags(this.getAllTanks());
       return;
     }
 
     if (this.externallyPaused) {
       this.stopMovingBodies();
+      clearTankPushFlags(this.getAllTanks());
       return;
     }
 
@@ -520,6 +564,7 @@ export class CampaignScene extends Phaser.Scene {
     // in create()) so it renders with the exact frame Phaser just drew.
     this.renderTankOverlay();
     this.renderCrateOverlay();
+    this.syncPushedCars();
     this.renderCarOverlay();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
@@ -533,6 +578,11 @@ export class CampaignScene extends Phaser.Scene {
     }
 
     this.updateRespawnCountdown(time);
+
+    // Clear this frame's push flags now that every drive path has consumed them;
+    // the tank/car collider re-sets them during the next physics step for any
+    // tank still shoving a car (see handleTankPushCar / TT-26).
+    clearTankPushFlags(this.getAllTanks());
   }
 
   private addArena(): void {
@@ -970,12 +1020,14 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   // Places the parked cars that line the urban road. Unlike the old two-rectangle
-  // dressing, each car is now a real, collidable obstacle (a static physics body
-  // added to the shared obstacle group) rendered as a 3D model via a three.js
-  // overlay, mirroring the crate treatment. The flat car sprite doubles as the
-  // physics body's texture and the fallback look when WebGL/host is unavailable;
-  // when the 3D overlay loads it hides the flat sprites while the bodies stay for
-  // collision.
+  // dressing, each car is a real, collidable obstacle rendered as a 3D model via a
+  // three.js overlay, mirroring the crate treatment. Unlike crates, the car bodies
+  // are dynamic and pushable: they live in `carGroup` (not the static `obstacles`
+  // group) so any tank can shove one, heavily damped so they only creep while
+  // pushed and coast to a stop once released (see TT-26). The flat car sprite
+  // doubles as the physics body's texture and the fallback look when WebGL/host is
+  // unavailable; when the 3D overlay loads it hides the flat sprites while the
+  // bodies stay for collision.
   private addParkedCars(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
     this.createCarTexture();
 
@@ -989,21 +1041,28 @@ export class CampaignScene extends Phaser.Scene {
     );
 
     for (const car of placements) {
-      const sprite = this.obstacles.create(car.x, car.y, "carTop") as Phaser.Physics.Arcade.Image;
+      const sprite = this.carGroup.create(car.x, car.y, "carTop") as Phaser.Physics.Arcade.Image;
       sprite.setDepth(8);
       sprite.setAngle(car.rotation);
       sprite.setTint(car.color);
-      // Position the body from the (rotated) sprite first, then shrink it to the
-      // car's true footprint. Static bodies stay axis-aligned, so a vertical car
-      // (rotation 90) needs its length and width swapped.
-      sprite.refreshBody();
+      // Shrink the body to the car's true footprint. Dynamic Arcade bodies stay
+      // axis-aligned, so a vertical car (rotation 90) needs its length and width
+      // swapped; the car keeps its parked orientation even while being pushed
+      // (bodies don't rotate), so this stays valid.
       const horizontal = car.rotation % 180 === 0;
-      const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
+      const body = sprite.body as Phaser.Physics.Arcade.Body;
       body.setSize(
         horizontal ? CAR_BODY_LENGTH : CAR_BODY_WIDTH,
         horizontal ? CAR_BODY_WIDTH : CAR_BODY_LENGTH,
-        true,
       );
+      // Heavy and heavily damped so a pushing tank only nudges the car along and
+      // it stops quickly once released; capped so it never slides fast. Collides
+      // with the world edge so it can't be shoved off the map.
+      sprite.setMass(CAR_BODY_MASS);
+      sprite.setDrag(CAR_BODY_DRAG, CAR_BODY_DRAG);
+      sprite.setMaxVelocity(CAR_MAX_PUSH_SPEED, CAR_MAX_PUSH_SPEED);
+      sprite.setBounce(0);
+      sprite.setCollideWorldBounds(true);
       this.carSprites.push(sprite);
     }
 
@@ -1065,10 +1124,11 @@ export class CampaignScene extends Phaser.Scene {
 
     // Soft ground shadow beneath each car so the 3D model reads as grounded,
     // matching the treatment given to the 3D crates. The shadow rotates with the
-    // car but stays nudged down-screen from its centre.
+    // car but stays nudged down-screen from its centre. Stored (aligned by index
+    // with carSprites) so a pushed car's shadow tracks it (see syncPushedCars).
     for (const car of placements) {
       const horizontal = car.rotation % 180 === 0;
-      this.add
+      const shadow = this.add
         .ellipse(
           car.x,
           car.y + CAR_SHADOW_OFFSET,
@@ -1078,6 +1138,7 @@ export class CampaignScene extends Phaser.Scene {
           0.3,
         )
         .setDepth(7);
+      this.carShadows.push(shadow);
     }
 
     // three.js is heavy, so it is code-split behind a dynamic import and only
@@ -1114,6 +1175,33 @@ export class CampaignScene extends Phaser.Scene {
       this.destroyCarOverlay();
       // Leave the flat car sprites visible as the fallback look.
     }
+  }
+
+  // Flags the tank that is currently shoving a car so its drive code slows it
+  // this frame (see TT-26). Fired by the tank/car collider during the physics
+  // step, before the scene update reads the flag; cleared at the end of update().
+  private handleTankPushCar(hull: Phaser.GameObjects.GameObject): void {
+    const tank = this.tankByBody.get(hull);
+    if (tank) {
+      markTankPushingCar(tank);
+    }
+  }
+
+  // Keeps the pushed cars' ground shadows and 3D models registered to their
+  // moving physics bodies. The flat car sprite is its own body, so it follows
+  // automatically (and is the only visual in the WebGL fallback); the shadows
+  // and 3D overlay are separate objects that must be nudged each frame. No-ops
+  // until the shadows/overlay exist (i.e. only in the WebGL car path).
+  private syncPushedCars(): void {
+    for (let i = 0; i < this.carShadows.length; i += 1) {
+      const sprite = this.carSprites[i];
+      const shadow = this.carShadows[i];
+      if (sprite && shadow) {
+        shadow.setPosition(sprite.x, sprite.y + CAR_SHADOW_OFFSET);
+      }
+    }
+
+    this.carOverlay?.syncPositions(this.carSprites.map((sprite) => ({ x: sprite.x, y: sprite.y })));
   }
 
   private renderCarOverlay(): void {
@@ -1415,11 +1503,12 @@ export class CampaignScene extends Phaser.Scene {
     const nextRotation = this.player.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
+    const speed = stats.speed * pushSpeedFactor(this.player);
     this.player.baseTurnDelta = hullTurnDelta;
     this.player.hull.setRotation(nextRotation);
     this.player.hull.setVelocity(
-      Math.cos(forwardAngle) * drive.throttle * stats.speed,
-      Math.sin(forwardAngle) * drive.throttle * stats.speed,
+      Math.cos(forwardAngle) * drive.throttle * speed,
+      Math.sin(forwardAngle) * drive.throttle * speed,
     );
     this.player.aimAngle += hullTurnDelta + aim.x * PLAYER_TURRET_TURN_RATE * deltaSeconds;
 
@@ -1449,11 +1538,12 @@ export class CampaignScene extends Phaser.Scene {
     const nextRotation = tank.hull.rotation + hullTurnDelta;
     const forwardAngle = nextRotation - Math.PI / 2;
 
+    const speed = stats.speed * pushSpeedFactor(tank);
     tank.baseTurnDelta = hullTurnDelta;
     tank.hull.setRotation(nextRotation);
     tank.hull.setVelocity(
-      Math.cos(forwardAngle) * drive.throttle * stats.speed,
-      Math.sin(forwardAngle) * drive.throttle * stats.speed,
+      Math.cos(forwardAngle) * drive.throttle * speed,
+      Math.sin(forwardAngle) * drive.throttle * speed,
     );
 
     tank.aimAngle += hullTurnDelta + aim.x * PLAYER_TURRET_TURN_RATE * deltaSeconds;
@@ -1594,9 +1684,10 @@ export class CampaignScene extends Phaser.Scene {
     const throttleMagnitude = Phaser.Math.Clamp((alignment + 1) / 2, AI_MIN_DRIVE_THROTTLE, 1);
     const throttle = shouldReverse ? -throttleMagnitude : throttleMagnitude;
 
+    const speed = stats.speed * pushSpeedFactor(tank);
     tank.baseTurnDelta = hullTurnDelta;
     tank.hull.setRotation(nextRotation);
-    tank.hull.setVelocity(Math.cos(nextForwardAngle) * throttle * stats.speed, Math.sin(nextForwardAngle) * throttle * stats.speed);
+    tank.hull.setVelocity(Math.cos(nextForwardAngle) * throttle * speed, Math.sin(nextForwardAngle) * throttle * speed);
 
     return hullTurnDelta;
   }
@@ -3741,6 +3832,14 @@ export class CampaignScene extends Phaser.Scene {
     for (const tank of this.getAllTanks()) {
       if (tank.hull.active) {
         tank.hull.setVelocity(0, 0);
+      }
+    }
+
+    // Halt any car still coasting from a shove so it freezes with everything
+    // else while paused (see TT-26).
+    for (const car of this.carSprites) {
+      if (car.active) {
+        car.setVelocity(0, 0);
       }
     }
 
