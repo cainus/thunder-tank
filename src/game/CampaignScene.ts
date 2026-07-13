@@ -33,7 +33,9 @@ import {
 } from "./team-stripe";
 import { getTreadMarkAlpha, isTreadMarkExpired, shouldSpawnTreadMark } from "./tread-marks";
 import { computeUrbanTreeSpots, isWebglAvailable, treeScaleFactor } from "./urban-decor";
+import { hullYaw, tankModelScale, turretYaw } from "./tank-decor";
 import type { TreeOverlay3D } from "./tree-3d";
+import type { TankOverlay3D } from "./tank-3d";
 import {
   BULLET_MARK_MAX_COUNT,
   getBulletMarkAlpha,
@@ -242,6 +244,10 @@ export class CampaignScene extends Phaser.Scene {
   private impactMarks: ImpactMark[] = [];
   private lightPosts: LightPostRuntime[] = [];
   private treeOverlay?: TreeOverlay3D;
+  private tankOverlay?: TankOverlay3D;
+  // True once the 3D tank overlay has loaded and is rendering; while set, the
+  // flat hull/turret/stripe sprites are hidden and the 3D models stand in.
+  private tanks3DActive = false;
 
   constructor() {
     super("CampaignScene");
@@ -268,6 +274,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyAllTreadMarks();
     this.destroyAllImpactMarks();
     this.destroyTreeOverlay();
+    this.destroyTankOverlay();
     this.lightPosts = [];
   }
 
@@ -375,6 +382,13 @@ export class CampaignScene extends Phaser.Scene {
       .setVisible(false);
     this.publishScore();
     this.registerWindowControls();
+
+    const host = this.game.canvas?.parentElement;
+    if (host && isWebglAvailable()) {
+      // three.js is heavy, so the tank overlay is code-split behind a dynamic
+      // import and only pulled in when WebGL can actually render the 3D models.
+      void this.addTankOverlay(host);
+    }
   }
 
   update(time: number, delta: number): void {
@@ -403,6 +417,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updateCaptureTheFlag(time);
     this.updateCamera();
     this.renderTreeOverlay();
+    this.renderTankOverlay();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
     this.cleanupFarBullets();
@@ -644,6 +659,70 @@ export class CampaignScene extends Phaser.Scene {
   private destroyTreeOverlay(): void {
     this.treeOverlay?.dispose();
     this.treeOverlay = undefined;
+  }
+
+  // Lazily loads the three.js tank overlay module + hull/turret models, then
+  // switches rendering over to the 3D tanks. Falls back to the flat sprites if
+  // anything fails. Guards against the scene shutting down during the async work.
+  private async addTankOverlay(host: HTMLElement): Promise<void> {
+    try {
+      const { TankOverlay3D } = await import("./tank-3d");
+
+      if (!this.scene.isActive()) {
+        return;
+      }
+
+      const overlay = new TankOverlay3D(host);
+      this.tankOverlay = overlay;
+
+      await overlay.load(MODEL_ASSETS.tankHull, MODEL_ASSETS.tankTurret);
+
+      // The scene may have shut down (or restarted) while the models loaded.
+      if (this.tankOverlay === overlay && this.scene.isActive() && overlay.ready) {
+        this.tanks3DActive = true;
+      }
+    } catch (error) {
+      console.warn("3D tank overlay unavailable, falling back to sprites:", error);
+      this.destroyTankOverlay();
+    }
+  }
+
+  private renderTankOverlay(): void {
+    if (!this.tankOverlay || !this.tanks3DActive) {
+      return;
+    }
+
+    const view = this.cameras.main.worldView;
+    const now = this.time.now;
+    const tanks = this.getAllTanks()
+      .filter((tank) => tank.alive)
+      .map((tank) => ({
+        x: tank.hull.x,
+        y: tank.hull.y,
+        hullYaw: hullYaw(tank.hull.rotation),
+        turretYaw: turretYaw(tank.aimAngle),
+        scale: tankModelScale(tank.archetype, this.isBlueTeammate(tank)),
+        color: teamStripeColor(tank.side),
+        shielded: tank.buffs.shieldUntil > now,
+      }));
+    this.tankOverlay.render(
+      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
+      this.scale.gameSize.width,
+      this.scale.gameSize.height,
+      tanks,
+    );
+  }
+
+  private destroyTankOverlay(): void {
+    this.tankOverlay?.dispose();
+    this.tankOverlay = undefined;
+    this.tanks3DActive = false;
+  }
+
+  // A co-op blue teammate (the smaller P2 tank in Capture the Flag) is rendered
+  // slightly smaller; mirrors the flat-sprite hull scale in addTank.
+  private isBlueTeammate(tank: TankRuntime): boolean {
+    return tank.side === "playerTwo" && this.isCaptureTheFlag();
   }
 
   private addParkedCars(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
@@ -2660,6 +2739,16 @@ export class CampaignScene extends Phaser.Scene {
       tank.turret.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.68 : 1);
       tank.hull.setAlpha(tank.buffs.shieldUntil > this.time.now ? 0.78 : 1);
 
+      // With the 3D overlay active, the hull, turret, and team stripe are drawn
+      // as 3D models on the stacked canvas, so hide their flat counterparts. The
+      // physics body stays enabled (visibility is independent of physics), and
+      // the front marker + headlamps remain as helpful 2D overlays.
+      if (this.tanks3DActive) {
+        tank.hull.setVisible(false);
+        tank.turret.setVisible(false);
+        tank.teamStripe?.setVisible(false);
+      }
+
       if (tank.teamStripe) {
         tank.teamStripe.setPosition(tank.hull.x, tank.hull.y);
         tank.teamStripe.setRotation(tank.hull.rotation);
@@ -3297,6 +3386,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyAllTreadMarks();
     this.destroyAllImpactMarks();
     this.destroyTreeOverlay();
+    this.destroyTankOverlay();
     this.cleanupListeners = [];
   }
 }

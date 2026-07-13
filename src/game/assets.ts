@@ -41,4 +41,9 @@ export const MODEL_ASSETS = {
   // Low-poly urban tree, authored by scripts/generate-tree-model.mjs. The .obj
   // references tree.mtl via `mtllib`, so both files must sit side by side.
   tree: "/assets/models/tree.obj",
+  // Low-poly tank hull and turret, authored by scripts/generate-tank-model.mjs.
+  // The turret is a separate model so it can rotate independently of the hull.
+  // Each .obj references its sibling .mtl via `mtllib`.
+  tankHull: "/assets/models/tank-hull.obj",
+  tankTurret: "/assets/models/tank-turret.obj",
 };
