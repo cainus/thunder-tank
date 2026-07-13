@@ -1,59 +1,79 @@
-// STANDING RED SPEC for TT-22: "3D items must clear every map; tanks are not
+// Behavioral spec for TT-22: "3D items must clear every map; tanks are not
 // clearing."
 //
 // Every map runs inside a fresh Phaser.Game mounted on the same persistent DOM
-// host (see GameCanvas.tsx: the effect re-creates the game on mapIndex change).
-// A 3D overlay canvas orphaned by a prior game's teardown — or by an async
-// model-load race — would otherwise stack a second set of 3D items on top of the
-// new map's. The tree overlay defends against this by SWEEPING the host for any
-// pre-existing overlay canvas before appending its own (tree-3d.ts calls
-// removeExistingTreeOverlays(host) right before host.appendChild). See
-// urban-decor.ts + urban-decor.test.ts for that canonical, tested policy.
+// host (GameCanvas.tsx re-creates the game on mapIndex change). A 3D overlay
+// canvas orphaned by a prior game's teardown — or by an async model-load race —
+// would otherwise stack a second set of 3D items on top of the new map's. The
+// tree overlay defends against this by SWEEPING the host for any pre-existing
+// overlay canvas before appending its own (removeExistingTreeOverlays); the tank
+// overlay must obey the same clear-before-append policy so 3D tanks clear every
+// map.
 //
-// The tank overlay (tank-3d.ts, added later for TT-17) copied the overlay
-// pattern but DROPPED that sweep: its constructor appends its canvas to the host
-// with no dedup pass and no removeExisting* helper. That is the bug — stale 3D
-// tank canvases accumulate across maps ("the tanks are not clearing").
-//
-// This test reads the actual source (the same source-of-truth technique used by
-// tank-3d-imports.test.ts / tree-3d-imports.test.ts) and asserts BOTH overlays
-// obey the same clear-before-append policy. The tree assertion passes and proves
-// the check is correct; the tank assertion FAILS until the tank overlay gains the
-// missing sweep. Do NOT "fix" this by weakening the check — fix the overlay.
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+// Rather than matching source text, this mounts two TankOverlay3D instances on
+// one shared host (as advancing to a new map does) and asserts the host is left
+// holding exactly one tank overlay canvas — the observable invariant that keeps
+// 3D tanks from accumulating map-to-map.
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const treeSource = readFileSync(resolve(process.cwd(), "src/game/tree-3d.ts"), "utf8");
-const tankSource = readFileSync(resolve(process.cwd(), "src/game/tank-3d.ts"), "utf8");
-
-/**
- * Whether an overlay module clears prior overlay canvases off the shared host
- * BEFORE appending its own — the invariant that keeps 3D items from stacking up
- * map-to-map. Accepts either a dedicated `removeExisting*Overlays(host)` helper
- * (the tree overlay's approach) or an inline querySelectorAll(...).remove()
- * sweep, as long as it runs before the host.appendChild.
- */
-function clearsHostBeforeAppend(source: string): boolean {
-  const appendIndex = source.indexOf("host.appendChild");
-  if (appendIndex < 0) {
-    return false;
+// jsdom cannot create a WebGL context, so stub three's renderer with one whose
+// domElement is a real <canvas>. Everything else the overlay touches at
+// construction (Scene, OrthographicCamera, lights) is pure JS and left intact.
+vi.mock("three", async () => {
+  const actual = await vi.importActual<typeof import("three")>("three");
+  class FakeWebGLRenderer {
+    readonly domElement = document.createElement("canvas");
+    setClearColor(): void {}
+    setPixelRatio(): void {}
+    setSize(): void {}
+    render(): void {}
+    dispose(): void {}
   }
-  const beforeAppend = source.slice(0, appendIndex);
-  const callsRemoveHelper = /removeExisting\w*Overlays\s*\(\s*host\s*\)/.test(beforeAppend);
-  const inlineSweep = /host\.querySelectorAll\([\s\S]*?\)[\s\S]*?\.remove\(\)/.test(beforeAppend);
-  return callsRemoveHelper || inlineSweep;
-}
+  return { ...actual, WebGLRenderer: FakeWebGLRenderer };
+});
 
-describe("3D overlays clear the shared host before appending (no stacking across maps)", () => {
-  it("tree overlay sweeps prior overlays before appending (canonical reference)", () => {
-    // Guards the test logic itself: the tree overlay is the known-good pattern.
-    expect(clearsHostBeforeAppend(treeSource)).toBe(true);
+import { TankOverlay3D, TANK_OVERLAY_TESTID } from "../src/game/tank-3d";
+
+const OVERLAY_SELECTOR = `[data-testid="${TANK_OVERLAY_TESTID}"]`;
+
+describe("TankOverlay3D clears prior tank overlays from the shared host (TT-22)", () => {
+  const overlays: TankOverlay3D[] = [];
+
+  function mount(host: HTMLElement): TankOverlay3D {
+    const overlay = new TankOverlay3D(host);
+    overlays.push(overlay);
+    return overlay;
+  }
+
+  afterEach(() => {
+    while (overlays.length > 0) {
+      overlays.pop()!.dispose();
+    }
   });
 
-  it("tank overlay sweeps prior overlays before appending, so 3D tanks clear every map", () => {
-    // FAILS today: tank-3d.ts appends its canvas with no dedup sweep, so tank
-    // overlay canvases accumulate as the player advances through maps (TT-22).
-    expect(clearsHostBeforeAppend(tankSource)).toBe(true);
+  it("leaves exactly one tank overlay canvas after a second overlay mounts on the same host", () => {
+    const host = document.createElement("div");
+
+    // First map's overlay mounts its canvas...
+    mount(host);
+    // ...then the player advances and a second game mounts its overlay on the
+    // same persistent host while the prior canvas is still attached.
+    mount(host);
+
+    // Without the sweep the two canvases would both remain (stale 3D tanks
+    // stacking up); with it, only the current overlay's canvas is left.
+    expect(host.querySelectorAll(OVERLAY_SELECTOR)).toHaveLength(1);
+  });
+
+  it("sweeps only tank overlays, leaving the Phaser game canvas on the host", () => {
+    const host = document.createElement("div");
+    const gameCanvas = document.createElement("canvas");
+    host.appendChild(gameCanvas);
+
+    mount(host);
+    mount(host);
+
+    expect(host.contains(gameCanvas)).toBe(true);
+    expect(host.querySelectorAll(OVERLAY_SELECTOR)).toHaveLength(1);
   });
 });

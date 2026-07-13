@@ -17,6 +17,25 @@ import { TREE_CAMERA_TILT, treeOrthoFrustum, type TreeViewRect } from "./urban-d
 
 export type TankViewRect = TreeViewRect;
 
+// data-testid stamped on the 3D tank overlay canvas. Shared by the overlay
+// (which stamps it) and the duplicate-cleanup sweep so both agree on one
+// selector — mirrors TREE_OVERLAY_TESTID for the tree overlay.
+export const TANK_OVERLAY_TESTID = "tank-overlay-3d";
+
+/**
+ * Removes any pre-existing 3D tank overlay canvases from `host`. Each map runs
+ * inside a fresh Phaser.Game mounted on the same persistent DOM host, so a tank
+ * overlay canvas left behind by a prior game would stack a second set of 3D
+ * tanks on top of the new map's — the reported "the tanks are not clearing".
+ * Sweeping the host before appending a new overlay guarantees at most one tank
+ * overlay canvas, regardless of Phaser teardown timing or async model-load
+ * races. Mirrors removeExistingTreeOverlays in urban-decor.ts.
+ */
+export function removeExistingTankOverlays(host: HTMLElement): void {
+  const existing = host.querySelectorAll(`[data-testid="${TANK_OVERLAY_TESTID}"]`);
+  existing.forEach((node) => node.remove());
+}
+
 // One tank's per-frame render state, all in flat gameplay terms; the overlay
 // converts these to 3D transforms internally.
 export interface TankRender {
@@ -68,7 +87,7 @@ export class TankOverlay3D {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
     this.canvas = this.renderer.domElement;
-    this.canvas.setAttribute("data-testid", "tank-overlay-3d");
+    this.canvas.setAttribute("data-testid", TANK_OVERLAY_TESTID);
     Object.assign(this.canvas.style, {
       position: "absolute",
       inset: "0",
@@ -79,19 +98,13 @@ export class TankOverlay3D {
       // so tanks always draw on top of the 3D canopy, and below the HUD (z 5).
       zIndex: "1",
     } satisfies Partial<CSSStyleDeclaration>);
-    // TT-22 observability: unlike the tree overlay (which sweeps the host via
-    // removeExistingTreeOverlays before appending), this overlay does NOT clear
-    // prior tank canvases, so stale 3D tanks stack up as the player advances
-    // through maps. Surface that here without silently masking it — if any prior
-    // tank overlay canvas is already mounted on this shared host, we are about to
-    // add a duplicate. This only reports the defect; it does not remove them.
-    const orphanedTankOverlays = host.querySelectorAll('[data-testid="tank-overlay-3d"]').length;
-    if (orphanedTankOverlays > 0) {
-      console.warn(
-        `[tank-3d] ${orphanedTankOverlays} stale 3D tank overlay canvas(es) still on the game host; ` +
-          "3D tanks are not clearing between maps (TT-22).",
-      );
-    }
+    // Drop any tank overlay canvas orphaned by a prior game on this shared host
+    // before adding ours, so 3D tanks never stack up across maps (TT-22). Every
+    // map runs inside a fresh Phaser.Game mounted on the same persistent host, so
+    // a canvas left behind by a prior game's teardown — or by an async
+    // model-load race — would otherwise stack a second set of 3D tanks on top of
+    // the new map's. Mirrors removeExistingTreeOverlays in tree-3d.ts.
+    removeExistingTankOverlays(host);
     host.appendChild(this.canvas);
 
     this.scene = new THREE.Scene();
