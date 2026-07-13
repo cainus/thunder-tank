@@ -95,7 +95,11 @@ export interface TankRuntime {
   teamStripe?: Phaser.GameObjects.Container;
   headlampCone?: Phaser.GameObjects.Image;
   headlampGlow?: Phaser.GameObjects.Arc;
-  aiRoleLabel?: Phaser.GameObjects.Text;
+  // Current CTF AI role shown as a floating label. The label itself is a DOM
+  // node in the game HUD overlay (game-hud-overlay.ts) so it reads above the 3D
+  // tank overlay; only the role text is tracked here (TT-28). Empty/undefined
+  // means no label.
+  aiRole?: string;
   spawn: Vec2;
   alive: boolean;
   maxHealth: number;

@@ -13,6 +13,7 @@
 import * as THREE from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { LAYER_Z } from "./layer-stack";
 import { TREE_CAMERA_TILT, treeOrthoFrustum, type TreeViewRect } from "./urban-decor";
 
 export type TankViewRect = TreeViewRect;
@@ -106,8 +107,10 @@ export class TankOverlay3D {
       height: "100%",
       pointerEvents: "none",
       // Sit above the tree overlay canvas (which uses the default auto/0 stacking)
-      // so tanks always draw on top of the 3D canopy, and below the HUD (z 5).
-      zIndex: "1",
+      // so tanks always draw on top of the 3D canopy, and below the DOM HUD
+      // layers. The value is owned by the cross-canvas layer contract so the HUD
+      // overlays can be stacked above it consistently (see layer-stack.ts).
+      zIndex: String(LAYER_Z.tankOverlay),
     } satisfies Partial<CSSStyleDeclaration>);
     // Drop any tank overlay canvas orphaned by a prior game on this shared host
     // before adding ours, so 3D tanks never stack up across maps (TT-22). Every

@@ -55,6 +55,7 @@ import type { TreeOverlay3D } from "./tree-3d";
 import type { TankOverlay3D } from "./tank-3d";
 import type { CrateOverlay3D, CratePlacement } from "./crate-3d";
 import type { CarOverlay3D, CarPlacement } from "./car-3d";
+import { GameHudOverlay, type AiRoleLabelState } from "./game-hud-overlay";
 import {
   BULLET_MARK_MAX_COUNT,
   getBulletMarkAlpha,
@@ -291,7 +292,11 @@ export class CampaignScene extends Phaser.Scene {
   private tankByBody = new Map<Phaser.GameObjects.GameObject, TankRuntime>();
   private cleanupListeners: Array<() => void> = [];
   private playerControlLockedUntil = 0;
-  private respawnCountdownText?: Phaser.GameObjects.Text;
+  // DOM HUD layer for in-world HUD messages (RESPAWN countdown, CTF AI role
+  // labels) that must read above the 3D overlay canvases. Phaser depth cannot
+  // cross the canvas boundary, so these live in the CSS z-index stack instead of
+  // on the base game canvas (TT-28, see layer-stack.ts / game-hud-overlay.ts).
+  private gameHud?: GameHudOverlay;
   private externallyPaused = false;
   private ended = false;
   private pausedBulletVelocities = new Map<Phaser.Physics.Arcade.Image, Vec2>();
@@ -349,6 +354,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
     this.destroyCarOverlay();
+    this.destroyGameHud();
     this.crateSprites = [];
     this.treeColliders = undefined;
     this.treeSpots = [];
@@ -488,24 +494,17 @@ export class CampaignScene extends Phaser.Scene {
     }
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.setZoom(1);
-    this.respawnCountdownText = this.add
-      .text(0, 0, "", {
-        align: "center",
-        color: "#f4e2a3",
-        fontFamily: "Inter, sans-serif",
-        fontSize: "42px",
-        fontStyle: "800",
-        stroke: "#15120b",
-        strokeThickness: 7,
-      })
-      .setOrigin(0.5)
-      .setDepth(100)
-      .setScrollFactor(0)
-      .setVisible(false);
     this.publishScore();
     this.registerWindowControls();
 
     const host = this.game.canvas?.parentElement;
+    if (host) {
+      // The RESPAWN countdown and CTF AI role labels live in this DOM layer so
+      // they read on top of the 3D overlay canvases; Phaser depth cannot cross
+      // the canvas boundary (TT-28). The layer exists whether or not WebGL is
+      // available, since the countdown is shown in every mode.
+      this.gameHud = new GameHudOverlay(host);
+    }
     if (host && isWebglAvailable()) {
       // three.js is heavy, so the tank overlay is code-split behind a dynamic
       // import and only pulled in when WebGL can actually render the 3D models.
@@ -2526,20 +2525,25 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updateRespawnCountdown(time: number): void {
-    if (!this.respawnCountdownText) {
+    if (!this.gameHud) {
       return;
     }
 
     if (!this.isPlayerInRespawnCountdown(time)) {
-      this.respawnCountdownText.setVisible(false);
+      this.gameHud.setRespawnCountdown(null);
       return;
     }
 
+    // The countdown lives in the DOM HUD overlay (game-hud-overlay.ts), stacked
+    // above the 3D overlay canvases, so it reads on top of the 3D elements —
+    // Phaser depth on the base canvas could not (TT-28).
     const remainingSeconds = Math.max(1, Math.ceil((this.playerControlLockedUntil - time) / 1_000));
-    this.respawnCountdownText
-      .setText(`RESPAWN\n${remainingSeconds}`)
-      .setPosition(this.cameras.main.width / 2, this.cameras.main.height * 0.34)
-      .setVisible(true);
+    this.gameHud.setRespawnCountdown(`RESPAWN\n${remainingSeconds}`);
+  }
+
+  private destroyGameHud(): void {
+    this.gameHud?.dispose();
+    this.gameHud = undefined;
   }
 
   private clearBullets(): void {
@@ -3241,6 +3245,13 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   private updateTankVisuals(): void {
+    // CTF AI role labels are DOM nodes stacked above the 3D tank overlay, so
+    // they read on top of the 3D tanks (TT-28). Collect the ones that should be
+    // visible this frame, in screen space, and reconcile them in one sync below.
+    const view = this.cameras.main.worldView;
+    const showAiRoleLabels = this.isCaptureTheFlag();
+    const aiRoleLabels: AiRoleLabelState[] = [];
+
     for (const tank of this.getAllTanks()) {
       tank.turret.setPosition(tank.hull.x, tank.hull.y);
       tank.turret.setRotation(tank.aimAngle + Math.PI / 2);
@@ -3286,37 +3297,27 @@ export class CampaignScene extends Phaser.Scene {
         tank.headlampGlow.setAlpha(tank.alive ? (tank.side === "enemy" ? 0.42 : NIGHT_HEADLAMP_GLOW_ALPHA) : 0);
       }
 
-      if (tank.aiRoleLabel) {
-        tank.aiRoleLabel.setPosition(tank.hull.x, tank.hull.y - 76);
-        tank.aiRoleLabel.setVisible(this.isCaptureTheFlag() && tank.alive && Boolean(tank.aiRoleLabel.text));
+      if (showAiRoleLabels && tank.alive && tank.aiRole) {
+        // Convert the label's world anchor (above the tank) into screen-space
+        // pixels for the DOM overlay. Zoom is fixed at 1, so world deltas map
+        // 1:1 to screen pixels relative to the camera's top-left worldView.
+        aiRoleLabels.push({
+          id: tank.id,
+          text: tank.aiRole,
+          screenX: tank.hull.x - view.x,
+          screenY: tank.hull.y - 76 - view.y,
+          team: this.getTankTeam(tank),
+        });
       }
     }
+
+    this.gameHud?.syncAiRoleLabels(aiRoleLabels);
   }
 
+  // Records a tank's CTF AI role; the floating label itself is rendered as a DOM
+  // node above the 3D tank overlay by syncAiRoleLabels() (TT-28).
   private setAiRoleLabel(tank: TankRuntime, role: CtfAiRole | ""): void {
-    if (!role) {
-      tank.aiRoleLabel?.setText("");
-      tank.aiRoleLabel?.setVisible(false);
-      return;
-    }
-
-    if (!tank.aiRoleLabel) {
-      const team = this.getTankTeam(tank);
-      tank.aiRoleLabel = this.add
-        .text(tank.hull.x, tank.hull.y - 76, role, {
-          fontFamily: "Arial, sans-serif",
-          fontSize: "13px",
-          fontStyle: "800",
-          color: team === "blue" ? "#bfefff" : "#ffd0c8",
-          backgroundColor: "rgba(12, 17, 13, 0.72)",
-          padding: { x: 6, y: 3 },
-        })
-        .setOrigin(0.5)
-        .setDepth(70);
-    }
-
-    tank.aiRoleLabel.setText(role);
-    tank.aiRoleLabel.setVisible(tank.alive);
+    tank.aiRole = role;
   }
 
   private updateCaptureTheFlag(_time: number): void {
@@ -3905,6 +3906,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
     this.destroyCarOverlay();
+    this.destroyGameHud();
     this.cleanupListeners = [];
   }
 }
