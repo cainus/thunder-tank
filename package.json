@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev-auto-update.mjs",
     "dev:portless": "portless run --name thunder-tank npm run dev:raw",
+    "predev:raw": "node scripts/verify-deps.mjs",
     "dev:raw": "vite",
     "dev:api": "tsx server/index.ts",
     "build": "tsc -b && vite build",
