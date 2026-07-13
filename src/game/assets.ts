@@ -46,4 +46,7 @@ export const MODEL_ASSETS = {
   // Each .obj references its sibling .mtl via `mtllib`.
   tankHull: "/assets/models/tank-hull.obj",
   tankTurret: "/assets/models/tank-turret.obj",
+  // Low-poly crate obstacle, authored by scripts/generate-crate-model.mjs. As
+  // with the tree, the .obj references crate.mtl via `mtllib`.
+  crate: "/assets/models/crate.obj",
 };
