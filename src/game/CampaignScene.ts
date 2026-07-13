@@ -292,6 +292,9 @@ export class CampaignScene extends Phaser.Scene {
   private cleanupListeners: Array<() => void> = [];
   private playerControlLockedUntil = 0;
   private respawnCountdownText?: Phaser.GameObjects.Text;
+  // One-shot latch for the TT-28 occlusion warning so it is logged once per
+  // scene instead of every frame the countdown is on screen.
+  private warnedRespawnCountdownOccluded = false;
   private externallyPaused = false;
   private ended = false;
   private pausedBulletVelocities = new Map<Phaser.Physics.Arcade.Image, Vec2>();
@@ -2540,6 +2543,30 @@ export class CampaignScene extends Phaser.Scene {
       .setText(`RESPAWN\n${remainingSeconds}`)
       .setPosition(this.cameras.main.width / 2, this.cameras.main.height * 0.34)
       .setVisible(true);
+
+    // TT-28 field detector: the countdown is a Phaser Text on the base game
+    // canvas (setDepth(100)); the 3D overlays are sibling canvases composited
+    // above that canvas, so while any of them is live the "RESPAWN" message is
+    // drawn UNDER the 3D elements. Surface that occlusion once per scene so it is
+    // visible in logs/telemetry until the countdown is lifted into the DOM HUD
+    // layer (styles.css `.hud`, z-index 5). Detection only — no fix here.
+    if (!this.warnedRespawnCountdownOccluded && this.hasActive3DOverlay()) {
+      this.warnedRespawnCountdownOccluded = true;
+      console.warn(
+        "[TT-28] RESPAWN countdown is occluded by the 3D overlays: it is a Phaser " +
+          "Text (depth 100) on the base game canvas, but the tank/tree/crate/car " +
+          "overlays are sibling canvases stacked above it (tank overlay z-index 1). " +
+          "Phaser depth cannot cross the canvas boundary; the countdown must live in " +
+          "the DOM HUD layer to read on top.",
+      );
+    }
+  }
+
+  // True when at least one 3D overlay canvas is mounted and therefore compositing
+  // above the base game canvas that carries the RESPAWN countdown. Used only by
+  // the TT-28 occlusion detector above.
+  private hasActive3DOverlay(): boolean {
+    return Boolean(this.tankOverlay || this.treeOverlay || this.crateOverlay || this.carOverlay);
   }
 
   private clearBullets(): void {
