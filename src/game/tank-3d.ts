@@ -79,6 +79,19 @@ export class TankOverlay3D {
       // so tanks always draw on top of the 3D canopy, and below the HUD (z 5).
       zIndex: "1",
     } satisfies Partial<CSSStyleDeclaration>);
+    // TT-22 observability: unlike the tree overlay (which sweeps the host via
+    // removeExistingTreeOverlays before appending), this overlay does NOT clear
+    // prior tank canvases, so stale 3D tanks stack up as the player advances
+    // through maps. Surface that here without silently masking it — if any prior
+    // tank overlay canvas is already mounted on this shared host, we are about to
+    // add a duplicate. This only reports the defect; it does not remove them.
+    const orphanedTankOverlays = host.querySelectorAll('[data-testid="tank-overlay-3d"]').length;
+    if (orphanedTankOverlays > 0) {
+      console.warn(
+        `[tank-3d] ${orphanedTankOverlays} stale 3D tank overlay canvas(es) still on the game host; ` +
+          "3D tanks are not clearing between maps (TT-22).",
+      );
+    }
     host.appendChild(this.canvas);
 
     this.scene = new THREE.Scene();
