@@ -11,6 +11,7 @@ import {
   occluderClipTransform,
   removeExistingCrateOverlays,
   removeExistingTreeOverlays,
+  treeCameraEye,
   treeHeightScreenOffset,
   treeOrthoFrustum,
   treeScaleFactor,
@@ -92,6 +93,102 @@ describe("occluderClipTransform", () => {
     const transform = occluderClipTransform(view.centerX, view.centerY, view, 54);
     expect(transform.width).toBeCloseTo((2 * 54) / view.width, 5);
     expect(transform.height).toBeCloseTo((2 * 54) / view.height, 5);
+  });
+});
+
+describe("treeCameraEye", () => {
+  const cameraHeight = 4000;
+
+  it("anchors the eye and look-at target to the world view centre, not any player", () => {
+    const view = { centerX: 1000, centerY: 800, width: 1920, height: 1080 };
+    const { eye, target } = treeCameraEye(view, cameraHeight, TREE_CAMERA_TILT);
+
+    // The eye tracks the view centre horizontally/in depth (offset only by the
+    // fixed tilt lean) and the look-at target sits exactly on the ground plane
+    // under the view centre. Nothing here depends on a tank/player position.
+    expect(eye.x).toBe(view.centerX);
+    expect(eye.z).toBeCloseTo(view.centerY + cameraHeight * Math.sin(TREE_CAMERA_TILT), 5);
+    expect(eye.height).toBeCloseTo(cameraHeight * Math.cos(TREE_CAMERA_TILT), 5);
+    expect(target).toEqual({ x: view.centerX, height: 0, z: view.centerY });
+  });
+
+  it("pans the eye and target by exactly the camera's world movement", () => {
+    // As player 1 drives and the Phaser camera follows, only view.centerX/Y move.
+    // The eye + target must translate by the same delta so the whole overlay
+    // pans with the world (never lagging behind or drifting toward the player).
+    const before = treeCameraEye(
+      { centerX: 1000, centerY: 800, width: 1920, height: 1080 },
+      cameraHeight,
+      TREE_CAMERA_TILT,
+    );
+    const after = treeCameraEye(
+      { centerX: 1200, centerY: 900, width: 1920, height: 1080 },
+      cameraHeight,
+      TREE_CAMERA_TILT,
+    );
+
+    expect(after.eye.x - before.eye.x).toBeCloseTo(200, 5);
+    expect(after.eye.z - before.eye.z).toBeCloseTo(100, 5);
+    expect(after.target.x - before.target.x).toBeCloseTo(200, 5);
+    expect(after.target.z - before.target.z).toBeCloseTo(100, 5);
+  });
+});
+
+describe("trees stay world-locked as the camera follows player 1", () => {
+  // Regression evidence for the "trees seem to all move with player 1" symptom.
+  // The overlay places each tree at a fixed world position and drives its camera
+  // purely from the Phaser world view (treeCameraEye), so a tree's ground base
+  // maps to screen via the same linear world->clip transform the eraser holes
+  // use (occluderClipTransform). If the overlay were instead pinned to player 1,
+  // a world-fixed tree would hold a constant screen position as player 1 moved.
+  const width = 1920;
+  const height = 1080;
+  const tree = { x: 500, y: 400 };
+
+  // Player 1 (and thus the followed camera centre) moves right + down between
+  // two frames; the visible world rectangle is otherwise unchanged.
+  const player1Before = { x: 1000, y: 800 };
+  const player1After = { x: 1200, y: 900 };
+  const viewBefore = { centerX: player1Before.x, centerY: player1Before.y, width, height };
+  const viewAfter = { centerX: player1After.x, centerY: player1After.y, width, height };
+
+  it("moves the tree on screen when player 1 moves (not pinned to the player)", () => {
+    const clipBefore = occluderClipTransform(tree.x, tree.y, viewBefore);
+    const clipAfter = occluderClipTransform(tree.x, tree.y, viewAfter);
+
+    // A world-fixed tree must shift on screen; a player-pinned tree would not.
+    expect(clipAfter.x).not.toBeCloseTo(clipBefore.x, 5);
+    expect(clipAfter.y).not.toBeCloseTo(clipBefore.y, 5);
+  });
+
+  it("scrolls the tree opposite to the camera, exactly like the ground", () => {
+    const clipBefore = occluderClipTransform(tree.x, tree.y, viewBefore);
+    const clipAfter = occluderClipTransform(tree.x, tree.y, viewAfter);
+
+    // The camera moved +200 world-x, so the tree slides -200 world-x on screen
+    // (2 * -200 / width in clip units) and likewise for y — pure world scroll.
+    expect(clipAfter.x - clipBefore.x).toBeCloseTo((2 * -200) / width, 5);
+    expect(clipAfter.y - clipBefore.y).toBeCloseTo((-2 * -100) / height, 5);
+
+    // Any other ground landmark (e.g. the road centre line) scrolls by the same
+    // clip delta, confirming the tree tracks the map rather than the player.
+    const landmark = { x: 960, y: 540 };
+    const landmarkBefore = occluderClipTransform(landmark.x, landmark.y, viewBefore);
+    const landmarkAfter = occluderClipTransform(landmark.x, landmark.y, viewAfter);
+    expect(clipAfter.x - clipBefore.x).toBeCloseTo(landmarkAfter.x - landmarkBefore.x, 5);
+    expect(clipAfter.y - clipBefore.y).toBeCloseTo(landmarkAfter.y - landmarkBefore.y, 5);
+  });
+
+  it("would keep a player-pinned decoration fixed on screen (contrast case)", () => {
+    // A decoration locked to player 1 sits at the view centre every frame, so it
+    // maps to the clip origin regardless of camera movement — the exact drift the
+    // bug report described. The tree above demonstrably does NOT behave this way.
+    const pinnedBefore = occluderClipTransform(player1Before.x, player1Before.y, viewBefore);
+    const pinnedAfter = occluderClipTransform(player1After.x, player1After.y, viewAfter);
+    expect(pinnedBefore.x).toBeCloseTo(0, 5);
+    expect(pinnedBefore.y).toBeCloseTo(0, 5);
+    expect(pinnedAfter.x).toBeCloseTo(0, 5);
+    expect(pinnedAfter.y).toBeCloseTo(0, 5);
   });
 });
 

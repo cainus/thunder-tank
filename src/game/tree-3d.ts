@@ -21,6 +21,7 @@ import {
   TREE_WORLD_SCALE,
   occluderClipTransform,
   removeExistingTreeOverlays,
+  treeCameraEye,
   treeOrthoFrustum,
   treeScaleFactor,
   type TreeViewRect,
@@ -201,14 +202,18 @@ export class TreeOverlay3D {
     this.camera.updateProjectionMatrix();
 
     // Eye sits above the view centre, tilted toward +Z so canopies lean
-    // up-screen while trunk bases stay pinned to their flat map positions.
-    this.camera.position.set(
-      view.centerX,
-      CAMERA_HEIGHT * Math.cos(TREE_CAMERA_TILT),
-      view.centerY + CAMERA_HEIGHT * Math.sin(TREE_CAMERA_TILT),
-    );
+    // up-screen while trunk bases stay pinned to their flat map positions. Both
+    // the eye and the look-at target are anchored to the *world view* (never to a
+    // tank/player) so the overlay pans with the ground as the Phaser camera
+    // scrolls. Note this only stays lag-free if `view` is the CURRENT frame's
+    // worldView; the caller must render after Phaser's preRender (see
+    // CampaignScene.renderTreeOverlay), or the trees fall a frame behind the
+    // followed camera and appear to drift with player 1. See treeCameraEye + the
+    // world-locking tests in urban-decor.test.ts.
+    const { eye, target } = treeCameraEye(view, CAMERA_HEIGHT, TREE_CAMERA_TILT);
+    this.camera.position.set(eye.x, eye.height, eye.z);
     this.camera.up.set(0, 0, -1);
-    this.camera.lookAt(view.centerX, 0, view.centerY);
+    this.camera.lookAt(target.x, target.height, target.z);
 
     this.renderer.clear();
     this.renderer.render(this.scene, this.camera);

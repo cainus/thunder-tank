@@ -127,6 +127,44 @@ export function treeOrthoFrustum(
 }
 
 /**
+ * Eye (position) of the tilted orthographic tree camera for a given Phaser world
+ * view, plus the point it looks at. Both are pinned to the *world view centre* —
+ * a value the Phaser camera derives independently of any single tank — and never
+ * to a player/tank position. That is the whole reason a world-fixed tree scrolls
+ * with the ground instead of appearing to travel with player 1: as player 1
+ * moves the Phaser camera pans, `view.centerX/centerY` change, and the tree eye +
+ * target pan with the *world*, keeping each tree's ground base registered to its
+ * fixed map spot (see the world-locking tests in urban-decor.test.ts). Extracted
+ * from tree-3d.ts's render() so the production camera math is directly testable
+ * without a WebGL context.
+ */
+export function treeCameraEye(
+  view: TreeViewRect,
+  cameraHeight: number,
+  tilt: number = TREE_CAMERA_TILT,
+): { eye: Vec2AndHeight; target: Vec2AndHeight } {
+  return {
+    // Eye above the view centre, nudged toward +Z (down-screen) by the tilt so
+    // canopies lean up-screen while trunk bases stay pinned to their map spots.
+    eye: {
+      x: view.centerX,
+      height: cameraHeight * Math.cos(tilt),
+      z: view.centerY + cameraHeight * Math.sin(tilt),
+    },
+    // Looks straight at the view centre on the ground plane (height 0).
+    target: { x: view.centerX, height: 0, z: view.centerY },
+  };
+}
+
+// A three.js world-space point on the tree camera's XZ ground plane: `x` maps to
+// screen X, `z` maps to screen Y (Phaser's downward Y), `height` is elevation.
+export interface Vec2AndHeight {
+  x: number;
+  height: number;
+  z: number;
+}
+
+/**
  * Whether the current environment can create a WebGL context. Kept here (free of
  * three.js) so callers can decide synchronously whether to lazy-load the 3D tree
  * overlay or fall back to flat sprites, without pulling three into the main

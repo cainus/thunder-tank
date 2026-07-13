@@ -374,6 +374,16 @@ export class CampaignScene extends Phaser.Scene {
         kind: "obstacle",
       }),
     );
+    // The tree trunk colliders are populated during addArena() above (only on
+    // daytime maps that place trees), so the group must already exist here.
+    // Assert that ordering invariant: any daytime map places trees, so a missing
+    // group means addArena() was reordered to run after this collision setup —
+    // fail loudly instead of silently regressing trees to drive-through.
+    if (!this.isNightMap() && !this.treeColliders) {
+      throw new Error(
+        "treeColliders group missing during collision setup: addArena() must run before this block so daytime trees stay solid",
+      );
+    }
     if (this.treeColliders) {
       this.physics.add.collider(tankHulls, this.treeColliders);
       this.physics.add.collider(this.bullets, this.treeColliders, (bullet) =>
@@ -429,6 +439,17 @@ export class CampaignScene extends Phaser.Scene {
       // import and only pulled in when WebGL can actually render the 3D models.
       void this.addTankOverlay(host);
     }
+
+    // Draw the 3D tree overlay from the scene's post-camera RENDER event (fires
+    // after cameras.render() has refreshed worldView for this frame) so it locks
+    // to the exact camera state Phaser rendered the ground with. Doing this in
+    // update() would use the stale, pre-preRender worldView and lag the trees a
+    // frame behind the followed camera. renderTreeOverlay() no-ops until the
+    // overlay finishes its async load.
+    this.events.on(Phaser.Scenes.Events.RENDER, this.renderTreeOverlay, this);
+    this.cleanupListeners.push(() =>
+      this.events.off(Phaser.Scenes.Events.RENDER, this.renderTreeOverlay, this),
+    );
   }
 
   update(time: number, delta: number): void {
@@ -456,7 +477,13 @@ export class CampaignScene extends Phaser.Scene {
     this.updateTankVisuals();
     this.updateCaptureTheFlag(time);
     this.updateCamera();
-    this.renderTreeOverlay();
+    // NB: the 3D tree overlay is NOT drawn here. Phaser only recomputes
+    // cameras.main.worldView (and applies the follow-lerp scroll) during its
+    // preRender, which runs *after* update(); drawing the overlay here would feed
+    // it last frame's worldView, leaving the trees a frame behind the ground so
+    // they appear to slide with the followed camera (the "trees move with player
+    // 1" defect). It is instead driven from the post-camera RENDER event (wired
+    // in create()) so it renders with the exact frame Phaser just drew.
     this.renderTankOverlay();
     this.renderCrateOverlay();
     this.updatePickupRespawns(time);

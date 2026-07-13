@@ -55,8 +55,14 @@ function buildTrunk() {
 
   for (let s = 0; s < TRUNK_SEGMENTS; s += 1) {
     const next = (s + 1) % TRUNK_SEGMENTS;
-    faces.push({ verts: [bottom[s], bottom[next], top[next]], group: "trunk" });
-    faces.push({ verts: [bottom[s], top[next], top[s]], group: "trunk" });
+    // Wind each side quad counter-clockwise as seen from OUTSIDE the trunk so the
+    // face normal points radially outward. The reversed winding used before made
+    // the trunk's outward faces back-faces, which three.js culls by default
+    // (Material.side === FrontSide) — the trunk vanished and trees rendered as
+    // canopy-only blobs (the "trees have no trunks" defect). The canopy cones are
+    // already wound outward, which is why only the trunk disappeared.
+    faces.push({ verts: [bottom[s], top[next], bottom[next]], group: "trunk" });
+    faces.push({ verts: [bottom[s], top[s], top[next]], group: "trunk" });
   }
 }
 
