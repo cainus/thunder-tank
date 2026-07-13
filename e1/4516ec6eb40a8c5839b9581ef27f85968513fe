@@ -1,0 +1,30 @@
+tests/tree-overlay-opacity.test.ts
+  s_4f61618521ad44::t_4fe8e92d9d5f36 1,5-9,11-15,17-20,24,28-29,32,40,42-44,46-54,56-57,60-64,67-70
+src/game/tree-3d.ts
+  s_4f61618521ad44::t_0a688d8bfb870e 18
+  s_4f61618521ad44::t_ac9a6990abe872 33-37
+src/game/CampaignScene.ts
+  s_4f61618521ad44::t_31a9ca3a63687c 617-619,623
+  s_4f61618521ad44::t_998d63ac42e35a 35
+src/game/crate-3d.ts
+  s_4f61618521ad44::t_dd53c9bc5b3923 20
+  s_4f61618521ad44::t_baa38d8df9f719 37-40
+src/game/urban-decor.ts
+  s_4f61618521ad44::t_0eb14c6bb106b6 52-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "e14516ec6eb40a8c5839b9581ef27f85968513fe",
+  "prompts": {},
+  "sessions": {
+    "s_4f61618521ad44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f7d5c69-b689-443a-b789-4b3cfc7e51f4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
