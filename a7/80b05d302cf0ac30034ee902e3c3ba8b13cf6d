@@ -1,0 +1,43 @@
+src/game/types.ts
+  s_b30c8cd65e4928::t_40700aa4b1db99 98-102
+src/game/CampaignScene.ts
+  s_b30c8cd65e4928::t_f25b7d743ced88 2399,2404,2408-2410,2412,2415-2417
+  s_b30c8cd65e4928::t_a4e3aef447acac 3119-3125
+  s_b30c8cd65e4928::t_8e29e83b99b4a8 332
+  s_b30c8cd65e4928::t_4fb3d98281a56d 455-461
+  s_b30c8cd65e4928::t_155716eadb118b 3188-3189,3191
+  s_b30c8cd65e4928::t_41c31e173fe8e0 3171-3181,3184-3185
+  s_b30c8cd65e4928::t_53f48d11c1d141 48
+  s_b30c8cd65e4928::t_fba44be55ae818 3772
+  s_b30c8cd65e4928::t_5fb010f052a190 277-281
+src/game/tank-3d.ts
+  s_b30c8cd65e4928::t_b3e86eb6313ee2 16
+  s_b30c8cd65e4928::t_a8876f3b8f8232 99-102
+src/game/game-hud-overlay.ts
+  s_b30c8cd65e4928::t_3106b794aec3b6 1-74,76-142
+  s_b30c8cd65e4928::t_1aefe46c9920bd 75
+src/game/layer-stack.ts
+  s_b30c8cd65e4928::t_956e4afe0f7dfc 1-36
+tests/respawn-countdown-layer.test.ts
+  s_b30c8cd65e4928::t_0431b4cae26b7f 4,6-13,15-20,39,42,62-63,66-70,75-78,81-89,95-97
+tests/game-hud-overlay.test.ts
+  s_b30c8cd65e4928::t_601a6d0d9abc24 1-90
+src/styles.css
+  s_b30c8cd65e4928::t_951a4f4d7f594d 83-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "a780b05d302cf0ac30034ee902e3c3ba8b13cf6d",
+  "prompts": {},
+  "sessions": {
+    "s_b30c8cd65e4928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19bcd440-a48e-4e6b-ad2e-c822fe0293bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
