@@ -1,0 +1,19 @@
+tests/tree-overlay-opacity.test.ts
+  s_5686f426670f42::t_c06ceecc68f38c 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "45598c01492d74578a8bf687b922c46c4adb176a",
+  "prompts": {},
+  "sessions": {
+    "s_5686f426670f42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f22ed889-60f7-4881-b489-21d3ddb00be3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
