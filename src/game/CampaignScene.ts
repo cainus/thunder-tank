@@ -119,10 +119,18 @@ const URBAN_TREE_SHADOW_OFFSET = 30;
 const CRATE_SHADOW_WIDTH = 74;
 const CRATE_SHADOW_HEIGHT = 40;
 const CRATE_SHADOW_OFFSET = 12;
-// Non-collidable urban dressing (buildings, trees, parked cars, plaza) is
-// painted on the ground and must read as clearly subdued so players never
-// confuse it with real, collidable obstacles. This multiplier washes the
-// decoration back so actual obstacles (full opacity, depth 8) stay legible.
+// Half-extent (px) of the invisible, solid collision core planted at each tree's
+// trunk base so tanks and bullets can't drive/shoot straight through the tree.
+// Sized to the trunk plus a margin (a bit larger than a tank hull, ~56px) so the
+// tree reads as a real obstacle without collision reaching the wide, purely
+// decorative canopy that overhangs it.
+const URBAN_TREE_TRUNK_RADIUS = 30;
+// Non-collidable urban dressing (buildings, parked cars, plaza, and the trees'
+// decorative canopies) is painted on the ground and must read as clearly
+// subdued so players never confuse it with real, collidable obstacles. This
+// multiplier washes the decoration back so actual obstacles (full opacity,
+// depth 8) stay legible. (Trees also have a solid, invisible trunk core — see
+// URBAN_TREE_TRUNK_RADIUS — even though their canopy stays dressing.)
 const URBAN_DECOR_ALPHA = 0.45;
 const FIRE_SFX_KEYS: AssetKey[] = ["fireSfx15", "fireSfx16", "fireSfx17"];
 const EXPLOSION_SFX_KEYS: AssetKey[] = ["explosionSfx4", "explosionSfx7"];
@@ -234,6 +242,13 @@ export class CampaignScene extends Phaser.Scene {
   private enemies: TankRuntime[] = [];
   private score: ScoreState = { player: 0, enemy: 0 };
   private obstacles!: Phaser.Physics.Arcade.StaticGroup;
+  // Invisible solid cores at each urban tree trunk. Kept separate from
+  // `obstacles` because it is populated during addArena(), before the shared
+  // obstacle group exists, and only on daytime maps that actually place trees.
+  private treeColliders?: Phaser.Physics.Arcade.StaticGroup;
+  // Trunk-base positions of the solid trees, kept so spawn placement can steer
+  // tanks clear of them (the collider group itself isn't consulted for spawns).
+  private treeSpots: Vec2[] = [];
   private bullets!: Phaser.Physics.Arcade.Group;
   private pickups!: Phaser.Physics.Arcade.Group;
   private ctf?: CtfRuntime;
@@ -287,6 +302,8 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
     this.crateSprites = [];
+    this.treeColliders = undefined;
+    this.treeSpots = [];
     this.lightPosts = [];
   }
 
@@ -357,6 +374,15 @@ export class CampaignScene extends Phaser.Scene {
         kind: "obstacle",
       }),
     );
+    if (this.treeColliders) {
+      this.physics.add.collider(tankHulls, this.treeColliders);
+      this.physics.add.collider(this.bullets, this.treeColliders, (bullet) =>
+        this.destroyBullet(bullet as Phaser.GameObjects.GameObject, {
+          angle: this.getBulletTravelAngleFromObject(bullet as Phaser.GameObjects.GameObject),
+          kind: "obstacle",
+        }),
+      );
+    }
     this.physics.add.overlap(this.bullets, humanHulls, (bullet, hull) =>
       this.handleBulletHit(bullet as Phaser.GameObjects.GameObject, hull as Phaser.GameObjects.GameObject),
     );
@@ -578,11 +604,12 @@ export class CampaignScene extends Phaser.Scene {
   private addUrbanTrees(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
     const treeSpots = computeUrbanTreeSpots(this.map.width, this.map.height, roadInsetX, roadInsetY);
 
-    // Soft ground shadow so the canopy still reads as grounded. Trees are
-    // non-collidable dressing, so the shadow is washed back with URBAN_DECOR_ALPHA
-    // to stay clearly subdued against real obstacles. The shadow stays on the 2D
-    // ground layer even when the canopy is a 3D model composited on top, and is
+    // Soft ground shadow so the canopy still reads as grounded. It is washed
+    // back with URBAN_DECOR_ALPHA to stay clearly subdued, and stays on the 2D
+    // ground layer even when the canopy is a 3D model composited on top; it is
     // sized by the same per-tree factor so it tracks each canopy's variation.
+    // (The trees themselves are solid — see addTreeColliders — but the canopy
+    // that overhangs the collision core is still decorative dressing.)
     treeSpots.forEach((spot, index) => {
       const scale = treeScaleFactor(index);
       this.add
@@ -596,6 +623,11 @@ export class CampaignScene extends Phaser.Scene {
         )
         .setDepth(-10);
     });
+
+    // Solid trunk cores so trees are real obstacles (tanks/bullets can't pass
+    // through). These are shared by both the 3D-overlay and flat-sprite render
+    // paths below, so the trees collide identically regardless of which renders.
+    this.addTreeColliders(treeSpots);
 
     const host = this.game.canvas?.parentElement;
 
@@ -620,6 +652,25 @@ export class CampaignScene extends Phaser.Scene {
         .setAlpha(URBAN_DECOR_ALPHA)
         .setDepth(-9);
     });
+  }
+
+  // Plants an invisible, static, solid square body at each tree trunk so tanks
+  // and bullets collide with the tree instead of driving straight through it.
+  // The body is centred on the trunk base (which stays 1:1 with the flat map
+  // position under the tilted 3D camera), not the up-screen-leaning canopy.
+  private addTreeColliders(treeSpots: Vec2[]): void {
+    const group = this.physics.add.staticGroup();
+    this.treeColliders = group;
+    this.treeSpots = treeSpots;
+
+    for (const spot of treeSpots) {
+      const collider = group.create(spot.x, spot.y, "crate") as Phaser.Physics.Arcade.Image;
+      collider.setVisible(false);
+      // Scale the (invisible) sprite so its default full-frame static body spans
+      // the trunk core, then refresh the static body to match the new size.
+      collider.setScale((URBAN_TREE_TRUNK_RADIUS * 2) / collider.width);
+      collider.refreshBody();
+    }
   }
 
   // Lazily loads the three.js overlay module + tree model, then places the 3D
@@ -2326,6 +2377,12 @@ export class CampaignScene extends Phaser.Scene {
       const obstacleClearance = obstacle.kind === "barricade" ? SPAWN_CLEARANCE + 60 : SPAWN_CLEARANCE;
 
       if (Phaser.Math.Distance.Between(point.x, point.y, obstacle.x, obstacle.y) < obstacleClearance) {
+        return false;
+      }
+    }
+
+    for (const tree of this.treeSpots) {
+      if (Phaser.Math.Distance.Between(point.x, point.y, tree.x, tree.y) < SPAWN_CLEARANCE) {
         return false;
       }
     }

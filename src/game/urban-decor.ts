@@ -4,10 +4,17 @@
 // a rendering engine.
 import type { Vec2 } from "./types";
 
-// World tilt (radians) applied to the orthographic 3D tree camera. A small tilt
-// keeps each tree's trunk base aligned with its flat 2D map position while
-// letting the canopy lean up-screen, which is what sells the models as 3D.
-export const TREE_CAMERA_TILT = (24 * Math.PI) / 180;
+// World tilt (radians) applied to the orthographic 3D tree camera. The tilt
+// keeps each tree's trunk base aligned with its flat 2D map position (ground
+// registration is tilt-independent — see treeOrthoFrustum) while letting the
+// canopy lean up-screen, which both sells the models as 3D and — crucially —
+// exposes the trunk below the canopy. An almost-top-down tilt hid the trunk
+// entirely because the canopy overhangs the trunk base from directly above, so
+// trees rendered as bare blobs (the "trees have no trunks" defect). This more
+// oblique angle lifts the leaned canopy clear of the trunk base; the visible,
+// ground-planted trunk also anchors each tree to its fixed map spot so the
+// canopy no longer reads as an unmoored blob drifting with the camera.
+export const TREE_CAMERA_TILT = (42 * Math.PI) / 180;
 
 // Uniform world-units-per-model-unit scale applied to the loaded tree model.
 // The model is authored with a ~1-unit canopy radius, so this makes a canopy
@@ -148,6 +155,29 @@ export function isWebglAvailable(): boolean {
  */
 export function treeHeightScreenOffset(height: number, tilt: number = TREE_CAMERA_TILT): number {
   return height * Math.sin(tilt);
+}
+
+// Authored proportions (in model units) of the tree model's lowest canopy tier,
+// mirrored from scripts/generate-tree-model.mjs. Kept here so the trunk-exposure
+// geometry can be reasoned about / unit-tested without loading the .obj.
+export const TREE_CANOPY_BASE_HEIGHT = 2.2;
+export const TREE_CANOPY_BASE_RADIUS = 0.95;
+
+/**
+ * How far the trunk base peeks out below the leaned lower edge of the canopy,
+ * in model units, under the tilted tree camera. The canopy base ring sits at
+ * `canopyBaseHeight` and leans up-screen by `canopyBaseHeight * sin(tilt)`,
+ * while its lower rim still reaches `canopyBaseRadius` down-screen of the trunk;
+ * a positive result means the trunk is visible (not fully overhung). Used only
+ * for reasoning/tests about trunk visibility; the actual projection is done by
+ * three.js.
+ */
+export function trunkExposureBelowCanopy(
+  canopyBaseHeight: number = TREE_CANOPY_BASE_HEIGHT,
+  canopyBaseRadius: number = TREE_CANOPY_BASE_RADIUS,
+  tilt: number = TREE_CAMERA_TILT,
+): number {
+  return canopyBaseHeight * Math.sin(tilt) - canopyBaseRadius;
 }
 
 // World-space radius of the soft hole punched into the 3D tree canopy for each

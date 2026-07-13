@@ -3,6 +3,8 @@ import {
   CRATE_OVERLAY_TESTID,
   CRATE_WORLD_SCALE,
   TREE_CAMERA_TILT,
+  TREE_CANOPY_BASE_HEIGHT,
+  TREE_CANOPY_BASE_RADIUS,
   TREE_OVERLAY_TESTID,
   TREE_SCALE_VARIATION,
   computeUrbanTreeSpots,
@@ -12,6 +14,7 @@ import {
   treeHeightScreenOffset,
   treeOrthoFrustum,
   treeScaleFactor,
+  trunkExposureBelowCanopy,
 } from "../src/game/urban-decor";
 
 describe("computeUrbanTreeSpots", () => {
@@ -202,5 +205,32 @@ describe("CRATE_WORLD_SCALE", () => {
     // with a 1-unit footprint, so the world scale should land near that size.
     expect(CRATE_WORLD_SCALE).toBeGreaterThan(40);
     expect(CRATE_WORLD_SCALE).toBeLessThan(120);
+  });
+});
+
+describe("trunkExposureBelowCanopy", () => {
+  it("exposes the trunk under the current oblique camera tilt", () => {
+    // Regression guard for the "trees have no trunks" defect: at the shipped
+    // tilt + canopy proportions the trunk must peek out below the leaned canopy.
+    expect(trunkExposureBelowCanopy()).toBeGreaterThan(0);
+  });
+
+  it("hides the trunk at the old near-top-down tilt", () => {
+    // The pre-fix ~24° tilt could not clear the canopy over the trunk base, no
+    // matter the canopy size, which is what rendered trees as bare blobs.
+    const oldTilt = (24 * Math.PI) / 180;
+    expect(
+      trunkExposureBelowCanopy(TREE_CANOPY_BASE_HEIGHT, TREE_CANOPY_BASE_RADIUS, oldTilt),
+    ).toBeLessThan(0);
+  });
+
+  it("exposes more trunk as the camera tilts further from top-down", () => {
+    const shallow = trunkExposureBelowCanopy(TREE_CANOPY_BASE_HEIGHT, TREE_CANOPY_BASE_RADIUS, 0.6);
+    const steep = trunkExposureBelowCanopy(TREE_CANOPY_BASE_HEIGHT, TREE_CANOPY_BASE_RADIUS, 0.9);
+    expect(steep).toBeGreaterThan(shallow);
+  });
+
+  it("uses a tilt oblique enough to reveal the trunk", () => {
+    expect(TREE_CAMERA_TILT).toBeGreaterThan((30 * Math.PI) / 180);
   });
 });

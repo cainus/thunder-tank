@@ -10,16 +10,27 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(here, "../public/assets/models");
 
 // The model is authored around a 1-unit "footprint": the trunk stands at the
-// origin on the ground plane (y = 0) and the whole tree fits inside roughly a
-// 2x2 footprint so the renderer can scale it to any world size uniformly.
-const TRUNK_RADIUS = 0.22;
-const TRUNK_HEIGHT = 1.35;
+// origin on the ground plane (y = 0) and the renderer scales it to any world
+// size uniformly.
+//
+// Trunk visibility: the in-game camera views trees at an oblique tilt (see
+// TREE_CAMERA_TILT in urban-decor.ts) so the canopy leans up-screen and exposes
+// the trunk below it. For the trunk to actually show, the canopy must sit high
+// enough above the ground that its leaned lower edge clears the trunk base —
+// i.e. canopyBaseHeight * sin(tilt) must exceed the canopy base radius. The tall
+// trunk / lifted canopy below satisfy that (previously the canopy sat almost on
+// the ground and overhung the trunk from every angle, so trees rendered as bare
+// blobs with no visible trunk).
+const TRUNK_RADIUS = 0.2;
+const TRUNK_HEIGHT = 2.3;
 const TRUNK_SEGMENTS = 6;
-// Two stacked canopy cones give a layered, low-poly conifer silhouette.
+// Two stacked canopy cones give a layered, low-poly conifer silhouette. The
+// lowest canopy base sits just under the trunk top so the foliage wraps the
+// trunk without burying it.
 const CANOPY_SEGMENTS = 8;
 const CANOPY_TIERS = [
-  { baseY: 0.95, radius: 1.0, height: 1.7 },
-  { baseY: 1.85, radius: 0.72, height: 1.55 },
+  { baseY: 2.2, radius: 0.95, height: 1.4 },
+  { baseY: 2.95, radius: 0.68, height: 1.35 },
 ];
 
 const positions = [];
