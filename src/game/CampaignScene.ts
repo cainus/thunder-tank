@@ -36,6 +36,7 @@ import { computeUrbanTreeSpots, isWebglAvailable, treeScaleFactor } from "./urba
 import { hullYaw, tankModelScale, turretYaw } from "./tank-decor";
 import type { TreeOverlay3D } from "./tree-3d";
 import type { TankOverlay3D } from "./tank-3d";
+import type { CrateOverlay3D, CratePlacement } from "./crate-3d";
 import {
   BULLET_MARK_MAX_COUNT,
   getBulletMarkAlpha,
@@ -113,6 +114,11 @@ const NIGHT_HEADLAMP_OFFSET = 28;
 const LIGHT_POST_BASE_SCALE = 1.08;
 const URBAN_TREE_SIZE = 96;
 const URBAN_TREE_SHADOW_OFFSET = 30;
+// Soft ground shadow footprint for a 3D crate (roughly the crate's ~70px base),
+// drawn just below the crate depth so the model reads as grounded.
+const CRATE_SHADOW_WIDTH = 74;
+const CRATE_SHADOW_HEIGHT = 40;
+const CRATE_SHADOW_OFFSET = 12;
 // Non-collidable urban dressing (buildings, trees, parked cars, plaza) is
 // painted on the ground and must read as clearly subdued so players never
 // confuse it with real, collidable obstacles. This multiplier washes the
@@ -248,6 +254,10 @@ export class CampaignScene extends Phaser.Scene {
   // True once the 3D tank overlay has loaded and is rendering; while set, the
   // flat hull/turret/stripe sprites are hidden and the 3D models stand in.
   private tanks3DActive = false;
+  private crateOverlay?: CrateOverlay3D;
+  // Physics bodies for the square crate obstacles. Kept for collision but hidden
+  // when the 3D crate overlay takes over their visual (see addCrateOverlays).
+  private crateSprites: Phaser.Physics.Arcade.Image[] = [];
 
   constructor() {
     super("CampaignScene");
@@ -275,6 +285,8 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyAllImpactMarks();
     this.destroyTreeOverlay();
     this.destroyTankOverlay();
+    this.destroyCrateOverlay();
+    this.crateSprites = [];
     this.lightPosts = [];
   }
 
@@ -310,6 +322,8 @@ export class CampaignScene extends Phaser.Scene {
     for (const obstacle of this.map.obstacles) {
       this.addObstacle(obstacle);
     }
+
+    this.addCrateOverlays();
 
     for (const pickup of this.map.pickups) {
       this.addPickup(pickup);
@@ -418,6 +432,7 @@ export class CampaignScene extends Phaser.Scene {
     this.updateCamera();
     this.renderTreeOverlay();
     this.renderTankOverlay();
+    this.renderCrateOverlay();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
     this.cleanupFarBullets();
@@ -725,6 +740,96 @@ export class CampaignScene extends Phaser.Scene {
     return tank.side === "playerTwo" && this.isCaptureTheFlag();
   }
 
+  // Renders the square crate obstacles as 3D models via a three.js overlay,
+  // mirroring the tree overlay. The crates' Phaser physics bodies always stay in
+  // the scene for collision; when the 3D overlay is available the flat crate
+  // sprites are hidden and a soft ground shadow is added so the models read as
+  // grounded. Falls back to the flat sprites when WebGL/host is unavailable.
+  private addCrateOverlays(): void {
+    const placements: CratePlacement[] = this.map.obstacles
+      .filter((obstacle) => obstacle.kind === "crate")
+      .map((obstacle) => ({ x: obstacle.x, y: obstacle.y, rotation: obstacle.rotation ?? 0 }));
+
+    if (placements.length === 0) {
+      return;
+    }
+
+    const host = this.game.canvas?.parentElement;
+
+    if (!host || !isWebglAvailable()) {
+      // Fallback: leave the flat crate sprites visible (their default look).
+      return;
+    }
+
+    // Soft ground shadow beneath each crate so the 3D model reads as grounded,
+    // matching the treatment given to the 3D trees.
+    for (const placement of placements) {
+      this.add
+        .ellipse(placement.x, placement.y + CRATE_SHADOW_OFFSET, CRATE_SHADOW_WIDTH, CRATE_SHADOW_HEIGHT, 0x0b0f14, 0.3)
+        .setDepth(7);
+    }
+
+    // three.js is heavy, so it is code-split behind a dynamic import and only
+    // pulled in when there are crates to render on a WebGL-capable host.
+    void this.addCrateOverlay(host, placements);
+  }
+
+  // Lazily loads the three.js crate overlay module + model, hides the flat crate
+  // sprites, then places the 3D crates. Falls back to the flat sprites if
+  // anything fails. Guards against the scene shutting down during the async work.
+  private async addCrateOverlay(host: HTMLElement, placements: CratePlacement[]): Promise<void> {
+    try {
+      const { CrateOverlay3D } = await import("./crate-3d");
+
+      if (!this.scene.isActive()) {
+        return;
+      }
+
+      const overlay = new CrateOverlay3D(host);
+      this.crateOverlay = overlay;
+
+      await overlay.load(MODEL_ASSETS.crate);
+
+      // The scene may have shut down (or restarted) while the model loaded.
+      if (this.crateOverlay === overlay && this.scene.isActive()) {
+        overlay.setCrates(placements);
+        // Hand the visual over to the 3D models; the bodies stay for collision.
+        for (const sprite of this.crateSprites) {
+          sprite.setVisible(false);
+        }
+      }
+    } catch (error) {
+      console.warn("3D crate overlay unavailable, keeping flat sprites:", error);
+      this.destroyCrateOverlay();
+      // Leave the flat crate sprites visible as the fallback look.
+    }
+  }
+
+  private renderCrateOverlay(): void {
+    if (!this.crateOverlay) {
+      return;
+    }
+
+    const view = this.cameras.main.worldView;
+    // Feed the overlay each living tank's ground position so it can cut a hole in
+    // the crates there, keeping tanks readable on top (the flat crate sprites they
+    // replaced sat below the tanks at depth 8 < TANK_DEPTH).
+    const occluders = this.getAllTanks()
+      .filter((tank) => tank.alive)
+      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
+    this.crateOverlay.render(
+      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
+      this.scale.gameSize.width,
+      this.scale.gameSize.height,
+      occluders,
+    );
+  }
+
+  private destroyCrateOverlay(): void {
+    this.crateOverlay?.dispose();
+    this.crateOverlay = undefined;
+  }
+
   private addParkedCars(roadInsetX: number, roadInsetY: number, roadWidth: number, roadHeight: number): void {
     const carConfigs = [
       { x: this.map.width / 2 - 180, y: roadInsetY - 74, color: 0xc94a3f, rotation: 0 },
@@ -814,6 +919,10 @@ export class CampaignScene extends Phaser.Scene {
     if (this.isNightMap() && obstacle.kind !== "lightPost") {
       sprite.setTint(0x7b8694);
       sprite.setAlpha(0.92);
+    }
+    if (obstacle.kind === "crate") {
+      // Tracked so the flat sprite can be hidden once the 3D crate overlay loads.
+      this.crateSprites.push(sprite);
     }
     if (obstacle.kind === "lightPost") {
       const body = sprite.body as Phaser.Physics.Arcade.StaticBody;
@@ -3394,6 +3503,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyAllImpactMarks();
     this.destroyTreeOverlay();
     this.destroyTankOverlay();
+    this.destroyCrateOverlay();
     this.cleanupListeners = [];
   }
 }

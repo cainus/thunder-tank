@@ -38,6 +38,17 @@ export function treeScaleFactor(index: number): number {
 // (which stamps it) and the duplicate-cleanup sweep agree on one selector.
 export const TREE_OVERLAY_TESTID = "tree-overlay-3d";
 
+// data-testid stamped on the 3D crate overlay canvas (the square obstacles).
+// Kept distinct from the tree overlay so the two stacked overlays can be found,
+// swept, and cleaned up independently.
+export const CRATE_OVERLAY_TESTID = "crate-overlay-3d";
+
+// Uniform world-units-per-model-unit scale applied to the loaded crate model.
+// The model is authored with a 1-unit footprint, so this makes a crate read at
+// roughly the size of the flat crateMetal sprite it replaces (56px sprite scaled
+// 1.25 in-scene ≈ 70px).
+export const CRATE_WORLD_SCALE = 70;
+
 /**
  * Removes any pre-existing 3D tree overlay canvases from `host`. Each map runs
  * inside a fresh Phaser.Game mounted on the same persistent DOM host, so an
@@ -47,7 +58,22 @@ export const TREE_OVERLAY_TESTID = "tree-overlay-3d";
  * regardless of Phaser teardown timing or async model-load races.
  */
 export function removeExistingTreeOverlays(host: HTMLElement): void {
-  const existing = host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`);
+  removeOverlayCanvases(host, TREE_OVERLAY_TESTID);
+}
+
+/**
+ * Removes any pre-existing 3D crate overlay canvases from `host`, for the same
+ * reason as {@link removeExistingTreeOverlays}: each map runs inside a fresh
+ * Phaser.Game on the same persistent DOM host, so an overlay left behind by a
+ * prior game would stack a second set of crates on top of the new map's.
+ */
+export function removeExistingCrateOverlays(host: HTMLElement): void {
+  removeOverlayCanvases(host, CRATE_OVERLAY_TESTID);
+}
+
+/** Removes every overlay canvas under `host` tagged with the given data-testid. */
+function removeOverlayCanvases(host: HTMLElement, testId: string): void {
+  const existing = host.querySelectorAll(`[data-testid="${testId}"]`);
   existing.forEach((node) => node.remove());
 }
 

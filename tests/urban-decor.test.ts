@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  CRATE_OVERLAY_TESTID,
+  CRATE_WORLD_SCALE,
   TREE_CAMERA_TILT,
   TREE_OVERLAY_TESTID,
   TREE_SCALE_VARIATION,
   computeUrbanTreeSpots,
   occluderClipTransform,
+  removeExistingCrateOverlays,
   removeExistingTreeOverlays,
   treeHeightScreenOffset,
   treeOrthoFrustum,
@@ -152,5 +155,52 @@ describe("removeExistingTreeOverlays", () => {
 
     expect(host.contains(gameCanvas)).toBe(true);
     expect(host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`)).toHaveLength(0);
+  });
+});
+
+describe("removeExistingCrateOverlays", () => {
+  function makeCrateOverlayCanvas(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("data-testid", CRATE_OVERLAY_TESTID);
+    return canvas;
+  }
+
+  it("uses a distinct testid from the tree overlay", () => {
+    expect(CRATE_OVERLAY_TESTID).not.toBe(TREE_OVERLAY_TESTID);
+  });
+
+  it("removes a stray crate overlay canvas left by a prior game", () => {
+    const host = document.createElement("div");
+    host.appendChild(makeCrateOverlayCanvas());
+    host.appendChild(makeCrateOverlayCanvas());
+
+    removeExistingCrateOverlays(host);
+
+    expect(host.querySelectorAll(`[data-testid="${CRATE_OVERLAY_TESTID}"]`)).toHaveLength(0);
+  });
+
+  it("leaves the tree overlay and non-overlay children untouched", () => {
+    const host = document.createElement("div");
+    const gameCanvas = document.createElement("canvas");
+    const treeOverlay = document.createElement("canvas");
+    treeOverlay.setAttribute("data-testid", TREE_OVERLAY_TESTID);
+    host.appendChild(gameCanvas);
+    host.appendChild(treeOverlay);
+    host.appendChild(makeCrateOverlayCanvas());
+
+    removeExistingCrateOverlays(host);
+
+    expect(host.contains(gameCanvas)).toBe(true);
+    expect(host.contains(treeOverlay)).toBe(true);
+    expect(host.querySelectorAll(`[data-testid="${CRATE_OVERLAY_TESTID}"]`)).toHaveLength(0);
+  });
+});
+
+describe("CRATE_WORLD_SCALE", () => {
+  it("scales the 1-unit crate model to roughly the flat sprite's in-scene size", () => {
+    // 56px crateMetal sprite scaled 1.25 in-scene ≈ 70px; the model is authored
+    // with a 1-unit footprint, so the world scale should land near that size.
+    expect(CRATE_WORLD_SCALE).toBeGreaterThan(40);
+    expect(CRATE_WORLD_SCALE).toBeLessThan(120);
   });
 });
