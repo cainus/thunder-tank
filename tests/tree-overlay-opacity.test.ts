@@ -1,33 +1,35 @@
-// Standing detection for TT-23: "trees are semi-transparent".
+// Regression guard for TT-23: "trees are semi-transparent".
 //
 // The 3D tree overlay (src/game/tree-3d.ts) is a stacked WebGL canvas composited
 // on top of the Phaser game canvas. The ENTIRE canvas is given a CSS opacity of
-// `TREE_OVERLAY_OPACITY` (currently 0.72), so every tree — trunk and canopy —
-// renders at 72% opacity and the road/ground shows straight through the trunks.
-// That whole-canvas wash is the reported "semi-transparent trees" defect.
+// `TREE_OVERLAY_OPACITY`, which used to be 0.72, so every tree — trunk and canopy
+// — rendered at 72% opacity and the road/ground showed straight through the
+// trunks. That whole-canvas wash was the reported "semi-transparent trees"
+// defect. The flat-sprite fallback (CampaignScene.addFlatTrees, used when WebGL
+// is unavailable) was worse still, drawing at URBAN_DECOR_ALPHA = 0.45.
 //
-// The sibling crate overlay (src/game/crate-3d.ts) makes the intended contrast
-// explicit: crates are "opaque, real obstacles (unlike the translucent tree
-// dressing), so the overlay renders at full opacity" — CRATE_OVERLAY_OPACITY = 1.
-// Trees that read as solid objects must composite the same way. The tree
-// overlay's own comment even claims the value "mirrors URBAN_DECOR_ALPHA", but
-// 0.72 mirrors neither URBAN_DECOR_ALPHA (0.45) nor the crate policy (1) — a
-// two-sources-of-truth drift over "how solid does a tree look".
+// Trees are solid objects and must composite the same way the sibling crate
+// overlay already does: "opaque, real obstacles ... full opacity". To stop the
+// two overlays drifting apart again, the opaque-obstacle opacity is now a single
+// shared constant, OPAQUE_OVERLAY_OPACITY, in urban-decor.ts, consumed by both
+// the tree and crate overlays (and the flat-sprite fallback trees).
 //
-// TreeOverlay3D cannot be instantiated under jsdom (THREE.WebGLRenderer needs a
-// real WebGL context), so — like tree-3d-imports.test.ts — this pulls the defect
-// forward by reading the module's OWN source and asserting the compositing
-// opacity it applies to the overlay canvas is fully opaque. It fails while the
-// value is 0.72, and will keep the fix honest once someone raises it to 1.
+// The overlay classes cannot be instantiated under jsdom (THREE.WebGLRenderer
+// needs a real WebGL context), so — like tree-3d-imports.test.ts — this pulls the
+// behaviour forward by reading the modules' OWN source and asserting the
+// compositing opacity they apply is fully opaque and sourced from one owner.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { OPAQUE_OVERLAY_OPACITY } from "../src/game/urban-decor";
 
 const treeModulePath = resolve(process.cwd(), "src/game/tree-3d.ts");
 const crateModulePath = resolve(process.cwd(), "src/game/crate-3d.ts");
+const decorModulePath = resolve(process.cwd(), "src/game/urban-decor.ts");
+const scenePath = resolve(process.cwd(), "src/game/CampaignScene.ts");
 
 /** Extracts the numeric literal assigned to a `const NAME = <number>;` in `source`. */
-function readOverlayOpacity(source: string, name: string): number {
+function readNumericConst(source: string, name: string): number {
   const match = new RegExp(`\\b${name}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)`).exec(source);
   if (!match) {
     throw new Error(`could not find a numeric ${name} in the source`);
@@ -35,26 +37,36 @@ function readOverlayOpacity(source: string, name: string): number {
   return Number(match[1]);
 }
 
-describe("3D tree overlay compositing opacity (TT-23)", () => {
+describe("opaque 3D obstacle compositing opacity (TT-23)", () => {
   const treeSource = readFileSync(treeModulePath, "utf8");
+  const crateSource = readFileSync(crateModulePath, "utf8");
+  const decorSource = readFileSync(decorModulePath, "utf8");
+  const sceneSource = readFileSync(scenePath, "utf8");
 
-  it("applies TREE_OVERLAY_OPACITY to the overlay canvas (guards the extractor)", () => {
-    // If this stops matching, the assertion below is checking a dead constant.
+  it("owns the opaque-obstacle opacity in one place, fully opaque", () => {
+    // Trees and crates are solid objects, so the shared owner is fully opaque.
+    expect(readNumericConst(decorSource, "OPAQUE_OVERLAY_OPACITY")).toBe(1);
+    expect(OPAQUE_OVERLAY_OPACITY).toBe(1);
+  });
+
+  it("composites the tree overlay canvas from the shared opaque constant", () => {
+    // The whole-canvas wash must be the shared opaque value, not a translucent
+    // literal (0.72 let the road show through the trunks — the reported defect).
     expect(treeSource).toMatch(/opacity:\s*String\(TREE_OVERLAY_OPACITY\)/);
+    expect(treeSource).toMatch(/TREE_OVERLAY_OPACITY\s*=\s*OPAQUE_OVERLAY_OPACITY/);
+    expect(treeSource).toMatch(/OPAQUE_OVERLAY_OPACITY[\s\S]*from "\.\/urban-decor"/);
   });
 
-  it("composites the tree canopy fully opaque, not as translucent dressing", () => {
-    const treeOpacity = readOverlayOpacity(treeSource, "TREE_OVERLAY_OPACITY");
-    // Trees are meant to read as solid objects, so the whole-canvas wash must be
-    // fully opaque. This fails at the reported 0.72 (road visible through trunks).
-    expect(treeOpacity).toBe(1);
+  it("composites the crate overlay canvas from the same shared constant", () => {
+    // The crate overlay is the canonical opaque 3D overlay; both now share one
+    // owner so the tree overlay can never drift below it again.
+    expect(crateSource).toMatch(/opacity:\s*String\(CRATE_OVERLAY_OPACITY\)/);
+    expect(crateSource).toMatch(/CRATE_OVERLAY_OPACITY\s*=\s*OPAQUE_OVERLAY_OPACITY/);
   });
 
-  it("matches the opaque-obstacle policy the sibling crate overlay already uses", () => {
-    const crateOpacity = readOverlayOpacity(readFileSync(crateModulePath, "utf8"), "CRATE_OVERLAY_OPACITY");
-    const treeOpacity = readOverlayOpacity(treeSource, "TREE_OVERLAY_OPACITY");
-    // The crate overlay is the canonical "opaque real obstacle" 3D overlay; the
-    // tree overlay drifting below it is exactly the semi-transparency defect.
-    expect(treeOpacity).toBeGreaterThanOrEqual(crateOpacity);
+  it("draws the flat-sprite fallback trees opaque, not as subdued dressing", () => {
+    // The no-WebGL fallback (addFlatTrees) previously drew trees at
+    // URBAN_DECOR_ALPHA (0.45) — even more transparent than the 3D overlay.
+    expect(sceneSource).toMatch(/"treeGreenLarge"[\s\S]*?\.setAlpha\(OPAQUE_OVERLAY_OPACITY\)/);
   });
 });

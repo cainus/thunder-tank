@@ -15,6 +15,7 @@ import * as THREE from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import {
+  OPAQUE_OVERLAY_OPACITY,
   TREE_CAMERA_TILT,
   TREE_OCCLUDER_WORLD_RADIUS,
   TREE_OVERLAY_TESTID,
@@ -30,9 +31,11 @@ import type { Vec2 } from "./types";
 
 export type { TreeViewRect } from "./urban-decor";
 
-// Kept subdued so the decoration never competes with real, collidable
-// obstacles or the tanks it composites over (mirrors URBAN_DECOR_ALPHA).
-const TREE_OVERLAY_OPACITY = 0.72;
+// Trees are solid objects, so the overlay composites fully opaque and fully
+// replaces the flat sprite — same opaque-obstacle policy as the crate overlay,
+// shared via OPAQUE_OVERLAY_OPACITY so the two can't drift apart. Tanks stay
+// visible regardless via the separate hole-punch (eraser) pass below.
+const TREE_OVERLAY_OPACITY = OPAQUE_OVERLAY_OPACITY;
 // Orthographic cameras don't foreshorten with distance, so this only needs to be
 // large enough to clear the tallest model and keep it inside the near/far planes.
 const CAMERA_HEIGHT = 4000;

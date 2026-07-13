@@ -17,6 +17,7 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import {
   CRATE_OVERLAY_TESTID,
   CRATE_WORLD_SCALE,
+  OPAQUE_OVERLAY_OPACITY,
   TREE_CAMERA_TILT,
   TREE_OCCLUDER_WORLD_RADIUS,
   occluderClipTransform,
@@ -33,9 +34,10 @@ export interface CratePlacement extends Vec2 {
   rotation?: number;
 }
 
-// Crates are opaque, real obstacles (unlike the translucent tree dressing), so
-// the overlay renders at full opacity and fully replaces the flat sprite.
-const CRATE_OVERLAY_OPACITY = 1;
+// Crates are opaque, real obstacles, so the overlay renders at full opacity and
+// fully replaces the flat sprite — the shared opaque-obstacle policy the tree
+// overlay now uses too (hoisted so the two overlays can't drift apart).
+const CRATE_OVERLAY_OPACITY = OPAQUE_OVERLAY_OPACITY;
 // Orthographic cameras don't foreshorten with distance, so this only needs to be
 // large enough to clear the tallest model and keep it inside the near/far planes.
 const CAMERA_HEIGHT = 4000;

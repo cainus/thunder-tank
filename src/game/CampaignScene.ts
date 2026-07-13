@@ -46,6 +46,7 @@ import {
   computeParkedCarSpots,
   computeUrbanTreeSpots,
   isWebglAvailable,
+  OPAQUE_OVERLAY_OPACITY,
   removeExistingCrateOverlays,
   treeScaleFactor,
 } from "./urban-decor";
@@ -758,10 +759,13 @@ export class CampaignScene extends Phaser.Scene {
   private addFlatTrees(treeSpots: Vec2[]): void {
     treeSpots.forEach((spot, index) => {
       const size = URBAN_TREE_SIZE * treeScaleFactor(index);
+      // Trees are solid objects, not subdued ground dressing, so the fallback
+      // sprite renders fully opaque — matching the 3D overlay's opaque-obstacle
+      // policy (OPAQUE_OVERLAY_OPACITY) rather than URBAN_DECOR_ALPHA.
       this.add
         .image(spot.x, spot.y, "treeGreenLarge")
         .setDisplaySize(size, size)
-        .setAlpha(URBAN_DECOR_ALPHA)
+        .setAlpha(OPAQUE_OVERLAY_OPACITY)
         .setDepth(-9);
     });
   }
