@@ -73,6 +73,10 @@ export interface TankStats {
   fireCooldownMs: number;
   bulletSpeed: number;
   aimDelayMs: number;
+  // Radians per second the turret may turn while re-aiming. Player tanks aim at
+  // the full player rate; AI tanks use a slower per-archetype rate so computer
+  // players cannot instantly snap their turrets onto a target.
+  turretTurnRate: number;
 }
 
 export interface ActiveBuffs {

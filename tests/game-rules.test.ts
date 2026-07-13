@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { CAMPAIGN_MAPS } from "../src/game/maps";
-import { ENEMY_HEALTH, ENEMY_STATS, PLAYER_BASE_STATS, applyPickupBuff, getEffectiveStats, getMatchOutcome, hasShield } from "../src/game/rules";
+import {
+  ENEMY_HEALTH,
+  ENEMY_STATS,
+  PLAYER_BASE_STATS,
+  applyPickupBuff,
+  getEffectiveStats,
+  getMatchOutcome,
+  getRampedEnemyStats,
+  hasShield,
+} from "../src/game/rules";
 
 const PICKUP_OBSTACLE_CLEARANCE = 24;
 
@@ -115,6 +124,23 @@ describe("pickup buffs", () => {
   it("uses snappier bullets for the player and enemies", () => {
     expect(PLAYER_BASE_STATS.bulletSpeed).toBeGreaterThanOrEqual(720);
     expect(Object.values(ENEMY_STATS).every((stats) => stats.bulletSpeed >= 560)).toBe(true);
+  });
+
+  it("aims AI turrets slower than the player at every archetype and difficulty", () => {
+    for (const stats of Object.values(ENEMY_STATS)) {
+      expect(stats.turretTurnRate).toBeLessThan(PLAYER_BASE_STATS.turretTurnRate);
+
+      const ramped = getRampedEnemyStats(stats, 1);
+      expect(ramped.turretTurnRate).toBeGreaterThan(stats.turretTurnRate);
+      expect(ramped.turretTurnRate).toBeLessThanOrEqual(PLAYER_BASE_STATS.turretTurnRate);
+    }
+  });
+
+  it("carries the turret turn rate through effective-stat modifiers", () => {
+    const buffs = applyPickupBuff({ speedUntil: 0, rapidFireUntil: 0, shieldUntil: 0 }, "rapidFire", 100);
+    const effective = getEffectiveStats(ENEMY_STATS.standard, buffs, 200);
+
+    expect(effective.turretTurnRate).toBe(ENEMY_STATS.standard.turretTurnRate);
   });
 
   it("applies speed and rapid-fire modifiers only while active", () => {

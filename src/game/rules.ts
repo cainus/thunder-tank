@@ -1,10 +1,15 @@
 import type { ActiveBuffs, EnemyArchetype, MatchOutcome, PickupType, ScoreState, TankStats } from "./types";
 
+// Matches PLAYER_TURRET_TURN_RATE in CampaignScene: the full rate a human-driven
+// turret aims at. AI archetypes deliberately turn slower than this.
+const PLAYER_TURRET_TURN_RATE = 4.1;
+
 export const PLAYER_BASE_STATS: TankStats = {
   speed: 210,
   fireCooldownMs: 420,
   bulletSpeed: 980,
   aimDelayMs: 0,
+  turretTurnRate: PLAYER_TURRET_TURN_RATE,
 };
 
 export const ENEMY_STATS: Record<EnemyArchetype, TankStats> = {
@@ -13,24 +18,28 @@ export const ENEMY_STATS: Record<EnemyArchetype, TankStats> = {
     fireCooldownMs: 820,
     bulletSpeed: 800,
     aimDelayMs: 520,
+    turretTurnRate: 2.4,
   },
   standard: {
     speed: 145,
     fireCooldownMs: 700,
     bulletSpeed: 820,
     aimDelayMs: 430,
+    turretTurnRate: 2.1,
   },
   heavy: {
     speed: 105,
     fireCooldownMs: 960,
     bulletSpeed: 740,
     aimDelayMs: 620,
+    turretTurnRate: 1.7,
   },
   boss: {
     speed: 82,
     fireCooldownMs: 760,
     bulletSpeed: 780,
     aimDelayMs: 520,
+    turretTurnRate: 2.0,
   },
 };
 
@@ -64,6 +73,9 @@ export function getRampedEnemyStats(base: TankStats, difficulty: number): TankSt
     fireCooldownMs: base.fireCooldownMs * (1 - clamped * 0.3),
     bulletSpeed: base.bulletSpeed * (1 + clamped * 0.12),
     aimDelayMs: Math.round(base.aimDelayMs * (1 - clamped * 0.5)),
+    // Late-campaign enemies swing their turrets faster, but stay capped below the
+    // player rate (max archetype 2.4 * 1.35 = 3.24 < 4.1).
+    turretTurnRate: Math.min(base.turretTurnRate * (1 + clamped * 0.35), PLAYER_TURRET_TURN_RATE),
   };
 }
 
