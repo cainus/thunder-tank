@@ -1,0 +1,19 @@
+src/game/CampaignScene.ts
+  s_b5f28565cdd3f0::t_1a964dc406f1a5 124-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "7ee44880100eae7fab7e52a93ad5aa77b4701c2b",
+  "prompts": {},
+  "sessions": {
+    "s_b5f28565cdd3f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f16d91ec-464e-438e-8127-5d347b4025c2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
