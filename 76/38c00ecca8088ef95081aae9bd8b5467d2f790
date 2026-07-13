@@ -5,6 +5,7 @@ src/game/tree-3d.ts
   s_4f61618521ad44::t_ac9a6990abe872 34-38
 src/game/CampaignScene.ts
   s_4f61618521ad44::t_31a9ca3a63687c 762-764,768
+  s_e6a6727a92fb5f::t_8720b26be277a8 49
 src/game/crate-3d.ts
   s_4f61618521ad44::t_dd53c9bc5b3923 20
   s_4f61618521ad44::t_baa38d8df9f719 37-40
@@ -21,6 +22,14 @@ src/game/urban-decor.ts
       "agent_id": {
         "tool": "claude",
         "id": "7f7d5c69-b689-443a-b789-4b3cfc7e51f4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_e6a6727a92fb5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ac7e317-767b-48ac-a4f2-abc80d988382",
         "model": "claude-opus-4-8"
       },
       "human_author": "Greggory Caines <gregg@caines.ca>"
