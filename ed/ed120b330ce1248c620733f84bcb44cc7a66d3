@@ -1,0 +1,40 @@
+scripts/generate-tree-model.mjs
+  s_1e20b6fb0fab30::t_41e17d7db19164 13-25,27-29,32-33
+src/game/CampaignScene.ts
+  s_1e20b6fb0fab30::t_f0a08bb877f99e 286
+  s_1e20b6fb0fab30::t_093a4096b0d920 617-623,625-635
+  s_1e20b6fb0fab30::t_7a69a98523d76f 2179-2184
+  s_1e20b6fb0fab30::t_15777c740c523e 237-240
+  s_1e20b6fb0fab30::t_1c9e66538e8ac3 588-592
+  s_1e20b6fb0fab30::t_27f0a07ab84a7d 624
+  s_1e20b6fb0fab30::t_72d27e6766e32d 114-119
+  s_1e20b6fb0fab30::t_2f17610411897d 120-125
+  s_1e20b6fb0fab30::t_a432cca8b4dbb4 241-243
+  s_1e20b6fb0fab30::t_e19fe7f6bd1114 287
+  s_1e20b6fb0fab30::t_6fca2b2027b42b 356-364
+  s_1e20b6fb0fab30::t_0deaf1bb863f46 577-581
+tests/urban-decor.test.ts
+  s_1e20b6fb0fab30::t_0d106e62b87dae 4-5,10
+  s_1e20b6fb0fab30::t_b327f62d005cad 100-126
+public/assets/models/tree.obj
+  s_1e20b6fb0fab30::t_4b009bc04b7e82 5-50
+src/game/urban-decor.ts
+  s_1e20b6fb0fab30::t_adec7f1a47385f 97-119
+  s_1e20b6fb0fab30::t_9600f2d80a8f3b 7-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "eded120b330ce1248c620733f84bcb44cc7a66d3",
+  "prompts": {},
+  "sessions": {
+    "s_1e20b6fb0fab30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f9995-8b44-45b1-bc85-54fac897c009",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
