@@ -1,0 +1,53 @@
+src/game/urban-decor.ts
+  s_7980603c3ec063::t_037b3c347503a9 64-75
+  s_7980603c3ec063::t_009ba0b6395dbf 53-57
+  s_7980603c3ec063::t_d3e9cd1e8b914b 98-107
+  s_7980603c3ec063::t_af6b9d028f7b95 138-172
+public/assets/models/car.obj
+  s_7980603c3ec063::t_55f95a9d31b6de 1-225
+public/assets/models/car.mtl
+  s_7980603c3ec063::t_55f95a9d31b6de 1-19
+scripts/generate-car-model.mjs
+  s_7980603c3ec063::t_412c8bd237bb2e 1-142
+src/LevelEditor.tsx
+  s_7980603c3ec063::t_b0c80050419aab 649-650,652-657
+  s_7980603c3ec063::t_01aedede23addf 592-594
+  s_7980603c3ec063::t_74f2546c90eb1d 17
+src/game/assets.ts
+  s_7980603c3ec063::t_2c8bc24c56108d 52-54
+tests/car-3d-imports.test.ts
+  s_7980603c3ec063::t_9a6d0c480a00d6 1-45
+tests/urban-decor.test.ts
+  s_7980603c3ec063::t_ecdc9cf431ceed 3-6,14,17
+  s_7980603c3ec063::t_d323108cb722fc 67-161
+src/game/car-3d.ts
+  s_7980603c3ec063::t_f1d83bd20e3a53 329-332
+  s_7980603c3ec063::t_0e83dfd5f21971 1-328,333-393
+tests/car-model.test.ts
+  s_7980603c3ec063::t_6dfc984b0f996d 1-54
+src/game/CampaignScene.ts
+  s_7980603c3ec063::t_39644d1c6b6b32 322,326
+  s_7980603c3ec063::t_6e14ec764f0194 35-42,47
+  s_7980603c3ec063::t_052c7542b0e873 290-293
+  s_7980603c3ec063::t_06d5ea196d9c5e 934-940,942-1079,1081-1083,1085-1103
+  s_7980603c3ec063::t_9767459004aa42 136-141
+  s_7980603c3ec063::t_d7031bd7e8e859 3766
+  s_7980603c3ec063::t_57345191944771 511
+  s_7980603c3ec063::t_302f54175973b2 354-355,357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "b2f321e9b9b4eab49f1b54392380ac40fd96b48c",
+  "prompts": {},
+  "sessions": {
+    "s_7980603c3ec063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a702de54-6da0-4f20-bf9a-3ff195c02e95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
