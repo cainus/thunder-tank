@@ -13,9 +13,11 @@ src/game/CampaignScene.ts
   s_1e20b6fb0fab30::t_e19fe7f6bd1114 306
   s_1e20b6fb0fab30::t_6fca2b2027b42b 377-385
   s_1e20b6fb0fab30::t_0deaf1bb863f46 607
+  s_d49a0ce51bf4e1::t_dd0ee4bcd674a3 608-609,611-612
 tests/urban-decor.test.ts
   s_1e20b6fb0fab30::t_0d106e62b87dae 6-7,17
   s_1e20b6fb0fab30::t_b327f62d005cad 107,211-236
+  s_d49a0ce51bf4e1::t_4d02ac3c54a52e 210
 public/assets/models/tree.obj
   s_1e20b6fb0fab30::t_4b009bc04b7e82 5-50
 src/game/urban-decor.ts
@@ -32,6 +34,14 @@ src/game/urban-decor.ts
       "agent_id": {
         "tool": "claude",
         "id": "7c0f9995-8b44-45b1-bc85-54fac897c009",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    },
+    "s_d49a0ce51bf4e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fad01a25-5167-485c-a8fd-2c9cdeccbff7",
         "model": "claude-opus-4-8"
       },
       "human_author": "Greggory Caines <gregg@caines.ca>"
