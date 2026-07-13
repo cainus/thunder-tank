@@ -1,0 +1,23 @@
+src/game/tank-3d.ts
+  s_d5abd84aa6924b::t_3c01dde82f6200 101-107
+  s_d5abd84aa6924b::t_8989ff09a6a0c2 90
+  s_d5abd84aa6924b::t_9044ecf90b8750 20-38
+tests/tank-overlay-clear.test.ts
+  s_d5abd84aa6924b::t_76b6dabdf889c8 1,5-11,13-45,47-51,54-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "924ef6a3fa21c3c6ba5a26db5fcf3f2815f3191f",
+  "prompts": {},
+  "sessions": {
+    "s_d5abd84aa6924b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6dd3773c-af01-4276-b119-d2dd76d6c023",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
