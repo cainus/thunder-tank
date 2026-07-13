@@ -1,0 +1,47 @@
+src/game/urban-decor.ts
+  s_6c2cbce16986fe::t_e8fa290bb18d7f 41-51
+  s_6c2cbce16986fe::t_4863ecb5fefd8c 61-76
+src/game/assets.ts
+  s_6c2cbce16986fe::t_795be015e4efe1 49-51
+public/assets/models/crate.mtl
+  s_6c2cbce16986fe::t_e884eb4a657f6d 1-13
+src/game/crate-3d.ts
+  s_6c2cbce16986fe::t_d4eaa83df588c7 1-336
+scripts/generate-crate-model.mjs
+  s_6c2cbce16986fe::t_76574b2c43d3d2 1-142
+tests/crate-model.test.ts
+  s_6c2cbce16986fe::t_3fb9f7a0750b84 1-43
+public/assets/models/crate.obj
+  s_6c2cbce16986fe::t_e884eb4a657f6d 1-171
+tests/crate-3d-imports.test.ts
+  s_6c2cbce16986fe::t_3b75cffaa42564 1-45
+tests/urban-decor.test.ts
+  s_6c2cbce16986fe::t_1b929935f2b55d 3-4,10
+  s_6c2cbce16986fe::t_2264fbd2d88160 160-206
+src/game/CampaignScene.ts
+  s_6c2cbce16986fe::t_9e451ba2240f24 435
+  s_6c2cbce16986fe::t_45b0b040dd62d3 257-260
+  s_6c2cbce16986fe::t_f347f262ca15b1 117-121
+  s_6c2cbce16986fe::t_74b0e44270403e 326-327
+  s_6c2cbce16986fe::t_608a7664cf14b9 743-832
+  s_6c2cbce16986fe::t_0cec795cf01d1d 288-289
+  s_6c2cbce16986fe::t_33ba84cd76b1cd 39
+  s_6c2cbce16986fe::t_5ca0ea4718586e 923-926
+  s_6c2cbce16986fe::t_785c0ac964217d 3506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "c8e5f1cf9f5fe5576b6b4514c22144e7f565565b",
+  "prompts": {},
+  "sessions": {
+    "s_6c2cbce16986fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "022632c6-a2df-4994-b8b8-9ceadb905b8f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
