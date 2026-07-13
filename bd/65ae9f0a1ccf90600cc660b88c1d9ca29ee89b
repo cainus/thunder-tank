@@ -1,0 +1,22 @@
+tests/respawn-countdown-layer.test.ts
+  s_f7d377c19211f5::t_5bc4d5b3c6577a 1-101
+src/game/CampaignScene.ts
+  s_f7d377c19211f5::t_4221da726de1c4 2546-2569
+  s_f7d377c19211f5::t_13e0d74f961eee 295-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "bd65ae9f0a1ccf90600cc660b88c1d9ca29ee89b",
+  "prompts": {},
+  "sessions": {
+    "s_f7d377c19211f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97002bec-361d-4eac-bf8e-b8e94a14536f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
