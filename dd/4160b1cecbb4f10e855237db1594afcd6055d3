@@ -1,0 +1,41 @@
+src/game/CampaignScene.ts
+  s_80759dc259cc84::t_f20b4a17f74468 1653,1656
+  s_80759dc259cc84::t_d0e24454b4f2e7 146-153
+  s_80759dc259cc84::t_27c6c652ca71a9 1507,1511-1512
+  s_80759dc259cc84::t_4243867c57a3e3 1147,1167-1168,3804-3811
+  s_80759dc259cc84::t_e37270c5386f29 1087-1088,1091,1101
+  s_80759dc259cc84::t_9d487bb9cf12a8 421-437
+  s_80759dc259cc84::t_e2350902bddbdb 374-376,378
+  s_80759dc259cc84::t_00fba97f227df6 303-306,310-312
+  s_80759dc259cc84::t_0d07062b11948c 450
+  s_80759dc259cc84::t_7a61d81fa31cb2 551,565-571
+  s_80759dc259cc84::t_6c9fde2f6f7622 983-990,1004,1008-1011,1013,1018-1025
+  s_80759dc259cc84::t_2c72b0ab2a49e2 1472,1476-1477
+  s_80759dc259cc84::t_b13776ab817f2d 1144-1146
+  s_80759dc259cc84::t_e8011fe7357abc 1148-1150,1164-1166
+  s_80759dc259cc84::t_13d46c8cd75b1f 1169-1171
+  s_80759dc259cc84::t_adb10961673cd1 346,1140-1143,1151-1163,1172
+src/game/types.ts
+  s_80759dc259cc84::t_bac2ef8029b2a4 111-114
+src/game/car-3d.ts
+  s_80759dc259cc84::t_874e763501698f 67-69
+  s_80759dc259cc84::t_b0dc8de46d7209 194,198-215
+  s_80759dc259cc84::t_19adca3086b132 327
+  s_80759dc259cc84::t_6dacfedf22ca69 216-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "dd4160b1cecbb4f10e855237db1594afcd6055d3",
+  "prompts": {},
+  "sessions": {
+    "s_80759dc259cc84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25011003-8391-40d0-84eb-326eddbb6216",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
