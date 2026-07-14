@@ -1,19 +1,20 @@
 // DOM HUD overlay for in-world HUD messages that must read ON TOP of the 3D
-// overlay canvases (TT-28).
+// overlay canvas (TT-28).
 //
 // The RESPAWN countdown and the CTF AI role labels used to be Phaser Text on the
 // base game canvas, relying on `setDepth` to sit above everything. But Phaser
-// depth only orders sprites within the base canvas; the tank/tree/crate/car
-// overlays are sibling canvases composited above it (see layer-stack.ts), so the
-// 3D elements painted over those messages. This overlay is a plain DOM layer
-// mounted on the same host at a z-index above every 3D overlay, so its contents
-// always read on top. It mirrors the mount/dispose lifecycle of the three.js
-// overlays (tank-3d.ts) — one instance per Phaser.Game, swept on re-mount.
+// depth only orders sprites within the base canvas; the 3D world overlay (trees,
+// crates, cars, tanks) is a sibling canvas composited above it (see
+// layer-stack.ts), so the 3D elements painted over those messages. This overlay
+// is a plain DOM layer mounted on the same host at a z-index above the 3D
+// overlay, so its contents always read on top. It mirrors the mount/dispose
+// lifecycle of the three.js overlay (overlay-3d.ts) — one instance per
+// Phaser.Game, swept on re-mount.
 import { LAYER_Z } from "./layer-stack";
 import type { TeamId } from "./types";
 
 // data-testid stamped on the overlay root so tests (and any duplicate-cleanup
-// sweep) can find it — mirrors TANK_OVERLAY_TESTID for the tank overlay.
+// sweep) can find it — mirrors WORLD_OVERLAY_TESTID for the 3D world overlay.
 export const GAME_HUD_OVERLAY_TESTID = "game-hud-overlay";
 
 // One AI role label's per-frame state, already converted to screen-space pixels
@@ -31,7 +32,7 @@ export interface AiRoleLabelState {
  * Removes any pre-existing game HUD overlay from `host`. Each map runs inside a
  * fresh Phaser.Game mounted on the same persistent host, so an overlay left
  * behind by a prior game would otherwise stack a second HUD on top. Mirrors
- * removeExistingTankOverlays in tank-3d.ts.
+ * removeExistingWorldOverlays in urban-decor.ts.
  */
 export function removeExistingGameHudOverlays(host: HTMLElement): void {
   host.querySelectorAll(`[data-testid="${GAME_HUD_OVERLAY_TESTID}"]`).forEach((node) => node.remove());

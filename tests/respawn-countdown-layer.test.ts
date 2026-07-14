@@ -8,9 +8,9 @@
 //   * CSS z-index   → orders the sibling DOM canvases + the DOM HUD
 // The countdown was authored as a Phaser Text at `setDepth(100)` on the base
 // game canvas. Phaser depth only orders objects WITHIN that single canvas; it
-// cannot cross the DOM boundary to the sibling WebGL overlay canvases, which are
-// composited ABOVE the base canvas (tank-3d.ts pins its canvas at z-index 1). So
-// the 3D elements painted over the countdown.
+// cannot cross the DOM boundary to the sibling WebGL overlay canvas, which is
+// composited ABOVE the base canvas (overlay-3d.ts pins its canvas at z-index 1).
+// So the 3D elements painted over the countdown.
 //
 // THE FIX: the countdown (and the CTF AI role labels) were lifted out of the
 // base canvas into a dedicated DOM HUD overlay (game-hud-overlay.ts) that is
@@ -35,7 +35,8 @@ vi.mock("three", async () => {
   return { ...actual, WebGLRenderer: FakeWebGLRenderer };
 });
 
-import { TankOverlay3D, TANK_OVERLAY_TESTID } from "../src/game/tank-3d";
+import { Overlay3D } from "../src/game/overlay-3d";
+import { WORLD_OVERLAY_TESTID } from "../src/game/urban-decor";
 import { GameHudOverlay, GAME_HUD_OVERLAY_TESTID } from "../src/game/game-hud-overlay";
 
 // Numeric CSS z-index of an element, treating the `auto`/unset default as 0
@@ -58,23 +59,23 @@ function paintsAbove(a: HTMLElement, b: HTMLElement): boolean {
   return (order & Node.DOCUMENT_POSITION_PRECEDING) !== 0;
 }
 
-describe("RESPAWN countdown reads above the 3D overlays (TT-28)", () => {
-  const tankOverlays: TankOverlay3D[] = [];
+describe("RESPAWN countdown reads above the 3D overlay (TT-28)", () => {
+  const worldOverlays: Overlay3D[] = [];
   const hudOverlays: GameHudOverlay[] = [];
 
   afterEach(() => {
-    while (tankOverlays.length > 0) {
-      tankOverlays.pop()!.dispose();
+    while (worldOverlays.length > 0) {
+      worldOverlays.pop()!.dispose();
     }
     while (hudOverlays.length > 0) {
       hudOverlays.pop()!.dispose();
     }
   });
 
-  it("paints the RESPAWN countdown layer above the 3D tank overlay canvas", () => {
+  it("paints the RESPAWN countdown layer above the 3D world overlay canvas", () => {
     // Reproduce the DOM stack CampaignScene builds on the shared host: the DOM
     // HUD overlay (which now carries the RESPAWN countdown) is mounted first, and
-    // the 3D tank overlay canvas is appended after it — real code, so the z-index
+    // the 3D world overlay canvas is appended after it — real code, so the z-index
     // values under test are sourced from the modules, not fabricated.
     const host = document.createElement("div");
 
@@ -85,15 +86,15 @@ describe("RESPAWN countdown reads above the 3D overlays (TT-28)", () => {
     );
     expect(respawnCountdownLayer).not.toBeNull();
 
-    const tankOverlay = new TankOverlay3D(host);
-    tankOverlays.push(tankOverlay);
-    const tankOverlayCanvas = host.querySelector<HTMLCanvasElement>(
-      `[data-testid="${TANK_OVERLAY_TESTID}"]`,
+    const worldOverlay = new Overlay3D(host);
+    worldOverlays.push(worldOverlay);
+    const worldOverlayCanvas = host.querySelector<HTMLCanvasElement>(
+      `[data-testid="${WORLD_OVERLAY_TESTID}"]`,
     );
-    expect(tankOverlayCanvas).not.toBeNull();
+    expect(worldOverlayCanvas).not.toBeNull();
 
-    // The countdown is a HUD message; it must read on top of the 3D tanks even
-    // though the tank overlay canvas is a later DOM sibling.
-    expect(paintsAbove(respawnCountdownLayer!, tankOverlayCanvas!)).toBe(true);
+    // The countdown is a HUD message; it must read on top of the 3D world overlay
+    // even though the overlay canvas is a later DOM sibling.
+    expect(paintsAbove(respawnCountdownLayer!, worldOverlayCanvas!)).toBe(true);
   });
 });

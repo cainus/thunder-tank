@@ -41,19 +41,12 @@ export function treeScaleFactor(index: number): number {
   return 1 - TREE_SCALE_VARIATION + fraction * (2 * TREE_SCALE_VARIATION);
 }
 
-// data-testid stamped on the 3D tree overlay canvas. Exported so the overlay
-// (which stamps it) and the duplicate-cleanup sweep agree on one selector.
-export const TREE_OVERLAY_TESTID = "tree-overlay-3d";
-
-// data-testid stamped on the 3D crate overlay canvas (the square obstacles).
-// Kept distinct from the tree overlay so the two stacked overlays can be found,
-// swept, and cleaned up independently.
-export const CRATE_OVERLAY_TESTID = "crate-overlay-3d";
-
-// data-testid stamped on the 3D parked-car overlay canvas. Distinct from the
-// tree and crate overlays so all three stacked overlays can be found, swept, and
-// cleaned up independently.
-export const CAR_OVERLAY_TESTID = "car-overlay-3d";
+// data-testid stamped on the single 3D world overlay canvas. Trees, crates,
+// cars, and tanks all render into ONE three.js scene on this one canvas so they
+// share a depth buffer and sort correctly against each other (TT-29). Exported
+// so the compositor (which stamps it) and the duplicate-cleanup sweep agree on
+// one selector.
+export const WORLD_OVERLAY_TESTID = "world-overlay-3d";
 
 // Uniform world-units-per-model-unit scale applied to the loaded crate model.
 // The model is authored with a 1-unit footprint, so this makes a crate read at
@@ -81,35 +74,17 @@ export const CAR_WORLD_SCALE = CAR_BODY_LENGTH;
 export const OPAQUE_OVERLAY_OPACITY = 1;
 
 /**
- * Removes any pre-existing 3D tree overlay canvases from `host`. Each map runs
+ * Removes any pre-existing 3D world overlay canvases from `host`. Each map runs
  * inside a fresh Phaser.Game mounted on the same persistent DOM host, so an
- * overlay canvas left behind by a prior game would stack a second grove on top
- * of the new map's — the reported "trees duplicate on every map". Sweeping the
- * host before appending a new overlay guarantees at most one overlay canvas,
- * regardless of Phaser teardown timing or async model-load races.
+ * overlay canvas left behind by a prior game would stack a second set of 3D
+ * decor/tanks on top of the new map's — the reported "3D items duplicate on
+ * every map" (TT-22/TT-27). Sweeping the host before appending a new overlay
+ * guarantees at most one overlay canvas, regardless of Phaser teardown timing or
+ * async model-load races. Because trees, crates, cars, and tanks now share ONE
+ * overlay canvas (TT-29), a single sweep clears them all together.
  */
-export function removeExistingTreeOverlays(host: HTMLElement): void {
-  removeOverlayCanvases(host, TREE_OVERLAY_TESTID);
-}
-
-/**
- * Removes any pre-existing 3D crate overlay canvases from `host`, for the same
- * reason as {@link removeExistingTreeOverlays}: each map runs inside a fresh
- * Phaser.Game on the same persistent DOM host, so an overlay left behind by a
- * prior game would stack a second set of crates on top of the new map's.
- */
-export function removeExistingCrateOverlays(host: HTMLElement): void {
-  removeOverlayCanvases(host, CRATE_OVERLAY_TESTID);
-}
-
-/**
- * Removes any pre-existing 3D parked-car overlay canvases from `host`, for the
- * same reason as {@link removeExistingTreeOverlays}: each map runs inside a fresh
- * Phaser.Game on the same persistent DOM host, so an overlay left behind by a
- * prior game would stack a second row of cars on top of the new map's.
- */
-export function removeExistingCarOverlays(host: HTMLElement): void {
-  removeOverlayCanvases(host, CAR_OVERLAY_TESTID);
+export function removeExistingWorldOverlays(host: HTMLElement): void {
+  removeOverlayCanvases(host, WORLD_OVERLAY_TESTID);
 }
 
 /** Removes every overlay canvas under `host` tagged with the given data-testid. */
@@ -287,9 +262,12 @@ export function trunkExposureBelowCanopy(
   return canopyBaseHeight * Math.sin(tilt) - canopyBaseRadius;
 }
 
-// World-space radius of the soft hole punched into the 3D tree canopy for each
-// tank so the tank (drawn by Phaser underneath) always reads on top of the
-// decoration, matching the pre-3D depth order (flat trees sat below tanks).
+// Nominal world-space radius used as the default footprint when mapping a ground
+// position onto clip space (see occluderClipTransform). Trees, crates, cars, and
+// tanks now share one depth-sorted 3D scene (TT-29), so tank-vs-decor occlusion
+// is resolved by the depth buffer rather than by punching holes in the canopy;
+// this constant is retained only as the default radius for the pure world->clip
+// mapping the world-lock tests exercise.
 export const TREE_OCCLUDER_WORLD_RADIUS = 54;
 
 export interface TreeViewRect {
@@ -300,12 +278,13 @@ export interface TreeViewRect {
 }
 
 /**
- * Maps a ground-plane world position + radius onto the tree overlay's clip
- * space, returning the centre and full width/height of an axis-aligned quad in
- * normalized device coordinates ([-1, 1], y-up). Because the tree camera
+ * Maps a ground-plane world position + radius onto the overlay's clip space,
+ * returning the centre and full width/height of an axis-aligned quad in
+ * normalized device coordinates ([-1, 1], y-up). Because the overlay camera
  * keeps ground positions in 1:1 registration with the Phaser view (see
  * treeOrthoFrustum), a ground point maps linearly across the view rectangle.
- * Kept engine-free so the occlusion mapping can be unit-tested without WebGL.
+ * Kept engine-free so the world->clip mapping (and the world-lock behaviour that
+ * proves the decor scrolls with the ground) can be unit-tested without WebGL.
  */
 export function occluderClipTransform(
   worldX: number,

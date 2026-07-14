@@ -47,10 +47,10 @@ import {
   computeUrbanTreeSpots,
   isWebglAvailable,
   OPAQUE_OVERLAY_OPACITY,
-  removeExistingCrateOverlays,
   treeScaleFactor,
 } from "./urban-decor";
 import { hullYaw, tankModelScale, turretYaw } from "./tank-decor";
+import type { Overlay3D } from "./overlay-3d";
 import type { TreeOverlay3D } from "./tree-3d";
 import type { TankOverlay3D } from "./tank-3d";
 import type { CrateOverlay3D, CratePlacement } from "./crate-3d";
@@ -305,9 +305,17 @@ export class CampaignScene extends Phaser.Scene {
   private treadMarks: TreadMark[] = [];
   private impactMarks: ImpactMark[] = [];
   private lightPosts: LightPostRuntime[] = [];
+  // Single 3D world overlay compositor: one canvas + one THREE.Scene that every
+  // 3D content manager (trees, crates, cars, tanks) draws into, so they share a
+  // depth buffer and sort correctly against one another (TT-29). Lazily built on
+  // the first WebGL-capable map, then reused by all four content managers.
+  private overlay?: Overlay3D;
+  // Cached in-flight compositor construction so the four content managers that
+  // race to load their models all await (and share) one Overlay3D per map.
+  private overlayPromise?: Promise<Overlay3D | undefined>;
   private treeOverlay?: TreeOverlay3D;
   private tankOverlay?: TankOverlay3D;
-  // True once the 3D tank overlay has loaded and is rendering; while set, the
+  // True once the 3D tank content has loaded and is rendering; while set, the
   // flat hull/turret/stripe sprites are hidden and the 3D models stand in.
   private tanks3DActive = false;
   private crateOverlay?: CrateOverlay3D;
@@ -354,6 +362,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
     this.destroyCarOverlay();
+    this.destroyWorldOverlay();
     this.destroyGameHud();
     this.crateSprites = [];
     this.treeColliders = undefined;
@@ -506,20 +515,20 @@ export class CampaignScene extends Phaser.Scene {
       this.gameHud = new GameHudOverlay(host);
     }
     if (host && isWebglAvailable()) {
-      // three.js is heavy, so the tank overlay is code-split behind a dynamic
+      // three.js is heavy, so the tank content is code-split behind a dynamic
       // import and only pulled in when WebGL can actually render the 3D models.
       void this.addTankOverlay(host);
     }
 
-    // Draw the 3D tree overlay from the scene's post-camera RENDER event (fires
-    // after cameras.render() has refreshed worldView for this frame) so it locks
-    // to the exact camera state Phaser rendered the ground with. Doing this in
-    // update() would use the stale, pre-preRender worldView and lag the trees a
-    // frame behind the followed camera. renderTreeOverlay() no-ops until the
-    // overlay finishes its async load.
-    this.events.on(Phaser.Scenes.Events.RENDER, this.renderTreeOverlay, this);
+    // Draw the single 3D world overlay from the scene's post-camera RENDER event
+    // (fires after cameras.render() has refreshed worldView for this frame) so it
+    // locks to the exact camera state Phaser rendered the ground with. Doing this
+    // in update() would use the stale, pre-preRender worldView and lag every 3D
+    // object a frame behind the followed camera. renderWorldOverlay() no-ops
+    // until the compositor exists and its content finishes loading.
+    this.events.on(Phaser.Scenes.Events.RENDER, this.renderWorldOverlay, this);
     this.cleanupListeners.push(() =>
-      this.events.off(Phaser.Scenes.Events.RENDER, this.renderTreeOverlay, this),
+      this.events.off(Phaser.Scenes.Events.RENDER, this.renderWorldOverlay, this),
     );
   }
 
@@ -555,17 +564,16 @@ export class CampaignScene extends Phaser.Scene {
     this.updateTankVisuals();
     this.updateCaptureTheFlag(time);
     this.updateCamera();
-    // NB: the 3D tree overlay is NOT drawn here. Phaser only recomputes
+    // NB: the 3D world overlay is NOT drawn here. Phaser only recomputes
     // cameras.main.worldView (and applies the follow-lerp scroll) during its
     // preRender, which runs *after* update(); drawing the overlay here would feed
-    // it last frame's worldView, leaving the trees a frame behind the ground so
-    // they appear to slide with the followed camera (the "trees move with player
-    // 1" defect). It is instead driven from the post-camera RENDER event (wired
-    // in create()) so it renders with the exact frame Phaser just drew.
-    this.renderTankOverlay();
-    this.renderCrateOverlay();
+    // it last frame's worldView, leaving every 3D object a frame behind the ground
+    // so they appear to slide with the followed camera (the "trees move with
+    // player 1" defect). It is instead driven from the post-camera RENDER event
+    // (wired in create()) so it renders with the exact frame Phaser just drew.
+    // syncPushedCars only writes the pushed cars' ground positions into the shared
+    // scene; the actual draw happens in renderWorldOverlay().
     this.syncPushedCars();
-    this.renderCarOverlay();
     this.updatePickupRespawns(time);
     this.updateMotorAudio();
     this.cleanupFarBullets();
@@ -788,18 +796,44 @@ export class CampaignScene extends Phaser.Scene {
     }
   }
 
-  // Lazily loads the three.js overlay module + tree model, then places the 3D
-  // trees. Falls back to flat sprites if anything fails. Guards against the
-  // scene shutting down or restarting during the async work.
+  // Lazily builds the single 3D world overlay compositor (one canvas + one shared
+  // scene) that all four content managers draw into. Cached behind a promise so
+  // the tree/crate/car/tank loaders that race to import their models all await
+  // and share ONE Overlay3D per map. Resolves undefined if the scene shut down
+  // before the compositor could be built. Constructing it sweeps any overlay
+  // canvas orphaned by a prior game on the shared host (TT-22/TT-27).
+  private ensureOverlay(host: HTMLElement): Promise<Overlay3D | undefined> {
+    if (!this.overlayPromise) {
+      this.overlayPromise = (async () => {
+        const { Overlay3D } = await import("./overlay-3d");
+        if (!this.scene.isActive()) {
+          return undefined;
+        }
+        if (!this.overlay) {
+          this.overlay = new Overlay3D(host);
+        }
+        return this.overlay;
+      })();
+    }
+    return this.overlayPromise;
+  }
+
+  // Lazily loads the three.js tree model and places the 3D trees into the shared
+  // world overlay scene. Falls back to flat sprites if anything fails. Guards
+  // against the scene shutting down or restarting during the async work.
   private async addTreeOverlay(host: HTMLElement, treeSpots: Vec2[]): Promise<void> {
     try {
+      const compositor = await this.ensureOverlay(host);
       const { TreeOverlay3D } = await import("./tree-3d");
 
-      if (!this.scene.isActive()) {
+      if (!compositor || !this.scene.isActive()) {
+        if (this.scene.isActive()) {
+          this.addFlatTrees(treeSpots);
+        }
         return;
       }
 
-      const overlay = new TreeOverlay3D(host);
+      const overlay = new TreeOverlay3D(compositor.scene);
       this.treeOverlay = overlay;
 
       await overlay.load(MODEL_ASSETS.tree);
@@ -817,43 +851,67 @@ export class CampaignScene extends Phaser.Scene {
     }
   }
 
-  private renderTreeOverlay(): void {
-    if (!this.treeOverlay) {
-      return;
-    }
-
-    const view = this.cameras.main.worldView;
-    // Feed the overlay each living tank's ground position so it can cut a hole in
-    // the canopy there, keeping tanks readable on top of the trees (the flat
-    // sprites they replaced sat below the tanks at depth -9).
-    const occluders = this.getAllTanks()
-      .filter((tank) => tank.alive)
-      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
-    this.treeOverlay.render(
-      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
-      this.scale.gameSize.width,
-      this.scale.gameSize.height,
-      occluders,
-    );
-  }
-
   private destroyTreeOverlay(): void {
     this.treeOverlay?.dispose();
     this.treeOverlay = undefined;
   }
 
-  // Lazily loads the three.js tank overlay module + hull/turret models, then
-  // switches rendering over to the 3D tanks. Falls back to the flat sprites if
-  // anything fails. Guards against the scene shutting down during the async work.
+  // Draws the single 3D world overlay for this frame: refreshes each living
+  // tank's 3D transform, then renders the whole shared scene in one depth-tested
+  // pass so trees, crates, cars, and tanks sort correctly against one another
+  // (TT-29). No-ops until the compositor exists.
+  private renderWorldOverlay(): void {
+    if (!this.overlay) {
+      return;
+    }
+
+    if (this.tankOverlay && this.tanks3DActive) {
+      const now = this.time.now;
+      const tanks = this.getAllTanks()
+        .filter((tank) => tank.alive)
+        .map((tank) => ({
+          x: tank.hull.x,
+          y: tank.hull.y,
+          hullYaw: hullYaw(tank.hull.rotation),
+          turretYaw: turretYaw(tank.aimAngle),
+          scale: tankModelScale(tank.archetype, this.isBlueTeammate(tank)),
+          color: teamStripeColor(tank.side),
+          shielded: tank.buffs.shieldUntil > now,
+          // Only the player's overheat freeze drives the barrel tint; enemies have
+          // no heat model, so their gun always reads ready (grey).
+          gunReadiness: tank === this.player ? this.playerGunReadiness(now) : 1,
+        }));
+      this.tankOverlay.sync(tanks);
+    }
+
+    const view = this.cameras.main.worldView;
+    this.overlay.render(
+      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
+      this.scale.gameSize.width,
+      this.scale.gameSize.height,
+    );
+  }
+
+  private destroyWorldOverlay(): void {
+    this.overlay?.dispose();
+    this.overlay = undefined;
+    this.overlayPromise = undefined;
+  }
+
+  // Lazily loads the three.js hull/turret models and switches rendering over to
+  // the 3D tanks in the shared world overlay scene. Falls back to the flat
+  // sprites if anything fails. Guards against the scene shutting down during the
+  // async work.
   private async addTankOverlay(host: HTMLElement): Promise<void> {
     try {
+      const compositor = await this.ensureOverlay(host);
       const { TankOverlay3D } = await import("./tank-3d");
 
-      if (!this.scene.isActive()) {
+      if (!compositor || !this.scene.isActive()) {
         return;
       }
 
-      const overlay = new TankOverlay3D(host);
+      const overlay = new TankOverlay3D(compositor.scene);
       this.tankOverlay = overlay;
 
       await overlay.load(MODEL_ASSETS.tankHull, MODEL_ASSETS.tankTurret);
@@ -866,35 +924,6 @@ export class CampaignScene extends Phaser.Scene {
       console.warn("3D tank overlay unavailable, falling back to sprites:", error);
       this.destroyTankOverlay();
     }
-  }
-
-  private renderTankOverlay(): void {
-    if (!this.tankOverlay || !this.tanks3DActive) {
-      return;
-    }
-
-    const view = this.cameras.main.worldView;
-    const now = this.time.now;
-    const tanks = this.getAllTanks()
-      .filter((tank) => tank.alive)
-      .map((tank) => ({
-        x: tank.hull.x,
-        y: tank.hull.y,
-        hullYaw: hullYaw(tank.hull.rotation),
-        turretYaw: turretYaw(tank.aimAngle),
-        scale: tankModelScale(tank.archetype, this.isBlueTeammate(tank)),
-        color: teamStripeColor(tank.side),
-        shielded: tank.buffs.shieldUntil > now,
-        // Only the player's overheat freeze drives the barrel tint; enemies have
-        // no heat model, so their gun always reads ready (grey).
-        gunReadiness: tank === this.player ? this.playerGunReadiness(now) : 1,
-      }));
-    this.tankOverlay.render(
-      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
-      this.scale.gameSize.width,
-      this.scale.gameSize.height,
-      tanks,
-    );
   }
 
   // Maps the player's overheat freeze onto a 0..1 barrel-readiness value for the
@@ -920,33 +949,26 @@ export class CampaignScene extends Phaser.Scene {
     return tank.side === "playerTwo" && this.isCaptureTheFlag();
   }
 
-  // Renders the square crate obstacles as 3D models via a three.js overlay,
-  // mirroring the tree overlay. The crates' Phaser physics bodies always stay in
-  // the scene for collision; when the 3D overlay is available the flat crate
-  // sprites are hidden and a soft ground shadow is added so the models read as
-  // grounded. Falls back to the flat sprites when WebGL/host is unavailable.
+  // Renders the square crate obstacles as 3D models in the shared world overlay
+  // scene. The crates' Phaser physics bodies always stay in the scene for
+  // collision; when the 3D overlay is available the flat crate sprites are hidden
+  // and a soft ground shadow is added so the models read as grounded. Falls back
+  // to the flat sprites when WebGL/host is unavailable.
+  //
+  // No per-crate canvas sweep is needed anymore (TT-27): trees, crates, cars, and
+  // tanks share ONE overlay canvas that the compositor sweeps on construction,
+  // and every WebGL map builds that compositor for its tanks — so a crateless map
+  // still clears any 3D decor left over from the prior map.
   private addCrateOverlays(): void {
     const placements: CratePlacement[] = this.map.obstacles
       .filter((obstacle) => obstacle.kind === "crate")
       .map((obstacle) => ({ x: obstacle.x, y: obstacle.y, rotation: obstacle.rotation ?? 0 }));
 
-    const host = this.game.canvas?.parentElement;
-
-    // Sweep any 3D crate canvas orphaned by a prior game on this shared host,
-    // even when THIS map has no crates. Each map runs inside a fresh Phaser.Game
-    // mounted on the same persistent DOM host, and a crate overlay's canvas is
-    // only swept when a new CrateOverlay3D is constructed. On a crateless map no
-    // overlay is built, so without this the previous map's 3D crates stay
-    // floating on the new one — "crates not clearing at the end of a map"
-    // (TT-27), the crateless-map analogue of the TT-22 tank sweep (which every
-    // map runs because every map has tanks). Runs before the early return below.
-    if (host) {
-      removeExistingCrateOverlays(host);
-    }
-
     if (placements.length === 0) {
       return;
     }
+
+    const host = this.game.canvas?.parentElement;
 
     if (!host || !isWebglAvailable()) {
       // Fallback: leave the flat crate sprites visible (their default look).
@@ -966,18 +988,20 @@ export class CampaignScene extends Phaser.Scene {
     void this.addCrateOverlay(host, placements);
   }
 
-  // Lazily loads the three.js crate overlay module + model, hides the flat crate
-  // sprites, then places the 3D crates. Falls back to the flat sprites if
-  // anything fails. Guards against the scene shutting down during the async work.
+  // Lazily loads the three.js crate model into the shared world overlay scene,
+  // hides the flat crate sprites, then places the 3D crates. Falls back to the
+  // flat sprites if anything fails. Guards against the scene shutting down during
+  // the async work.
   private async addCrateOverlay(host: HTMLElement, placements: CratePlacement[]): Promise<void> {
     try {
+      const compositor = await this.ensureOverlay(host);
       const { CrateOverlay3D } = await import("./crate-3d");
 
-      if (!this.scene.isActive()) {
+      if (!compositor || !this.scene.isActive()) {
         return;
       }
 
-      const overlay = new CrateOverlay3D(host);
+      const overlay = new CrateOverlay3D(compositor.scene);
       this.crateOverlay = overlay;
 
       await overlay.load(MODEL_ASSETS.crate);
@@ -995,26 +1019,6 @@ export class CampaignScene extends Phaser.Scene {
       this.destroyCrateOverlay();
       // Leave the flat crate sprites visible as the fallback look.
     }
-  }
-
-  private renderCrateOverlay(): void {
-    if (!this.crateOverlay) {
-      return;
-    }
-
-    const view = this.cameras.main.worldView;
-    // Feed the overlay each living tank's ground position so it can cut a hole in
-    // the crates there, keeping tanks readable on top (the flat crate sprites they
-    // replaced sat below the tanks at depth 8 < TANK_DEPTH).
-    const occluders = this.getAllTanks()
-      .filter((tank) => tank.alive)
-      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
-    this.crateOverlay.render(
-      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
-      this.scale.gameSize.width,
-      this.scale.gameSize.height,
-      occluders,
-    );
   }
 
   private destroyCrateOverlay(): void {
@@ -1149,18 +1153,20 @@ export class CampaignScene extends Phaser.Scene {
     void this.addCarOverlay(host, placements);
   }
 
-  // Lazily loads the three.js car overlay module + model, hides the flat car
-  // sprites, then places the 3D cars. Falls back to the flat sprites if anything
-  // fails. Guards against the scene shutting down during the async work.
+  // Lazily loads the three.js car model into the shared world overlay scene,
+  // hides the flat car sprites, then places the 3D cars. Falls back to the flat
+  // sprites if anything fails. Guards against the scene shutting down during the
+  // async work.
   private async addCarOverlay(host: HTMLElement, placements: CarPlacement[]): Promise<void> {
     try {
+      const compositor = await this.ensureOverlay(host);
       const { CarOverlay3D } = await import("./car-3d");
 
-      if (!this.scene.isActive()) {
+      if (!compositor || !this.scene.isActive()) {
         return;
       }
 
-      const overlay = new CarOverlay3D(host);
+      const overlay = new CarOverlay3D(compositor.scene);
       this.carOverlay = overlay;
 
       await overlay.load(MODEL_ASSETS.car);
@@ -1205,26 +1211,6 @@ export class CampaignScene extends Phaser.Scene {
     }
 
     this.carOverlay?.syncPositions(this.carSprites.map((sprite) => ({ x: sprite.x, y: sprite.y })));
-  }
-
-  private renderCarOverlay(): void {
-    if (!this.carOverlay) {
-      return;
-    }
-
-    const view = this.cameras.main.worldView;
-    // Feed the overlay each living tank's ground position so it can cut a hole in
-    // the cars there, keeping tanks readable on top (the flat car sprites they
-    // replaced sat below the tanks at depth 8 < TANK_DEPTH).
-    const occluders = this.getAllTanks()
-      .filter((tank) => tank.alive)
-      .map((tank) => ({ x: tank.hull.x, y: tank.hull.y }));
-    this.carOverlay.render(
-      { centerX: view.centerX, centerY: view.centerY, width: view.width, height: view.height },
-      this.scale.gameSize.width,
-      this.scale.gameSize.height,
-      occluders,
-    );
   }
 
   private destroyCarOverlay(): void {
@@ -3906,6 +3892,7 @@ export class CampaignScene extends Phaser.Scene {
     this.destroyTankOverlay();
     this.destroyCrateOverlay();
     this.destroyCarOverlay();
+    this.destroyWorldOverlay();
     this.destroyGameHud();
     this.cleanupListeners = [];
   }

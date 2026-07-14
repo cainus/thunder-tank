@@ -2,21 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   CAR_BODY_LENGTH,
   CAR_BODY_WIDTH,
-  CAR_OVERLAY_TESTID,
   CAR_WORLD_SCALE,
-  CRATE_OVERLAY_TESTID,
   CRATE_WORLD_SCALE,
   TREE_CAMERA_TILT,
   TREE_CANOPY_BASE_HEIGHT,
   TREE_CANOPY_BASE_RADIUS,
-  TREE_OVERLAY_TESTID,
   TREE_SCALE_VARIATION,
+  WORLD_OVERLAY_TESTID,
   computeParkedCarSpots,
   computeUrbanTreeSpots,
   occluderClipTransform,
-  removeExistingCarOverlays,
-  removeExistingCrateOverlays,
-  removeExistingTreeOverlays,
+  removeExistingWorldOverlays,
   treeCameraEye,
   treeHeightScreenOffset,
   treeOrthoFrustum,
@@ -113,49 +109,6 @@ describe("CAR_WORLD_SCALE", () => {
     // near the flat car sprite's length.
     expect(CAR_WORLD_SCALE).toBe(CAR_BODY_LENGTH);
     expect(CAR_BODY_LENGTH).toBeGreaterThan(CAR_BODY_WIDTH);
-  });
-});
-
-describe("removeExistingCarOverlays", () => {
-  function makeCarOverlayCanvas(): HTMLCanvasElement {
-    const canvas = document.createElement("canvas");
-    canvas.setAttribute("data-testid", CAR_OVERLAY_TESTID);
-    return canvas;
-  }
-
-  it("uses a distinct testid from the tree and crate overlays", () => {
-    expect(CAR_OVERLAY_TESTID).not.toBe(TREE_OVERLAY_TESTID);
-    expect(CAR_OVERLAY_TESTID).not.toBe(CRATE_OVERLAY_TESTID);
-  });
-
-  it("removes a stray car overlay canvas left by a prior game", () => {
-    const host = document.createElement("div");
-    host.appendChild(makeCarOverlayCanvas());
-    host.appendChild(makeCarOverlayCanvas());
-
-    removeExistingCarOverlays(host);
-
-    expect(host.querySelectorAll(`[data-testid="${CAR_OVERLAY_TESTID}"]`)).toHaveLength(0);
-  });
-
-  it("leaves the tree/crate overlays and non-overlay children untouched", () => {
-    const host = document.createElement("div");
-    const gameCanvas = document.createElement("canvas");
-    const treeOverlay = document.createElement("canvas");
-    treeOverlay.setAttribute("data-testid", TREE_OVERLAY_TESTID);
-    const crateOverlay = document.createElement("canvas");
-    crateOverlay.setAttribute("data-testid", CRATE_OVERLAY_TESTID);
-    host.appendChild(gameCanvas);
-    host.appendChild(treeOverlay);
-    host.appendChild(crateOverlay);
-    host.appendChild(makeCarOverlayCanvas());
-
-    removeExistingCarOverlays(host);
-
-    expect(host.contains(gameCanvas)).toBe(true);
-    expect(host.contains(treeOverlay)).toBe(true);
-    expect(host.contains(crateOverlay)).toBe(true);
-    expect(host.querySelectorAll(`[data-testid="${CAR_OVERLAY_TESTID}"]`)).toHaveLength(0);
   });
 });
 
@@ -329,71 +282,35 @@ describe("treeScaleFactor", () => {
   });
 });
 
-describe("removeExistingTreeOverlays", () => {
-  function makeOverlayCanvas(): HTMLCanvasElement {
+describe("removeExistingWorldOverlays", () => {
+  // Trees, crates, cars, and tanks now share ONE 3D world overlay canvas (TT-29),
+  // so a single sweep clears every stale 3D item left by a prior game.
+  function makeWorldOverlayCanvas(): HTMLCanvasElement {
     const canvas = document.createElement("canvas");
-    canvas.setAttribute("data-testid", TREE_OVERLAY_TESTID);
+    canvas.setAttribute("data-testid", WORLD_OVERLAY_TESTID);
     return canvas;
   }
 
-  it("removes a stray overlay canvas left by a prior game", () => {
+  it("removes a stray world overlay canvas left by a prior game", () => {
     const host = document.createElement("div");
-    host.appendChild(makeOverlayCanvas());
-    host.appendChild(makeOverlayCanvas());
+    host.appendChild(makeWorldOverlayCanvas());
+    host.appendChild(makeWorldOverlayCanvas());
 
-    removeExistingTreeOverlays(host);
+    removeExistingWorldOverlays(host);
 
-    expect(host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`)).toHaveLength(0);
+    expect(host.querySelectorAll(`[data-testid="${WORLD_OVERLAY_TESTID}"]`)).toHaveLength(0);
   });
 
   it("leaves non-overlay children (e.g. the Phaser canvas) untouched", () => {
     const host = document.createElement("div");
     const gameCanvas = document.createElement("canvas");
     host.appendChild(gameCanvas);
-    host.appendChild(makeOverlayCanvas());
+    host.appendChild(makeWorldOverlayCanvas());
 
-    removeExistingTreeOverlays(host);
-
-    expect(host.contains(gameCanvas)).toBe(true);
-    expect(host.querySelectorAll(`[data-testid="${TREE_OVERLAY_TESTID}"]`)).toHaveLength(0);
-  });
-});
-
-describe("removeExistingCrateOverlays", () => {
-  function makeCrateOverlayCanvas(): HTMLCanvasElement {
-    const canvas = document.createElement("canvas");
-    canvas.setAttribute("data-testid", CRATE_OVERLAY_TESTID);
-    return canvas;
-  }
-
-  it("uses a distinct testid from the tree overlay", () => {
-    expect(CRATE_OVERLAY_TESTID).not.toBe(TREE_OVERLAY_TESTID);
-  });
-
-  it("removes a stray crate overlay canvas left by a prior game", () => {
-    const host = document.createElement("div");
-    host.appendChild(makeCrateOverlayCanvas());
-    host.appendChild(makeCrateOverlayCanvas());
-
-    removeExistingCrateOverlays(host);
-
-    expect(host.querySelectorAll(`[data-testid="${CRATE_OVERLAY_TESTID}"]`)).toHaveLength(0);
-  });
-
-  it("leaves the tree overlay and non-overlay children untouched", () => {
-    const host = document.createElement("div");
-    const gameCanvas = document.createElement("canvas");
-    const treeOverlay = document.createElement("canvas");
-    treeOverlay.setAttribute("data-testid", TREE_OVERLAY_TESTID);
-    host.appendChild(gameCanvas);
-    host.appendChild(treeOverlay);
-    host.appendChild(makeCrateOverlayCanvas());
-
-    removeExistingCrateOverlays(host);
+    removeExistingWorldOverlays(host);
 
     expect(host.contains(gameCanvas)).toBe(true);
-    expect(host.contains(treeOverlay)).toBe(true);
-    expect(host.querySelectorAll(`[data-testid="${CRATE_OVERLAY_TESTID}"]`)).toHaveLength(0);
+    expect(host.querySelectorAll(`[data-testid="${WORLD_OVERLAY_TESTID}"]`)).toHaveLength(0);
   });
 });
 
