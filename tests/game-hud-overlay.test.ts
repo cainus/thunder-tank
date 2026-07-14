@@ -31,12 +31,12 @@ describe("GameHudOverlay (TT-28)", () => {
     host?.remove();
   });
 
-  it("mounts a HUD layer at the contract's z-index above the 3D overlays", () => {
+  it("mounts a HUD layer at the contract's z-index above the 3D overlay", () => {
     mount();
     const el = root();
     expect(el).not.toBeNull();
     expect(el.style.zIndex).toBe(String(LAYER_Z.gameHudOverlay));
-    expect(LAYER_Z.gameHudOverlay).toBeGreaterThan(LAYER_Z.tankOverlay);
+    expect(LAYER_Z.gameHudOverlay).toBeGreaterThan(LAYER_Z.worldOverlay);
   });
 
   it("shows and hides the RESPAWN countdown text", () => {

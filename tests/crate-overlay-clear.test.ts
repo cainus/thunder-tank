@@ -1,72 +1,78 @@
 // Regression spec for TT-27: "3D crates not clearing at the end of a map"
-// (a TT-22 regression).
+// (a TT-22 regression), re-expressed after TT-29 unified the overlays.
 //
 // Every map runs inside a fresh Phaser.Game mounted on the same persistent DOM
-// host (GameCanvas.tsx re-creates the game on mapIndex change). A CrateOverlay3D
-// only sweeps prior crate canvases from that host when it is CONSTRUCTED, which
-// happens solely on maps that actually place crates. So advancing from a
-// crate-bearing map to a crateless one built no overlay, never swept, and left
-// the previous map's 3D crates floating on the new map. (Tanks never showed this
-// because every map builds a tank overlay — see the TT-22 tank sweep.)
+// host (GameCanvas.tsx re-creates the game on mapIndex change). Before TT-29 each
+// obstacle kind owned its own overlay canvas, swept only when THAT overlay was
+// constructed; a crateless map built no crate overlay, never swept, and left the
+// previous map's 3D crates floating on the new map.
 //
-// CampaignScene.addCrateOverlays now sweeps the shared host for orphaned crate
-// canvases unconditionally, before its no-crates early return. This exercises
-// that exact path: a scene whose map has no crate obstacles must still clear a
-// stray crate overlay canvas left on the host by the prior game.
-import { describe, expect, it, vi } from "vitest";
+// TT-29 collapsed trees, crates, cars, and tanks into ONE world overlay canvas
+// built by the Overlay3D compositor. Every WebGL map builds that compositor for
+// its tanks, and the compositor sweeps the shared host on construction — so a
+// crateless map now clears any 3D decor (crates included) left by the prior map
+// as a matter of course. This exercises that invariant: constructing a fresh
+// compositor on a host still holding a prior game's overlay canvas must leave
+// exactly one overlay canvas, regardless of whether the new map has crates.
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-// The full Phaser build can't load under jsdom (its WebGL renderer requires an
-// optional native dep), and CampaignScene only needs Phaser for its `extends
-// Phaser.Scene` base at module-eval time. The crateless sweep path under test
-// touches no Phaser API, so a bare Scene base class is enough to import it.
-vi.mock("phaser", () => ({ default: { Scene: class Scene {} } }));
+// jsdom cannot create a WebGL context, so stub three's renderer with one whose
+// domElement is a real <canvas> — same shim tank-overlay-clear.test.ts uses.
+vi.mock("three", async () => {
+  const actual = await vi.importActual<typeof import("three")>("three");
+  class FakeWebGLRenderer {
+    readonly domElement = document.createElement("canvas");
+    setClearColor(): void {}
+    setPixelRatio(): void {}
+    setSize(): void {}
+    render(): void {}
+    dispose(): void {}
+  }
+  return { ...actual, WebGLRenderer: FakeWebGLRenderer };
+});
 
-import { CampaignScene } from "../src/game/CampaignScene";
-import { CRATE_OVERLAY_TESTID } from "../src/game/urban-decor";
+import { Overlay3D } from "../src/game/overlay-3d";
+import { WORLD_OVERLAY_TESTID } from "../src/game/urban-decor";
 
-const CRATE_SELECTOR = `[data-testid="${CRATE_OVERLAY_TESTID}"]`;
+const OVERLAY_SELECTOR = `[data-testid="${WORLD_OVERLAY_TESTID}"]`;
 
-const addCrateOverlays = (
-  CampaignScene.prototype as unknown as { addCrateOverlays: (this: unknown) => void }
-).addCrateOverlays;
-
-// Minimal stand-in for the parts of the scene addCrateOverlays reads before it
-// returns on a crateless map: the map's obstacle list and the Phaser game canvas
-// whose parent is the shared overlay host.
-function fakeScene(host: HTMLElement, obstacles: unknown[]) {
-  return {
-    map: { obstacles },
-    game: { canvas: { parentElement: host } },
-  };
-}
-
-function makeCrateOverlayCanvas(): HTMLCanvasElement {
+function makeWorldOverlayCanvas(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
-  canvas.setAttribute("data-testid", CRATE_OVERLAY_TESTID);
+  canvas.setAttribute("data-testid", WORLD_OVERLAY_TESTID);
   return canvas;
 }
 
-describe("CampaignScene.addCrateOverlays clears stale crate overlays (TT-27)", () => {
-  it("sweeps a crate canvas left by a prior game even when the new map has no crates", () => {
-    const host = document.createElement("div");
-    // The previous (crate-bearing) game's overlay canvas is still attached when
-    // the next, crateless map's scene is created.
-    host.appendChild(makeCrateOverlayCanvas());
+describe("Overlay3D clears stale 3D decor on the next map (TT-27)", () => {
+  const overlays: Overlay3D[] = [];
 
-    addCrateOverlays.call(fakeScene(host, []));
-
-    expect(host.querySelectorAll(CRATE_SELECTOR)).toHaveLength(0);
+  afterEach(() => {
+    while (overlays.length > 0) {
+      overlays.pop()!.dispose();
+    }
   });
 
-  it("leaves the Phaser game canvas on the host while sweeping crate overlays", () => {
+  it("sweeps a prior game's overlay canvas even when the new map has no crates", () => {
+    const host = document.createElement("div");
+    // The previous (crate-bearing) game's overlay canvas is still attached when
+    // the next, crateless map's compositor is built for its tanks.
+    host.appendChild(makeWorldOverlayCanvas());
+
+    const overlay = new Overlay3D(host);
+    overlays.push(overlay);
+
+    expect(host.querySelectorAll(OVERLAY_SELECTOR)).toHaveLength(1);
+  });
+
+  it("leaves the Phaser game canvas on the host while sweeping the stale overlay", () => {
     const host = document.createElement("div");
     const gameCanvas = document.createElement("canvas");
     host.appendChild(gameCanvas);
-    host.appendChild(makeCrateOverlayCanvas());
+    host.appendChild(makeWorldOverlayCanvas());
 
-    addCrateOverlays.call(fakeScene(host, []));
+    const overlay = new Overlay3D(host);
+    overlays.push(overlay);
 
     expect(host.contains(gameCanvas)).toBe(true);
-    expect(host.querySelectorAll(CRATE_SELECTOR)).toHaveLength(0);
+    expect(host.querySelectorAll(OVERLAY_SELECTOR)).toHaveLength(1);
   });
 });
