@@ -1,0 +1,63 @@
+src/game/CampaignScene.ts
+  s_004b32bec27e06::t_53e01c103baf6e 53
+  s_004b32bec27e06::t_47379bbeb279d1 799-823,826,829-832,836,854-864,868-886,888,895-898,901-904,907,910,914
+  s_004b32bec27e06::t_9a147110304ede 567,570-575
+  s_004b32bec27e06::t_52b5318a6148b2 952-961,971-972,991-994,997,1000,1004
+  s_004b32bec27e06::t_62bd63f038dc53 365
+  s_004b32bec27e06::t_d257ef65176e77 3895
+  s_004b32bec27e06::t_41b880487c80f1 1156-1159,1162,1165,1169
+  s_004b32bec27e06::t_54f483468004d0 308-315,318,518,523-529,531
+tests/tank-overlay-clear.test.ts
+  s_004b32bec27e06::t_98ae319c3daab3 7-12,14-17,21,36-37,39,41-42,44-45,56,59,61,65-66,70
+tests/crate-overlay-clear.test.ts
+  s_004b32bec27e06::t_bb3303b3e1b2e6 2,5-8,10-17,19-32,34-35,37,39,41,45-54,57-58,60-61,63,66,70,72-73,76
+src/game/tree-3d.ts
+  s_004b32bec27e06::t_443bf9ddc130f3 1-4,6-10,14,22-24
+tests/tree-overlay-opacity.test.ts
+  s_004b32bec27e06::t_4cad4d72ff65b8 3-9,11-15,17-20,26,40,50,53-54
+src/game/layer-stack.ts
+  s_004b32bec27e06::t_9527e5e29d86cd 4-5,10-11,14-19,23,25,28,34-36,38
+src/game/crate-3d.ts
+  s_004b32bec27e06::t_174317f0e89151 1-5,8-12,16,29-31
+src/game/game-hud-overlay.ts
+  s_004b32bec27e06::t_792b7e1518a9c3 2,6-12,17,35
+tests/game-hud-overlay.test.ts
+  s_004b32bec27e06::t_3def3995821e18 34,39
+tests/urban-decor.test.ts
+  s_004b32bec27e06::t_78853261bf3857 285-288,290,294,296-297,299,301,308,310,313
+  s_004b32bec27e06::t_445564b1467559 11,15
+tests/respawn-countdown-layer.test.ts
+  s_004b32bec27e06::t_e36b4969ad796e 38-39
+  s_004b32bec27e06::t_97bb60c7dc97a5 11-13
+  s_004b32bec27e06::t_6266b41793f528 62-63,67-68,75,78,89-92,94,96-98
+src/game/urban-decor.ts
+  s_004b32bec27e06::t_5247f7e12d9a76 281-283,286-287
+  s_004b32bec27e06::t_8b74558db459ec 265-270
+  s_004b32bec27e06::t_91aac9ae3b3cfd 77,79-84,86-87
+  s_004b32bec27e06::t_cc17e6646489da 44-49
+tests/overlay-depth-order.test.ts
+  s_004b32bec27e06::t_a33fa46b3e6925 1-26,43-115
+  s_004b32bec27e06::t_4279d596addb82 27-42
+src/game/car-3d.ts
+  s_004b32bec27e06::t_8e335fef9cb48c 1-5,8-12,20,41-43
+src/game/tank-3d.ts
+  s_004b32bec27e06::t_8d242425e30a45 1-5,7-16,21-22,68-70,75,90,96-98,100,202
+src/game/overlay-3d.ts
+  s_004b32bec27e06::t_84c90542a54517 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "711ae208a9fe505397d17b395924143708a5460d",
+  "prompts": {},
+  "sessions": {
+    "s_004b32bec27e06": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdd9aeba-e068-4705-a4be-92a77557ed25",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Greggory Caines <gregg@caines.ca>"
+    }
+  }
+}
